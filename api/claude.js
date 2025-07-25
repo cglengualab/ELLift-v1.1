@@ -17,17 +17,24 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { messages, max_tokens = 3000, type = 'text' } = req.body;
+    console.log('API function called');
+    const { messages, max_tokens = 3000 } = req.body;
 
     if (!messages || !Array.isArray(messages)) {
+      console.log('Invalid messages format');
       return res.status(400).json({ error: 'Invalid messages format' });
     }
 
     // Check if we have an API key
     const apiKey = process.env.CLAUDE_API_KEY;
+    console.log('API Key exists:', !!apiKey);
+    console.log('API Key starts with sk-ant:', apiKey?.startsWith('sk-ant-'));
+    
     if (!apiKey) {
       return res.status(500).json({ error: 'Claude API key not configured' });
     }
+
+    console.log('Making request to Claude API...');
 
     // Make request to Claude API
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -38,11 +45,13 @@ export default async function handler(req, res) {
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: 'claude-3-sonnet-20240229',
+        model: 'claude-3-5-sonnet-20241022',
         max_tokens,
         messages
       })
     });
+
+    console.log('Claude API response status:', response.status);
 
     if (!response.ok) {
       const errorData = await response.text();
@@ -54,6 +63,7 @@ export default async function handler(req, res) {
     }
 
     const data = await response.json();
+    console.log('Claude API success');
     return res.status(200).json(data);
 
   } catch (error) {
