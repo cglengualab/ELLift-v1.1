@@ -43,34 +43,67 @@ export const extractTextFromPDF = async (file, setProcessingStep) => {
 
   setProcessingStep('Extracting text from PDF...');
 
-  // Extract text from PDF using Claude
-  const data = await callClaudeAPI([
-    {
-      role: "user",
-      content: [
-        {
-          type: "image",
-          source: {
-            type: "base64",
-            media_type: "application/pdf",
-            data: base64Data,
+  try {
+    // Extract text from PDF using Claude with proper document format
+    const data = await callClaudeAPI([
+      {
+        role: "user",
+        content: [
+          {
+            type: "document",
+            source: {
+              type: "base64",
+              media_type: "application/pdf",
+              data: base64Data,
+            },
           },
-        },
-        {
-          type: "text",
-          text: "Please extract all the text content from this educational material/worksheet/quiz. Preserve the structure and formatting as much as possible, including questions, instructions, and any other text elements. Return only the extracted text content."
-        }
-      ]
-    }
-  ], 5000);
+          {
+            type: "text",
+            text: "Please extract all the text content from this educational material/worksheet/quiz. Preserve the structure and formatting as much as possible, including questions, instructions, and any other text elements. Return only the extracted text content."
+          }
+        ]
+      }
+    ], 5000);
 
-  const text = data.content[0].text;
-  
-  if (!text || text.trim().length === 0) {
-    throw new Error("No text could be extracted from the PDF");
+    const text = data.content[0].text;
+    
+    if (!text || text.trim().length === 0) {
+      throw new Error("No text could be extracted from the PDF");
+    }
+    
+    return text;
+  } catch (error) {
+    // If document type fails, try as image (some Claude endpoints treat PDFs as images)
+    console.log('Document type failed, trying as image...');
+    
+    const data = await callClaudeAPI([
+      {
+        role: "user",
+        content: [
+          {
+            type: "image",
+            source: {
+              type: "base64",
+              media_type: "image/png", // Try as image
+              data: base64Data,
+            },
+          },
+          {
+            type: "text",
+            text: "Please extract all the text content from this educational material/worksheet/quiz. Preserve the structure and formatting as much as possible, including questions, instructions, and any other text elements. Return only the extracted text content."
+          }
+        ]
+      }
+    ], 5000);
+
+    const text = data.content[0].text;
+    
+    if (!text || text.trim().length === 0) {
+      throw new Error("No text could be extracted from the PDF");
+    }
+    
+    return text;
   }
-  
-  return text;
 };
 
 /**
