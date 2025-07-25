@@ -154,35 +154,35 @@ ADAPTED MATERIAL:
 
 CONTENT OBJECTIVES (maintained):
 Use bullet points to list each objective clearly:
-• [First content objective and how it's maintained]
-• [Second content objective and how it's maintained]
-• [Additional objectives as needed]
+- [First content objective and how it's maintained]
+- [Second content objective and how it's maintained]
+- [Additional objectives as needed]
 
 ELL LANGUAGE OBJECTIVES:
 Use bullet points to list each language objective with clear domain labels:
-• LISTENING: [Specific listening objective for this WIDA level]
-• SPEAKING: [Specific speaking objective for this WIDA level]
-• READING: [Specific reading objective for this WIDA level]
-• WRITING: [Specific writing objective for this WIDA level]
+- LISTENING: [Specific listening objective for this WIDA level]
+- SPEAKING: [Specific speaking objective for this WIDA level]
+- READING: [Specific reading objective for this WIDA level]
+- WRITING: [Specific writing objective for this WIDA level]
 Note: Include only the language domains that are relevant for this specific material type and activity.
 
 ELL SUPPORTS INCLUDED:
 Use bullet points to list each support clearly:
-• [First scaffold or support added]
-• [Second scaffold or support added]
-• [Additional supports as needed]
+- [First scaffold or support added]
+- [Second scaffold or support added]
+- [Additional supports as needed]
 
 ${includeBilingualSupport ? `BILINGUAL VOCABULARY SUPPORT:
 Use bullet points to list key terms:
-• [English term] = [${nativeLanguage} translation]
-• [English term] = [${nativeLanguage} translation]
-• [Additional bilingual vocabulary as needed]
+- [English term] = [${nativeLanguage} translation]
+- [English term] = [${nativeLanguage} translation]
+- [Additional bilingual vocabulary as needed]
 
 ` : ''}ASSESSMENT ADAPTATIONS:
 Use bullet points to list assessment modifications:
-• [First assessment adaptation]
-• [Second assessment adaptation]
-• [Additional adaptations as needed]
+- [First assessment adaptation]
+- [Second assessment adaptation]
+- [Additional adaptations as needed]
 
 IMPORTANT: Do not use any markdown formatting like **bold**, *italics*, ### headers, or markdown bullet points with -. Use only plain text with regular bullet points (•) and clear section headers that can be easily copied and pasted into any document.`;
 
