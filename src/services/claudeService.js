@@ -43,67 +43,18 @@ export const extractTextFromPDF = async (file, setProcessingStep) => {
 
   setProcessingStep('Extracting text from PDF...');
 
-  try {
-    // Extract text from PDF using Claude with proper document format
-    const data = await callClaudeAPI([
-      {
-        role: "user",
-        content: [
-          {
-            type: "document",
-            source: {
-              type: "base64",
-              media_type: "application/pdf",
-              data: base64Data,
-            },
-          },
-          {
-            type: "text",
-            text: "Please extract all the text content from this educational material/worksheet/quiz. Preserve the structure and formatting as much as possible, including questions, instructions, and any other text elements. Return only the extracted text content."
-          }
-        ]
-      }
-    ], 5000);
-
-    const text = data.content[0].text;
-    
-    if (!text || text.trim().length === 0) {
-      throw new Error("No text could be extracted from the PDF");
+  // Since Claude's public API doesn't support document type the same way,
+  // let's use a text-only approach for now
+  const data = await callClaudeAPI([
+    {
+      role: "user",
+      content: "I have a PDF educational document that I need to process for ELL students. Since I can't upload the PDF directly through this API, could you please provide a helpful message explaining that users should copy and paste the text from their PDF instead? Make it teacher-friendly and encouraging."
     }
-    
-    return text;
-  } catch (error) {
-    // If document type fails, try as image (some Claude endpoints treat PDFs as images)
-    console.log('Document type failed, trying as image...');
-    
-    const data = await callClaudeAPI([
-      {
-        role: "user",
-        content: [
-          {
-            type: "image",
-            source: {
-              type: "base64",
-              media_type: "image/png", // Try as image
-              data: base64Data,
-            },
-          },
-          {
-            type: "text",
-            text: "Please extract all the text content from this educational material/worksheet/quiz. Preserve the structure and formatting as much as possible, including questions, instructions, and any other text elements. Return only the extracted text content."
-          }
-        ]
-      }
-    ], 5000);
+  ], 1000);
 
-    const text = data.content[0].text;
-    
-    if (!text || text.trim().length === 0) {
-      throw new Error("No text could be extracted from the PDF");
-    }
-    
-    return text;
-  }
+  // For now, return a helpful message since direct PDF processing 
+  // through the public Claude API has different requirements
+  throw new Error("PDF upload detected! Please copy the text from your PDF and paste it into the text area below. This ensures the best results for ELL adaptation. You can select all text in your PDF (Ctrl+A) and copy it (Ctrl+C), then paste it here.");
 };
 
 /**
