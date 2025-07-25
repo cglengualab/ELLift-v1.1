@@ -11,7 +11,8 @@ export default defineConfig({
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom'],
-          icons: ['lucide-react']
+          icons: ['lucide-react'],
+          pdf: ['pdfjs-dist']
         }
       }
     }
@@ -22,5 +23,8 @@ export default defineConfig({
   },
   preview: {
     port: 4173
+  },
+  optimizeDeps: {
+    include: ['pdfjs-dist/build/pdf', 'pdfjs-dist/build/pdf.worker.entry']
   }
 })
