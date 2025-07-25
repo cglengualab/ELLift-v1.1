@@ -1,6 +1,30 @@
 // Claude API service functions
-const CLAUDE_API_URL = "https://api.anthropic.com/v1/messages";
-const MODEL = "claude-sonnet-4-20250514";
+const API_BASE_URL = process.env.NODE_ENV === 'development' 
+  ? 'http://localhost:3000' 
+  : window.location.origin;
+
+/**
+ * Make a request to our Claude API proxy
+ */
+const callClaudeAPI = async (messages, maxTokens = 3000) => {
+  const response = await fetch(`${API_BASE_URL}/api/claude`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      messages,
+      max_tokens: maxTokens
+    })
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(errorData.error || `API request failed: ${response.status}`);
+  }
+
+  return response.json();
+};
 
 /**
  * Extract text from PDF file using Claude
@@ -20,41 +44,26 @@ export const extractTextFromPDF = async (file, setProcessingStep) => {
   setProcessingStep('Extracting text from PDF...');
 
   // Extract text from PDF using Claude
-  const response = await fetch(CLAUDE_API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: 5000,
-      messages: [
+  const data = await callClaudeAPI([
+    {
+      role: "user",
+      content: [
         {
-          role: "user",
-          content: [
-            {
-              type: "document",
-              source: {
-                type: "base64",
-                media_type: "application/pdf",
-                data: base64Data,
-              },
-            },
-            {
-              type: "text",
-              text: "Please extract all the text content from this educational material/worksheet/quiz. Preserve the structure and formatting as much as possible, including questions, instructions, and any other text elements. Return only the extracted text content."
-            }
-          ]
+          type: "document",
+          source: {
+            type: "base64",
+            media_type: "application/pdf",
+            data: base64Data,
+          },
+        },
+        {
+          type: "text",
+          text: "Please extract all the text content from this educational material/worksheet/quiz. Preserve the structure and formatting as much as possible, including questions, instructions, and any other text elements. Return only the extracted text content."
         }
       ]
-    })
-  });
+    }
+  ], 5000);
 
-  if (!response.ok) {
-    throw new Error(`API request failed: ${response.status}`);
-  }
-
-  const data = await response.json();
   const text = data.content[0].text;
   
   if (!text || text.trim().length === 0) {
@@ -177,27 +186,12 @@ Use bullet points to list assessment modifications:
 
 IMPORTANT: Do not use any markdown formatting like **bold**, *italics*, ### headers, or markdown bullet points with -. Use only plain text with regular bullet points (•) and clear section headers that can be easily copied and pasted into any document.`;
 
-  const response = await fetch(CLAUDE_API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: 3000,
-      messages: [
-        {
-          role: "user",
-          content: prompt
-        }
-      ]
-    })
-  });
+  const data = await callClaudeAPI([
+    {
+      role: "user",
+      content: prompt
+    }
+  ], 3000);
 
-  if (!response.ok) {
-    throw new Error(`API request failed: ${response.status}`);
-  }
-
-  const data = await response.json();
   return data.content[0].text;
 };
