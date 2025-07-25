@@ -327,7 +327,7 @@ const ELLMaterialAdapter = () => {
                       {extractedText && (
                         <div className="mt-4 p-3 bg-gray-50 rounded-md max-h-32 overflow-y-auto custom-scrollbar">
                           <p className="text-xs text-gray-600 mb-1">Extracted content preview:</p>
-                          <p className="text-xs text-gray-800">{extractedText.substring(0, 300)}...</p>
+                          <p className="text-xs text-gray-800 whitespace-pre-wrap">{extractedText.substring(0, 500)}{extractedText.length > 500 ? '...' : ''}</p>
                         </div>
                       )}
                       <button
@@ -425,12 +425,12 @@ const ELLMaterialAdapter = () => {
               💡 Tips for Best Results
             </h3>
             <ul className="text-sm text-yellow-700 space-y-2">
-              <li>• Upload clear, text-based PDFs for best results</li>
+              <li>• <strong>PDF uploads:</strong> Works best with text-based PDFs (not scanned images)</li>
+              <li>• <strong>File size:</strong> Keep PDFs under 10MB for faster processing</li>
+              <li>• <strong>Text input:</strong> Copy-paste works great for any content</li>
               <li>• Be specific about content learning objectives</li>
               <li>• Include any special instructions or context in your material</li>
               <li>• Review adapted content for subject-specific accuracy</li>
-              <li>• Ensure language objectives align with your lesson goals</li>
-              <li>• Consider your students' cultural backgrounds</li>
             </ul>
           </div>
         </div>
