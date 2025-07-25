@@ -1,5 +1,7 @@
 // api/claude.js - Vercel serverless function for Claude API calls
 
+const ANTHROPIC_VERSION = '2023-06-01'; // Explicit version constant
+
 export default async function handler(req, res) {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -34,7 +36,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Claude API key not configured' });
     }
 
-    console.log('Making request to Claude API...');
+    console.log('Making request to Claude API with version:', ANTHROPIC_VERSION);
 
     // Make request to Claude API
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -42,7 +44,7 @@ export default async function handler(req, res) {
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': apiKey,
-        'anthropic-version': '2024-06-01'
+        'anthropic-version': ANTHROPIC_VERSION
       },
       body: JSON.stringify({
         model: 'claude-3-5-sonnet-20241022',
