@@ -7,13 +7,24 @@ const API_BASE_URL = process.env.NODE_ENV === 'development'
  * Make a request to our Claude API proxy
  */
 const callClaudeAPI = async (messages, maxTokens = 3000) => {
+  // Ensure messages are in the correct format for Claude API
+  const formattedMessages = messages.map(msg => {
+    if (typeof msg.content === 'string') {
+      return {
+        role: msg.role,
+        content: msg.content
+      };
+    }
+    return msg;
+  });
+
   const response = await fetch(`${API_BASE_URL}/api/claude`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      messages,
+      messages: formattedMessages,
       max_tokens: maxTokens
     })
   });
