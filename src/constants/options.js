@@ -27,3 +27,4 @@ export const commonLanguages = [
   'Tagalog', 'Russian', 'French', 'Portuguese', 'Japanese',
   'Haitian Creole', 'Hindi', 'German', 'Italian', 'Polish',
   'Urdu', 'Bengali', 'Other'
+];
