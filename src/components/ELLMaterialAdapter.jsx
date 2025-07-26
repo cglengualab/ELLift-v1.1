@@ -1,59 +1,4 @@
-{/* PDF Upload Section - Only show when upload mode is selected */}
-            {inputMethod === 'upload' && (
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Upload PDF Document</label>
-                <div className="border-2 border-dashed border-blue-300 rounded-lg p-6 text-center bg-blue-50 hover:border-blue-400 transition-colors">
-                  {uploadedFile ? (
-                    <div className="space-y-3">
-                      <File className="w-12 h-12 text-green-500 mx-auto" />
-                      <div>
-                        <p className="font-medium text-gray-900">{uploadedFile.name}</p>
-                        <p className="text-sm text-gray-500">PDF ready for processing</p>
-                      </div>
-                      <button
-                        onClick={removeFile}
-                        className="text-sm text-red-600 hover:text-red-800 font-medium"
-                      >
-                        Remove file
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <Upload className="w-12 h-12 text-blue-400 mx-auto" />
-                      <div>
-                        <p className="text-blue-700 font-medium">Upload your PDF material</p>
-                        <p className="text-sm text-blue-600">We'll extract the text and put it in the text area below</p>
-                      </div>
-                      <input
-                        type="file"
-                        accept=".pdf"
-                        onChange={handleFileUpload}
-                        className="hidden"
-                        id="pdf-upload"
-                      />
-                      <label
-                        htmlFor="pdf-upload"
-                        className="inline-flex items-center btn-primary cursor-pointer"
-                      >
-                        Choose PDF File
-                      </label>
-                    </div>
-                  )}
-                </div>
-                
-                {/* Success message after PDF processing */}
-                {uploadedFile && extractedText && (
-                  <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-md">
-                    <p className="text-sm text-green-800 font-medium mb-1">
-                      ✅ Text extracted successfully!
-                    </p>
-                    <p className="text-xs text-green-700">
-                      The text from your PDF has been added to the text area below. You can review and edit it before generating the ELL adaptation.
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { FileText, Users, BookOpen, ClipboardList, Download, Upload, File, AlertCircle } from 'lucide-react';
 import { materialTypes, subjects, gradeLevels, proficiencyLevels, commonLanguages } from '../constants/options';
 import { extractTextFromPDF, adaptMaterialWithClaude } from '../services/claudeService';
@@ -61,6 +6,9 @@ import LoadingSpinner from './LoadingSpinner';
 import ErrorAlert from './ErrorAlert';
 
 const ELLMaterialAdapter = () => {
+  // Input method state - declare first since it's used early
+  const [inputMethod, setInputMethod] = useState('text');
+  
   // Form state
   const [materialType, setMaterialType] = useState('');
   const [subject, setSubject] = useState('');
@@ -74,7 +22,6 @@ const ELLMaterialAdapter = () => {
   // File handling state
   const [uploadedFile, setUploadedFile] = useState(null);
   const [extractedText, setExtractedText] = useState('');
-  const [inputMethod, setInputMethod] = useState('text');
   
   // Processing state
   const [processingStep, setProcessingStep] = useState('');
@@ -129,12 +76,19 @@ const ELLMaterialAdapter = () => {
   }, []);
 
   const adaptMaterial = useCallback(async () => {
-    if (!isFormValid) {
+    // Use the text from the main text area (works for both manual input and PDF extraction)
+    const contentToAdapt = originalMaterial;
+    
+    if (!contentToAdapt.trim() || !materialType || !subject || !proficiencyLevel || !learningObjectives.trim()) {
       setError('Please fill in all required fields including learning objectives');
       return;
     }
 
-    const contentToAdapt = inputMethod === 'upload' ? extractedText : originalMaterial;
+    if (includeBilingualSupport && !nativeLanguage) {
+      setError('Please select the student\'s native language for bilingual support');
+      return;
+    }
+
     setIsLoading(true);
     setError('');
     setProcessingStep('Adapting material for ELL students...');
@@ -160,7 +114,7 @@ const ELLMaterialAdapter = () => {
     }
     
     setIsLoading(false);
-  }, [isFormValid, inputMethod, extractedText, originalMaterial, materialType, subject, gradeLevel, proficiencyLevel, learningObjectives, includeBilingualSupport, nativeLanguage]);
+  }, [originalMaterial, materialType, subject, gradeLevel, proficiencyLevel, learningObjectives, includeBilingualSupport, nativeLanguage]);
 
   const clearAll = useCallback(() => {
     setOriginalMaterial('');
@@ -198,7 +152,7 @@ const ELLMaterialAdapter = () => {
   return (
     <div className="max-w-7xl mx-auto p-6">
       <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold text-gray-800 mb-2">ELL Material Adapter</h1>
+        <h1 className="text-4xl font-bold text-gray-800 mb-2">ELLift</h1>
         <p className="text-gray-600 mb-6">Transform your classroom materials to support English Language Learners</p>
         <button
           onClick={clearAll}
@@ -216,37 +170,6 @@ const ELLMaterialAdapter = () => {
           <div className="card bg-blue-50 border-blue-200 sticky top-6">
             <h2 className="section-header text-blue-800">ELL Adaptation Settings</h2>
             
-            {/* Input Method Selection */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-3">How would you like to add your material?</label>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => setInputMethod('text')}
-                  className={`p-4 rounded-lg border-2 transition-all ${
-                    inputMethod === 'text'
-                      ? 'border-blue-500 bg-blue-100 text-blue-700'
-                      : 'border-gray-200 bg-white text-gray-600 hover:border-blue-300'
-                  }`}
-                >
-                  <FileText className="w-6 h-6 mx-auto mb-2" />
-                  <div className="font-medium">Type or Paste Text</div>
-                  <div className="text-xs mt-1 opacity-75">Enter your content directly</div>
-                </button>
-                <button
-                  onClick={() => setInputMethod('upload')}
-                  className={`p-4 rounded-lg border-2 transition-all ${
-                    inputMethod === 'upload'
-                      ? 'border-blue-500 bg-blue-100 text-blue-700'
-                      : 'border-gray-200 bg-white text-gray-600 hover:border-blue-300'
-                  }`}
-                >
-                  <Upload className="w-6 h-6 mx-auto mb-2" />
-                  <div className="font-medium">Upload PDF</div>
-                  <div className="text-xs mt-1 opacity-75">Extract text from PDF file</div>
-                </button>
-              </div>
-            </div>
-
             {/* Material Type Selection */}
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-3">Material Type *</label>
@@ -257,14 +180,14 @@ const ELLMaterialAdapter = () => {
                     <button
                       key={type.value}
                       onClick={() => setMaterialType(type.value)}
-                      className={`p-4 rounded-lg border-2 transition-all ${
+                      className={`p-3 rounded-lg border-2 transition-all text-center ${
                         materialType === type.value
                           ? 'border-blue-500 bg-blue-100 text-blue-700'
                           : 'border-gray-200 bg-white text-gray-600 hover:border-blue-300'
                       }`}
                     >
-                      <IconComponent className="w-6 h-6 mx-auto mb-2" />
-                      <div className="text-sm font-medium">{type.label}</div>
+                      <IconComponent className="w-5 h-5 mx-auto mb-1" />
+                      <div className="text-xs font-medium">{type.label}</div>
                     </button>
                   );
                 })}
@@ -272,7 +195,7 @@ const ELLMaterialAdapter = () => {
             </div>
 
             {/* Subject and Grade */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div className="grid grid-cols-1 gap-4 mb-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Subject *</label>
                 <select
@@ -305,25 +228,25 @@ const ELLMaterialAdapter = () => {
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Content Learning Objectives *
-                <span className="text-xs text-gray-500 block mt-1">What should students know/be able to do after this lesson?</span>
+                <span className="text-xs text-gray-500 block mt-1">What should students learn?</span>
               </label>
               <textarea
                 value={learningObjectives}
                 onChange={(e) => setLearningObjectives(e.target.value)}
-                placeholder="e.g., Students will be able to solve linear equations using inverse operations..."
-                className="input-field h-24 resize-none custom-scrollbar"
+                placeholder="e.g., Students will solve linear equations..."
+                className="input-field h-20 resize-none custom-scrollbar"
               />
             </div>
 
             {/* Proficiency Level */}
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Student English Proficiency Level (WIDA) *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">WIDA Proficiency Level *</label>
               <select
                 value={proficiencyLevel}
                 onChange={(e) => setProficiencyLevel(e.target.value)}
                 className="input-field"
               >
-                <option value="">Select Proficiency Level</option>
+                <option value="">Select Level</option>
                 {proficiencyLevels.map(level => (
                   <option key={level.value} value={level.value}>{level.label}</option>
                 ))}
@@ -361,76 +284,27 @@ const ELLMaterialAdapter = () => {
                     ))}
                   </select>
                   <p className="text-xs text-gray-500 mt-2">
-                    Bilingual support will focus on cognates, academic vocabulary, and key concepts
+                    Strategic translations for key academic vocabulary
                   </p>
                 </div>
               )}
             </div>
 
-            {/* Material Input */}
-            {inputMethod === 'text' ? (
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Paste Your Original Material *</label>
-                <textarea
-                  value={originalMaterial}
-                  onChange={(e) => setOriginalMaterial(e.target.value)}
-                  placeholder="Enter your lesson material, quiz questions, worksheet content, etc..."
-                  className="input-field h-64 resize-none custom-scrollbar"
-                />
-              </div>
-            ) : (
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Upload PDF Material *</label>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 transition-colors">
-                  {uploadedFile ? (
-                    <div className="space-y-4">
-                      <File className="w-16 h-16 text-green-500 mx-auto" />
-                      <div>
-                        <p className="font-medium text-gray-900">{uploadedFile.name}</p>
-                        <p className="text-sm text-gray-500">PDF uploaded successfully</p>
-                      </div>
-                      {uploadedFile && extractedText && (
-                        <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
-                          <p className="text-sm text-green-800 font-medium mb-2">
-                            ✅ PDF text extracted successfully! 
-                          </p>
-                          <p className="text-xs text-green-700">
-                            The extracted text has been added to the text area below. You can edit it if needed before adapting.
-                          </p>
-                        </div>
-                      )}
-                      <button
-                        onClick={removeFile}
-                        className="text-sm text-red-600 hover:text-red-800 font-medium"
-                      >
-                        Remove file
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <Upload className="w-16 h-16 text-gray-400 mx-auto" />
-                      <div>
-                        <p className="text-gray-600 mb-2">Upload your PDF material</p>
-                        <p className="text-sm text-gray-500">Drag and drop or click to select</p>
-                      </div>
-                      <input
-                        type="file"
-                        accept=".pdf"
-                        onChange={handleFileUpload}
-                        className="hidden"
-                        id="pdf-upload"
-                      />
-                      <label
-                        htmlFor="pdf-upload"
-                        className="inline-flex items-center btn-primary cursor-pointer"
-                      >
-                        Choose PDF File
-                      </label>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+            {/* Action Button */}
+            <button
+              onClick={adaptMaterial}
+              disabled={isLoading || !isFormValid}
+              className="w-full btn-primary text-lg py-3 disabled:opacity-50"
+            >
+              {isLoading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Processing...
+                </span>
+              ) : (
+                'Adapt Material'
+              )}
+            </button>
 
             {/* Processing Status */}
             {processingStep && (
@@ -438,32 +312,100 @@ const ELLMaterialAdapter = () => {
                 {processingStep}
               </div>
             )}
-
-            {/* Action Buttons */}
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={adaptMaterial}
-                disabled={isLoading || !isFormValid}
-                className="flex-1 btn-primary text-lg py-3 disabled:opacity-50"
-              >
-                {isLoading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    Processing...
-                  </span>
-                ) : (
-                  'Adapt Material for ELL Students'
-                )}
-              </button>
-            </div>
           </div>
         </div>
 
-        {/* Output Section */}
-        <div className="space-y-6">
+        {/* Right Column: Original Material & Adapted Material */}
+        <div className="xl:col-span-2 space-y-6">
+          {/* Original Material Section */}
+          <div className="card bg-gray-50 border-gray-200">
+            <h2 className="section-header text-gray-800">Original Material</h2>
+            
+            {/* Input Method Selection */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-3">How would you like to add your material?</label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setInputMethod('text')}
+                  className={`p-3 rounded-lg border-2 transition-all ${
+                    inputMethod === 'text'
+                      ? 'border-blue-500 bg-blue-100 text-blue-700'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-blue-300'
+                  }`}
+                >
+                  <FileText className="w-5 h-5 mx-auto mb-1" />
+                  <div className="text-sm font-medium">Type/Paste Text</div>
+                </button>
+                <button
+                  onClick={() => setInputMethod('upload')}
+                  className={`p-3 rounded-lg border-2 transition-all ${
+                    inputMethod === 'upload'
+                      ? 'border-blue-500 bg-blue-100 text-blue-700'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-blue-300'
+                  }`}
+                >
+                  <Upload className="w-5 h-5 mx-auto mb-1" />
+                  <div className="text-sm font-medium">Upload PDF</div>
+                </button>
+              </div>
+            </div>
+
+            {/* PDF Upload Section */}
+            {inputMethod === 'upload' && (
+              <div className="mb-4">
+                <div className="border-2 border-dashed border-blue-300 rounded-lg p-4 text-center bg-blue-50">
+                  {uploadedFile ? (
+                    <div className="space-y-2">
+                      <File className="w-8 h-8 text-green-500 mx-auto" />
+                      <p className="text-sm font-medium text-gray-900">{uploadedFile.name}</p>
+                      <button onClick={removeFile} className="text-xs text-red-600 hover:text-red-800">
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <Upload className="w-8 h-8 text-blue-400 mx-auto" />
+                      <input type="file" accept=".pdf" onChange={handleFileUpload} className="hidden" id="pdf-upload" />
+                      <label htmlFor="pdf-upload" className="inline-flex items-center btn-primary cursor-pointer text-sm py-2 px-3">
+                        Choose PDF
+                      </label>
+                    </div>
+                  )}
+                </div>
+                
+                {uploadedFile && extractedText && (
+                  <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-md">
+                    <p className="text-xs text-green-800 font-medium">✅ Text extracted and added below</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Material Content Text Area */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Material Content *
+                {uploadedFile && extractedText && (
+                  <span className="text-blue-600 text-xs ml-2">(from PDF)</span>
+                )}
+              </label>
+              <textarea
+                value={originalMaterial}
+                onChange={(e) => setOriginalMaterial(e.target.value)}
+                placeholder={
+                  inputMethod === 'upload' 
+                    ? "Upload a PDF above to extract text here..." 
+                    : "Enter your lesson material, quiz questions, worksheet content..."
+                }
+                className="input-field h-96 resize-none custom-scrollbar"
+              />
+            </div>
+          </div>
+
+          {/* Adapted Material Section */}
           <div className="card bg-green-50 border-green-200">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="section-header text-green-800">Adapted Material</h2>
+              <h2 className="section-header text-green-800">Adapted ELL Material</h2>
               {adaptedMaterial && (
                 <button
                   onClick={copyToClipboard}
@@ -490,7 +432,7 @@ const ELLMaterialAdapter = () => {
             ) : (
               <div className="bg-white p-6 rounded-md border border-green-200 h-96 flex items-center justify-center">
                 <p className="text-gray-500 text-center">
-                  Your adapted material will appear here after processing
+                  Your ELL-adapted material will appear here after processing
                 </p>
               </div>
             )}
@@ -501,7 +443,6 @@ const ELLMaterialAdapter = () => {
               </div>
             )}
           </div>
-
         </div>
 
         {/* Tips Section - Full Width Below */}
