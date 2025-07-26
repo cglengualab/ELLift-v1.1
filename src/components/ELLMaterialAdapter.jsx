@@ -210,11 +210,11 @@ const ELLMaterialAdapter = () => {
 
       {error && <ErrorAlert message={error} onClose={() => setError('')} />}
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-        {/* Input Section */}
-        <div className="space-y-6">
-          <div className="card bg-blue-50 border-blue-200">
-            <h2 className="section-header text-blue-800">Original Material</h2>
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        {/* Left Column: ELL Settings */}
+        <div className="xl:col-span-1">
+          <div className="card bg-blue-50 border-blue-200 sticky top-6">
+            <h2 className="section-header text-blue-800">ELL Adaptation Settings</h2>
             
             {/* Input Method Selection */}
             <div className="mb-6">
@@ -502,18 +502,21 @@ const ELLMaterialAdapter = () => {
             )}
           </div>
 
-          {/* Tips Section */}
+        </div>
+
+        {/* Tips Section - Full Width Below */}
+        <div className="xl:col-span-3">
           <div className="card bg-yellow-50 border-yellow-200">
             <h3 className="font-semibold text-yellow-800 mb-3 flex items-center gap-2">
               💡 Tips for Best Results
             </h3>
-            <ul className="text-sm text-yellow-700 space-y-2">
-              <li>• <strong>PDF uploads:</strong> Works best with text-based PDFs (not scanned images)</li>
-              <li>• <strong>Text extraction:</strong> Review and edit extracted text for accuracy</li>
+            <ul className="text-sm text-yellow-700 space-y-2 grid grid-cols-1 md:grid-cols-2 gap-x-6">
+              <li>• <strong>PDF uploads:</strong> Works best with text-based PDFs</li>
               <li>• <strong>Learning objectives:</strong> Be specific about what students should learn</li>
-              <li>• <strong>WIDA levels:</strong> Choose the level that matches your students' English proficiency</li>
-              <li>• <strong>Bilingual support:</strong> Optional translations for key academic vocabulary</li>
-              <li>• <strong>Review output:</strong> Always check adapted content for subject-specific accuracy</li>
+              <li>• <strong>WIDA levels:</strong> Choose the level that matches your students</li>
+              <li>• <strong>Bilingual support:</strong> Optional translations for key vocabulary</li>
+              <li>• <strong>Review output:</strong> Always check adapted content for accuracy</li>
+              <li>• <strong>Edit text:</strong> You can modify extracted text before adapting</li>
             </ul>
           </div>
         </div>
