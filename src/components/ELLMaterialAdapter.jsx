@@ -1,4 +1,59 @@
-import React, { useState, useCallback, useMemo } from 'react';
+{/* PDF Upload Section - Only show when upload mode is selected */}
+            {inputMethod === 'upload' && (
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Upload PDF Document</label>
+                <div className="border-2 border-dashed border-blue-300 rounded-lg p-6 text-center bg-blue-50 hover:border-blue-400 transition-colors">
+                  {uploadedFile ? (
+                    <div className="space-y-3">
+                      <File className="w-12 h-12 text-green-500 mx-auto" />
+                      <div>
+                        <p className="font-medium text-gray-900">{uploadedFile.name}</p>
+                        <p className="text-sm text-gray-500">PDF ready for processing</p>
+                      </div>
+                      <button
+                        onClick={removeFile}
+                        className="text-sm text-red-600 hover:text-red-800 font-medium"
+                      >
+                        Remove file
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <Upload className="w-12 h-12 text-blue-400 mx-auto" />
+                      <div>
+                        <p className="text-blue-700 font-medium">Upload your PDF material</p>
+                        <p className="text-sm text-blue-600">We'll extract the text and put it in the text area below</p>
+                      </div>
+                      <input
+                        type="file"
+                        accept=".pdf"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                        id="pdf-upload"
+                      />
+                      <label
+                        htmlFor="pdf-upload"
+                        className="inline-flex items-center btn-primary cursor-pointer"
+                      >
+                        Choose PDF File
+                      </label>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Success message after PDF processing */}
+                {uploadedFile && extractedText && (
+                  <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-md">
+                    <p className="text-sm text-green-800 font-medium mb-1">
+                      ✅ Text extracted successfully!
+                    </p>
+                    <p className="text-xs text-green-700">
+                      The text from your PDF has been added to the text area below. You can review and edit it before generating the ELL adaptation.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}import React, { useState, useCallback, useMemo } from 'react';
 import { FileText, Users, BookOpen, ClipboardList, Download, Upload, File, AlertCircle } from 'lucide-react';
 import { materialTypes, subjects, gradeLevels, proficiencyLevels, commonLanguages } from '../constants/options';
 import { extractTextFromPDF, adaptMaterialWithClaude } from '../services/claudeService';
@@ -163,7 +218,7 @@ const ELLMaterialAdapter = () => {
             
             {/* Input Method Selection */}
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-3">Input Method</label>
+              <label className="block text-sm font-medium text-gray-700 mb-3">How would you like to add your material?</label>
               <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={() => setInputMethod('text')}
@@ -174,7 +229,8 @@ const ELLMaterialAdapter = () => {
                   }`}
                 >
                   <FileText className="w-6 h-6 mx-auto mb-2" />
-                  <div className="font-medium">Type/Paste Text</div>
+                  <div className="font-medium">Type or Paste Text</div>
+                  <div className="text-xs mt-1 opacity-75">Enter your content directly</div>
                 </button>
                 <button
                   onClick={() => setInputMethod('upload')}
@@ -186,6 +242,7 @@ const ELLMaterialAdapter = () => {
                 >
                   <Upload className="w-6 h-6 mx-auto mb-2" />
                   <div className="font-medium">Upload PDF</div>
+                  <div className="text-xs mt-1 opacity-75">Extract text from PDF file</div>
                 </button>
               </div>
             </div>
@@ -375,14 +432,28 @@ const ELLMaterialAdapter = () => {
               </div>
             )}
 
+            {/* Processing Status */}
+            {processingStep && (
+              <div className="mt-4 p-3 bg-blue-100 text-blue-800 rounded-md text-sm font-medium">
+                {processingStep}
+              </div>
+            )}
+
             {/* Action Buttons */}
-            <div className="flex gap-3">
+            <div className="flex gap-3 mt-6">
               <button
                 onClick={adaptMaterial}
                 disabled={isLoading || !isFormValid}
-                className="flex-1 btn-primary text-lg py-3"
+                className="flex-1 btn-primary text-lg py-3 disabled:opacity-50"
               >
-                {isLoading ? 'Processing...' : 'Adapt Material'}
+                {isLoading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Processing...
+                  </span>
+                ) : (
+                  'Adapt Material for ELL Students'
+                )}
               </button>
             </div>
           </div>
@@ -438,11 +509,11 @@ const ELLMaterialAdapter = () => {
             </h3>
             <ul className="text-sm text-yellow-700 space-y-2">
               <li>• <strong>PDF uploads:</strong> Works best with text-based PDFs (not scanned images)</li>
-              <li>• <strong>File size:</strong> Keep PDFs under 10MB for faster processing</li>
-              <li>• <strong>Text input:</strong> Copy-paste works great for any content</li>
-              <li>• Be specific about content learning objectives</li>
-              <li>• Include any special instructions or context in your material</li>
-              <li>• Review adapted content for subject-specific accuracy</li>
+              <li>• <strong>Text extraction:</strong> Review and edit extracted text for accuracy</li>
+              <li>• <strong>Learning objectives:</strong> Be specific about what students should learn</li>
+              <li>• <strong>WIDA levels:</strong> Choose the level that matches your students' English proficiency</li>
+              <li>• <strong>Bilingual support:</strong> Optional translations for key academic vocabulary</li>
+              <li>• <strong>Review output:</strong> Always check adapted content for subject-specific accuracy</li>
             </ul>
           </div>
         </div>
