@@ -27,13 +27,12 @@ const ELLMaterialAdapter = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Validation
+  // Validation - simplified since we only use originalMaterial now
   const isFormValid = useMemo(() => {
-    const contentToAdapt = inputMethod === 'upload' ? extractedText : originalMaterial;
-    const basicFieldsValid = contentToAdapt.trim() && materialType && subject && proficiencyLevel && learningObjectives.trim();
+    const basicFieldsValid = originalMaterial.trim() && materialType && subject && proficiencyLevel && learningObjectives.trim();
     const bilingualValid = !includeBilingualSupport || nativeLanguage;
     return basicFieldsValid && bilingualValid;
-  }, [inputMethod, extractedText, originalMaterial, materialType, subject, proficiencyLevel, learningObjectives, includeBilingualSupport, nativeLanguage]);
+  }, [originalMaterial, materialType, subject, proficiencyLevel, learningObjectives, includeBilingualSupport, nativeLanguage]);
 
   const handleFileUpload = useCallback(async (event) => {
     const file = event.target.files[0];
@@ -47,17 +46,26 @@ const ELLMaterialAdapter = () => {
     setUploadedFile(file);
     setIsLoading(true);
     setError('');
-    setProcessingStep('Reading PDF file...');
+    setProcessingStep('Starting PDF processing...');
 
     try {
+      // Extract text using PDF.js (client-side)
       const text = await extractTextFromPDF(file, setProcessingStep);
-      setExtractedText(text);
+      
+      // Put the extracted text into the main text area
       setOriginalMaterial(text);
-      setProcessingStep('PDF processed successfully!');
-      setTimeout(() => setProcessingStep(''), 2000);
+      setExtractedText(text);
+      
+      // Switch to text mode to show the extracted content
+      setInputMethod('text');
+      
+      setProcessingStep('PDF text extracted successfully! You can edit the text below if needed.');
+      
+      // Clear the success message after a few seconds
+      setTimeout(() => setProcessingStep(''), 3000);
     } catch (error) {
       console.error('Error processing PDF:', error);
-      setError(`Error processing PDF: ${error.message}. Please try again or use text input.`);
+      setError(`${error.message}`);
       setUploadedFile(null);
       setProcessingStep('');
     }
@@ -111,7 +119,7 @@ const ELLMaterialAdapter = () => {
     setProficiencyLevel('');
     setUploadedFile(null);
     setExtractedText('');
-    setInputMethod('text');
+    setInputMethod('text'); // Default back to text mode
     setProcessingStep('');
     setError('');
   }, []);
@@ -324,10 +332,14 @@ const ELLMaterialAdapter = () => {
                         <p className="font-medium text-gray-900">{uploadedFile.name}</p>
                         <p className="text-sm text-gray-500">PDF uploaded successfully</p>
                       </div>
-                      {extractedText && (
-                        <div className="mt-4 p-3 bg-gray-50 rounded-md max-h-32 overflow-y-auto custom-scrollbar">
-                          <p className="text-xs text-gray-600 mb-1">Extracted content preview:</p>
-                          <p className="text-xs text-gray-800 whitespace-pre-wrap">{extractedText.substring(0, 500)}{extractedText.length > 500 ? '...' : ''}</p>
+                      {uploadedFile && extractedText && (
+                        <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
+                          <p className="text-sm text-green-800 font-medium mb-2">
+                            ✅ PDF text extracted successfully! 
+                          </p>
+                          <p className="text-xs text-green-700">
+                            The extracted text has been added to the text area below. You can edit it if needed before adapting.
+                          </p>
                         </div>
                       )}
                       <button
