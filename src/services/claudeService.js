@@ -81,7 +81,7 @@ BILINGUAL VOCABULARY SUPPORT:
 };
 
 /**
- * Adapt material using Claude API
+ * Adapt material using Claude API - UPDATED
  */
 export const adaptMaterialWithClaude = async ({
   contentToAdapt,
@@ -112,55 +112,42 @@ ADAPTATION REQUIREMENTS:
 
 3. ALIGN WITH ELL STANDARDS: Follow WIDA English Language Development Standards and research-based ELL best practices.${bilingualInstructions}
 
+4. GENERATE LESSON-SPECIFIC DESCRIPTORS: After creating the adapted material, generate a new list of 3-5 lesson-specific "Can Do" descriptors for the selected WIDA level. These descriptors must be directly tied to the specific tasks and language objectives in the adapted material you just created.
+
 SPECIFIC ADAPTATIONS FOR ${proficiencyLevel.toUpperCase()} LEVEL:
 ${proficiencyAdaptations}
 
 REQUIRED OUTPUT FORMAT:
-Please structure your response as clean, readable text without any markdown formatting. Use the following structure:
+Your entire response must be a single, valid JSON object. Do not include any text or explanations outside of the JSON structure. The JSON object must have two top-level keys: "adaptedMaterial" and "dynamicWidaDescriptors".
 
-ADAPTED MATERIAL:
-[The adapted content ready for classroom use - no markdown, just plain text]
+Example JSON structure:
+{
+  "adaptedMaterial": "ADAPTED MATERIAL:\\n[The adapted content]...\\n\\nCONTENT OBJECTIVES (maintained):\\n...\\n\\nELL LANGUAGE OBJECTIVES:\\n...\\n\\nELL SUPPORTS INCLUDED:\\n...\\n\\nASSESSMENT ADAPTATIONS:\\n...",
+  "dynamicWidaDescriptors": {
+    "title": "Lesson-Specific 'Can Do' Descriptors",
+    "descriptors": [
+      "First dynamic descriptor based on the lesson.",
+      "Second dynamic descriptor based on the lesson.",
+      "Third dynamic descriptor based on the lesson."
+    ]
+  }
+}
 
-CONTENT OBJECTIVES (maintained):
-Use bullet points to list each objective clearly:
-- [First content objective and how it's maintained]
-- [Second content objective and how it's maintained]
-- [Additional objectives as needed]
-
-ELL LANGUAGE OBJECTIVES:
-Use bullet points to list each language objective with clear domain labels:
-- LISTENING: [Specific listening objective for this WIDA level]
-- SPEAKING: [Specific speaking objective for this WIDA level]
-- READING: [Specific reading objective for this WIDA level]
-- WRITING: [Specific writing objective for this WIDA level]
-Note: Include only the language domains that are relevant for this specific material type and activity.
-
-ELL SUPPORTS INCLUDED:
-Use bullet points to list each support clearly:
-- [First scaffold or support added]
-- [Second scaffold or support added]
-- [Additional supports as needed]
-
-${includeBilingualSupport ? `BILINGUAL VOCABULARY SUPPORT:
-Use bullet points to list key terms:
-- [English term] = [${nativeLanguage} translation]
-- [English term] = [${nativeLanguage} translation]
-- [Additional bilingual vocabulary as needed]
-
-` : ''}ASSESSMENT ADAPTATIONS:
-Use bullet points to list assessment modifications:
-- [First assessment adaptation]
-- [Second assessment adaptation]
-- [Additional adaptations as needed]
-
-IMPORTANT: Do not use any markdown formatting like **bold**, *italics*, ### headers, or markdown bullet points with -. Use only plain text with regular bullet points (•) and clear section headers that can be easily copied and pasted into any document.`;
+IMPORTANT: Ensure the "adaptedMaterial" value is a single string containing the full, multi-part adapted lesson, with newlines represented as \\n. Do not use any markdown formatting like **bold** or ### headers in the content.`;
 
   const data = await callClaudeAPI([
     {
       role: "user",
       content: prompt
     }
-  ], 3000);
+  ], 4000); // Increased max_tokens slightly for the new data
 
-  return data.content[0].text;
+  try {
+    // The AI now returns a string that LOOKS like JSON. We need to convert it.
+    const parsedData = JSON.parse(data.content[0].text);
+    return parsedData; // We now return the full object { adaptedMaterial, dynamicWidaDescriptors }
+  } catch (e) {
+    console.error("Failed to parse Claude's JSON response:", data.content[0].text);
+    throw new Error("The AI returned an invalid format. Please try again.");
+  }
 };
