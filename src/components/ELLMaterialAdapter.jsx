@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { FileText, Users, BookOpen, ClipboardList, Download, Upload, File, AlertCircle, Book, Target } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import { materialTypes, subjects, gradeLevels, proficiencyLevels, commonLanguages } from '../constants/options';
 import { extractTextFromPDF, adaptMaterialWithClaude } from '../services/claudeService';
 import { getWidaDescriptors } from '../constants/widaData';
@@ -37,7 +38,7 @@ const ActionButtons = ({ adaptMaterial, clearAll, isLoading, isFormValid }) => {
 };
 
 const ELLMaterialAdapter = () => {
-  // State declarations
+  // All state and functions are unchanged
   const [inputMethod, setInputMethod] = useState('text');
   const [materialType, setMaterialType] = useState('');
   const [subject, setSubject] = useState('');
@@ -49,8 +50,6 @@ const ELLMaterialAdapter = () => {
   const [proficiencyLevel, setProficiencyLevel] = useState('');
   const [uploadedFile, setUploadedFile] = useState(null);
   const [extractedText, setExtractedText] = useState('');
-  
-  // Processing and output state
   const [processingStep, setProcessingStep] = useState('');
   const [studentWorksheet, setStudentWorksheet] = useState(''); 
   const [teacherGuide, setTeacherGuide] = useState('');         
@@ -393,10 +392,8 @@ const ELLMaterialAdapter = () => {
                     Copy Worksheet
                   </button>
                 </div>
-                <div className="bg-white p-6 rounded-md border border-green-200 h-96 overflow-y-auto custom-scrollbar">
-                  <pre className="whitespace-pre-wrap text-sm text-gray-800 font-sans leading-relaxed">
-                    {studentWorksheet}
-                  </pre>
+                <div className="bg-white p-6 rounded-md border border-green-200 h-96 overflow-y-auto custom-scrollbar prose max-w-full">
+                  <ReactMarkdown>{studentWorksheet}</ReactMarkdown>
                 </div>
               </div>
 
