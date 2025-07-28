@@ -1,3 +1,5 @@
+// FileName: src/services/claudeService.js (with improved prompt for observable descriptors)
+
 // Claude API service functions
 import { extractTextFromPDF as extractPDFText } from './pdfService.js';
 
@@ -81,7 +83,7 @@ BILINGUAL VOCABULARY SUPPORT:
 };
 
 /**
- * Adapt material using Claude API - UPDATED
+ * Adapt material using Claude API
  */
 export const adaptMaterialWithClaude = async ({
   contentToAdapt,
@@ -112,7 +114,14 @@ ADAPTATION REQUIREMENTS:
 
 3. ALIGN WITH ELL STANDARDS: Follow WIDA English Language Development Standards and research-based ELL best practices.${bilingualInstructions}
 
+// --- THIS IS THE MODIFIED SECTION ---
 4. GENERATE LESSON-SPECIFIC DESCRIPTORS: After creating the adapted material, generate a new list of 3-5 lesson-specific "Can Do" descriptors for the selected WIDA level. These descriptors must be directly tied to the specific tasks and language objectives in the adapted material you just created.
+
+CRUCIAL INSTRUCTION: The descriptors MUST use verbs that describe simple, observable actions that a teacher can easily assess.
+- GOOD, OBSERVABLE VERBS: Point to, Label, Match, Name, Draw, Select, Sequence, Orally state, Circle, Underline.
+- AVOID VAGUE VERBS: understand, learn, analyze, know, engage, explain.
+Each descriptor should be a concrete "I can..." statement from the student's perspective, tailored to the lesson content.
+// --- END OF MODIFIED SECTION ---
 
 SPECIFIC ADAPTATIONS FOR ${proficiencyLevel.toUpperCase()} LEVEL:
 ${proficiencyAdaptations}
@@ -140,14 +149,15 @@ IMPORTANT: Ensure the "adaptedMaterial" value is a single string containing the 
       role: "user",
       content: prompt
     }
-  ], 4000); // Increased max_tokens slightly for the new data
+  ], 4000);
 
   try {
-    // The AI now returns a string that LOOKS like JSON. We need to convert it.
     const parsedData = JSON.parse(data.content[0].text);
-    return parsedData; // We now return the full object { adaptedMaterial, dynamicWidaDescriptors }
+    return parsedData;
   } catch (e) {
-    console.error("Failed to parse Claude's JSON response:", data.content[0].text);
-    throw new Error("The AI returned an invalid format. Please try again.");
+    console.error("Failed to parse Claude's JSON response. This is a critical error.", e);
+    const rawResponse = data.content[0].text;
+    console.log("RAW AI Response that failed parsing:", rawResponse);
+    throw new Error(`The AI returned an invalid format. The raw response started with: "${rawResponse.substring(0, 200)}..."`);
   }
 };
