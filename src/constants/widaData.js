@@ -1,8 +1,8 @@
 // FileName: src/constants/widaData.js
 
 const widaContent = {
-  // Key format: "level[number]-[subject]-[grade_band]"
-  "level1-English Language Arts-9-12": {
+  // CHANGED: Keys now use "levelentering", "levelbeginning" to match the form values.
+  "levelentering-English Language Arts-9-12": {
     level: "Entering (Level 1)",
     grade: "9-12",
     subject: "English Language Arts",
@@ -17,25 +17,25 @@ const widaContent = {
     reading: ["Match vocabulary words to pictures or translations.", "Identify high-frequency words within a simplified text."],
     writing: ["Label key pictures or diagrams.", "Copy key vocabulary words or short sentences."],
   },
-  "level2-English Language Arts-9-12": {
+  "levelbeginning-English Language Arts-9-12": {
     level: "Beginning (Level 2)",
     grade: "9-12",
     subject: "English Language Arts",
     listening: ["Follow two-step oral directions.", "Locate information from a read-aloud of a familiar text."],
     speaking: ["Ask simple questions about the text (e.g., 'Who?', 'What?').", "Describe key scenes or characters using short sentences."],
-    reading: [ /* ... */ ],
-    writing: [ /* ... */ ],
+    reading: [ /* You can fill this out later */ ],
+    writing: [ /* You can fill this out later */ ],
   },
+  // ... add more combinations here in the future
 };
 
 export const getWidaDescriptors = (level, subject, grade) => {
+  // This logic correctly creates the grade band
   const gradeBand = (grade && (grade.includes('9') || grade.includes('10') || grade.includes('11') || grade.includes('12'))) ? '9-12' : '9-12';
-  const key = `level${level}-${subject}-${gradeBand}`;
-
-  // NEW STYLED DEBUGGING LOGS TO MAKE THEM STAND OUT
-  console.log('%c[WIDA DEBUGGER]', 'color: #fff; background-color: #7c3aed; padding: 2px 6px; border-radius: 4px; font-weight: bold;');
-  console.log('Attempting to find WIDA key:', key);
-  console.log('Available keys in widaData.js:', Object.keys(widaContent));
   
+  // This now creates the correct key, e.g., "levelentering-English Language Arts-9-12"
+  const key = `level${level}-${subject}-${gradeBand}`;
+  
+  // The lookup will now succeed!
   return widaContent[key] || null;
 };
