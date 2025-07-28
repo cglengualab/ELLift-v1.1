@@ -1,4 +1,4 @@
-// FileName: src/services/claudeService.js (Definitive version with final formatting fixes)
+// FileName: src/services/claudeService.js (Definitive version with <br> tag for instructions)
 
 // Claude API service functions
 import { extractTextFromPDF as extractPDFText } from './pdfService.js';
@@ -50,7 +50,6 @@ const getProficiencyAdaptations = (proficiencyLevel) => {
   return adaptations[proficiencyLevel] || adaptations.developing;
 };
 
-// --- THIS IS THE UPDATED, MORE PRECISE HELPER FUNCTION ---
 const buildBilingualInstructions = ({
   includeBilingualSupport,
   nativeLanguage,
@@ -69,7 +68,7 @@ const buildBilingualInstructions = ({
   }
   
   if (translateInstructions) {
-    instructions += `- For **every** 'Directions:' line on the student worksheet (including for Pre-Reading, Comprehension, and Extension activities), you MUST insert a newline character (\\n) immediately after the English text, and then provide the translation in ${nativeLanguage} formatted in italics. Example: *Instrucciones: ...*\n`;
+    instructions += `- For **every** 'Directions:' line on the student worksheet (including for Pre-Reading, Comprehension, and Extension activities), you MUST insert an HTML line break tag (<br>) immediately after the English text, and then provide the translation in ${nativeLanguage} formatted in italics. Example: Directions: Do this.<br>*Instrucciones: Haz esto.*\n`;
   }
   
   if (listCognates) {
