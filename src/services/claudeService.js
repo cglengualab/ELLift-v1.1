@@ -1,4 +1,4 @@
-// FileName: src/services/claudeService.js (Updated to request Markdown formatting)
+// FileName: src/services/claudeService.js (Final version with strict JSON formatting)
 
 // Claude API service functions
 import { extractTextFromPDF as extractPDFText } from './pdfService.js';
@@ -7,7 +7,7 @@ const API_BASE_URL = process.env.NODE_ENV === 'development'
   ? 'http://localhost:3000' 
   : window.location.origin;
 
-// ... (All helper functions like callClaudeAPI, getProficiencyAdaptations, etc. are unchanged) ...
+// ... (callClaudeAPI, extractTextFromPDF, getProficiencyAdaptations, getBilingualInstructions functions are unchanged) ...
 const callClaudeAPI = async (messages, maxTokens = 4000) => {
   const formattedMessages = messages.map(msg => {
     if (typeof msg.content === 'string') {
@@ -92,10 +92,14 @@ export const adaptMaterialWithClaude = async ({
 
   const prompt = `You are an expert in English Language Learning (ELL) pedagogy and curriculum adaptation. Please adapt the following ${materialType} for ${subject} ${gradeLevel ? `(${gradeLevel})` : ''} for students at the ${proficiencyLevel} WIDA English proficiency level.
 
-// ... (All other instructions and requirements remain the same) ...
+CONTENT LEARNING OBJECTIVES:
+${learningObjectives}
+
+ORIGINAL MATERIAL:
+${contentToAdapt}
 
 ADAPTATION REQUIREMENTS:
-1. CREATE STUDENT WORKSHEET: First, create the clean, print-and-go student worksheet...
+1. CREATE STUDENT WORKSHEET: ...
 2. CREATE A COMPLETE ANSWER KEY: ...
 3. CREATE TEACHER NOTES: ...
 4. ADD PREPARATION AND PACING: ...
@@ -105,30 +109,25 @@ ADAPTATION REQUIREMENTS:
 SPECIFIC ADAPTATIONS FOR ${proficiencyLevel.toUpperCase()} LEVEL:
 ${proficiencyAdaptations}
 
-// --- THIS IS THE MODIFIED SECTION ---
+CRUCIAL FINAL INSTRUCTION: Your response MUST begin with the character '{' and end with the character '}'. Do not include any other text, explanations, or quotes before or after the JSON object. The entire output must be only the raw JSON.
+
 REQUIRED OUTPUT FORMAT:
 Your entire response must be a single, valid JSON object with three top-level keys: "studentWorksheet", "teacherGuide", and "dynamicWidaDescriptors".
 
 - "studentWorksheet" value: A single string containing ONLY the student-facing material, formatted using simple GitHub Flavored Markdown.
-  - Use a level 1 heading (# Title) for the main title of the worksheet.
-  - Use level 2 headings (## Heading) for major section titles like 'Key Vocabulary' or 'Reading Activity'.
-  - Use bolding (**word**) for important keywords within sentences or instructions.
-  - Use bullet points (* item) or numbered lists (1. item) for lists.
-- "teacherGuide" value: A single string containing all the pedagogical notes for the teacher, structured in the specific order previously instructed. This should be plain text.
+  - Use a level 1 heading (# Title) for the main title.
+  - Use level 2 headings (## Heading) for major section titles.
+  - Use bolding (**word**) for important keywords.
+- "teacherGuide" value: A single string containing ALL the teacher-facing material, structured in the specific order previously instructed. This should be plain text.
 - "dynamicWidaDescriptors" value: The JSON object for the lesson-specific descriptors.
 
-Example JSON structure:
-{
-  "studentWorksheet": "# Charles Dickens Visits America\\n\\n## Key Vocabulary\\n- **mansion**: a very large, fancy house\\n...",
-  "teacherGuide": "ANSWER KEY:\\n...",
-  "dynamicWidaDescriptors": {
-    "title": "Lesson-Specific 'Can Do' Descriptors",
-    "descriptors": ["..."]
-  }
-}
-// --- END OF MODIFIED SECTION ---
+// --- THIS IS THE MODIFIED SECTION ---
+Example JSON structure (This must be a single line of text, do not add newlines between keys):
+{"studentWorksheet": "# Title\\n\\n## Section\\n...","teacherGuide": "ANSWER KEY:\\n...","dynamicWidaDescriptors": { ... }}
 
-IMPORTANT: Ensure all values are properly escaped for JSON. The teacherGuide should be a plain text string. The studentWorksheet should be a Markdown string. Use \\n for newlines.`;
+IMPORTANT: Ensure all values are properly escaped for JSON. All text content for studentWorksheet and teacherGuide should be single strings, with newlines represented as \\n. The entire JSON response must be a single, continuous line of text with no line breaks or formatting outside of the string values.
+// --- END OF MODIFIED SECTION ---
+`;
 
   const data = await callClaudeAPI([
     {
