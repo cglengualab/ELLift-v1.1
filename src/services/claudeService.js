@@ -1,4 +1,4 @@
-// FileName: src/services/claudeService.js (with improved prompt for observable descriptors)
+// FileName: src/services/claudeService.js (with universal instruction added)
 
 // Claude API service functions
 import { extractTextFromPDF as extractPDFText } from './pdfService.js';
@@ -7,9 +7,7 @@ const API_BASE_URL = process.env.NODE_ENV === 'development'
   ? 'http://localhost:3000' 
   : window.location.origin;
 
-/**
- * Make a request to our Claude API proxy
- */
+// ... (callClaudeAPI, extractTextFromPDF, getProficiencyAdaptations, getBilingualInstructions functions are unchanged) ...
 const callClaudeAPI = async (messages, maxTokens = 3000) => {
   const formattedMessages = messages.map(msg => {
     if (typeof msg.content === 'string') {
@@ -32,9 +30,6 @@ const callClaudeAPI = async (messages, maxTokens = 3000) => {
   return response.json();
 };
 
-/**
- * Extract text from PDF file using PDF.js
- */
 export const extractTextFromPDF = async (file, setProcessingStep) => {
   try {
     return await extractPDFText(file, setProcessingStep);
@@ -44,9 +39,6 @@ export const extractTextFromPDF = async (file, setProcessingStep) => {
   }
 };
 
-/**
- * Generate proficiency-level specific adaptations
- */
 const getProficiencyAdaptations = (proficiencyLevel) => {
   const adaptations = {
     entering: '- Use very simple sentence structures and present tense\n- Provide extensive visual supports and vocabulary definitions\n- Include picture cues and gesture descriptions\n- Use sentence starters and word banks\n- Focus on key vocabulary with native language cognates when possible',
@@ -59,9 +51,6 @@ const getProficiencyAdaptations = (proficiencyLevel) => {
   return adaptations[proficiencyLevel] || adaptations.developing;
 };
 
-/**
- * Generate bilingual support instructions
- */
 const getBilingualInstructions = (includeBilingualSupport, nativeLanguage, proficiencyLevel) => {
   if (!includeBilingualSupport || !nativeLanguage) return '';
 
@@ -81,6 +70,7 @@ BILINGUAL VOCABULARY SUPPORT:
 - For ${proficiencyLevel} level: ${supportLevel}
 - Include a bilingual vocabulary glossary if helpful`;
 };
+
 
 /**
  * Adapt material using Claude API
@@ -114,14 +104,16 @@ ADAPTATION REQUIREMENTS:
 
 3. ALIGN WITH ELL STANDARDS: Follow WIDA English Language Development Standards and research-based ELL best practices.${bilingualInstructions}
 
-// --- THIS IS THE MODIFIED SECTION ---
 4. GENERATE LESSON-SPECIFIC DESCRIPTORS: After creating the adapted material, generate a new list of 3-5 lesson-specific "Can Do" descriptors for the selected WIDA level. These descriptors must be directly tied to the specific tasks and language objectives in the adapted material you just created.
 
 CRUCIAL INSTRUCTION: The descriptors MUST use verbs that describe simple, observable actions that a teacher can easily assess.
 - GOOD, OBSERVABLE VERBS: Point to, Label, Match, Name, Draw, Select, Sequence, Orally state, Circle, Underline.
 - AVOID VAGUE VERBS: understand, learn, analyze, know, engage, explain.
 Each descriptor should be a concrete "I can..." statement from the student's perspective, tailored to the lesson content.
-// --- END OF MODIFIED SECTION ---
+
+// --- THIS IS THE NEW UNIVERSAL RULE ---
+5. ENSURE EXPLICIT INSTRUCTIONS: Analyze the original material. If instructions are given only once at the top of the page (e.g., a title like 'Solve for X' or 'Round each number'), you MUST add a clear, explicit instruction to EACH adapted problem or small group of problems. This is a critical scaffolding step for ELLs. For example, a math problem "1. 2x = 10" should become "1. Solve for x: 2x = 10". A rounding problem "1. 5,970" should become "1. Round 5,970 to the nearest thousand".
+// --- END OF NEW RULE ---
 
 SPECIFIC ADAPTATIONS FOR ${proficiencyLevel.toUpperCase()} LEVEL:
 ${proficiencyAdaptations}
