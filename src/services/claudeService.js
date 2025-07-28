@@ -1,4 +1,4 @@
-// FileName: src/services/claudeService.js (Final version with Answer Key and Teacher Notes)
+// FileName: src/services/claudeService.js (Corrected syntax error)
 
 // Claude API service functions
 import { extractTextFromPDF as extractPDFText } from './pdfService.js';
@@ -7,7 +7,6 @@ const API_BASE_URL = process.env.NODE_ENV === 'development'
   ? 'http://localhost:3000' 
   : window.location.origin;
 
-// ... (callClaudeAPI, extractTextFromPDF, getProficiencyAdaptations, getBilingualInstructions functions are unchanged) ...
 const callClaudeAPI = async (messages, maxTokens = 4000) => {
   const formattedMessages = messages.map(msg => {
     if (typeof msg.content === 'string') {
@@ -51,13 +50,18 @@ const getProficiencyAdaptations = (proficiencyLevel) => {
   return adaptations[proficiencyLevel] || adaptations.developing;
 };
 
+// --- THIS IS THE CORRECTED FUNCTION ---
 const getBilingualInstructions = (includeBilingualSupport, nativeLanguage, proficiencyLevel) => {
   if (!includeBilingualSupport || !nativeLanguage) return '';
 
-  const supportLevel = ['entering', 'emerging'].includes(proficiencyLevel) 
-    ? 'Provide more extensive bilingual support to aid comprehension'
-    ? 'Provide moderate bilingual support, focusing on academic vocabulary'
-    : 'Provide minimal, strategic bilingual support for complex concepts only';
+  let supportLevel = '';
+  if (['entering', 'emerging'].includes(proficiencyLevel)) {
+    supportLevel = 'Provide more extensive bilingual support to aid comprehension';
+  } else if (proficiencyLevel === 'developing') {
+    supportLevel = 'Provide moderate bilingual support, focusing on academic vocabulary';
+  } else {
+    supportLevel = 'Provide minimal, strategic bilingual support for complex concepts only';
+  }
 
   return `
 
@@ -69,6 +73,7 @@ BILINGUAL VOCABULARY SUPPORT:
 - For ${proficiencyLevel} level: ${supportLevel}
 - Include a bilingual vocabulary glossary if helpful`;
 };
+// --- END OF CORRECTED FUNCTION ---
 
 
 /**
@@ -97,7 +102,6 @@ ${contentToAdapt}
 
 ADAPTATION REQUIREMENTS:
 
-// --- THIS SECTION HAS BEEN UPDATED WITH NEW INSTRUCTIONS ---
 1. CREATE STUDENT WORKSHEET: First, create the clean, print-and-go student worksheet with all necessary scaffolding (e.g., vocabulary, simplified text, sentence frames, etc.).
 
 2. CREATE ANSWER KEY: After creating the student worksheet, solve all the problems and complete all the activities to create a complete answer key.
@@ -109,7 +113,6 @@ ADAPTATION REQUIREMENTS:
 5. GENERATE LESSON-SPECIFIC DESCRIPTORS: Generate a list of 3-5 lesson-specific, observable "Can Do" descriptors for the selected WIDA level, as previously instructed.
 
 6. ENSURE EXPLICIT INSTRUCTIONS: Ensure all instructions on the student worksheet are explicit, as previously instructed.
-// --- END OF UPDATED SECTION ---
 
 SPECIFIC ADAPTATIONS FOR ${proficiencyLevel.toUpperCase()} LEVEL:
 ${proficiencyAdaptations}
