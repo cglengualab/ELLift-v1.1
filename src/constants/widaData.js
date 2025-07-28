@@ -11,8 +11,8 @@ const widaContent = {
     reading: ["Match vocabulary words to pictures.", "Identify letters, sounds, and high-frequency words."],
     writing: ["Label pictures with words or short phrases.", "Draw a representation of a key idea or event."],
   },
-  "levelentering-Math-9-12": {
-    level: "Entering (Level 1)", grade: "9-12", subject: "Math",
+  "levelentering-Mathematics-9-12": {
+    level: "Entering (Level 1)", grade: "9-12", subject: "Mathematics",
     listening: ["Identify numbers and symbols from oral statements.", "Follow one-step directions to manipulate objects or draw shapes."],
     speaking: ["Repeat numbers, symbols, and simple mathematical phrases.", "Name common shapes and objects."],
     reading: ["Match numbers and symbols to their names.", "Identify numbers and operational symbols (+, -, =) in expressions."],
@@ -43,8 +43,8 @@ const widaContent = {
     reading: ["Locate key details in a simplified text.", "Use context clues and visuals to infer meaning."],
     writing: ["Write short, simple sentences about a text.", "Complete graphic organizers with key details."],
   },
-  "levelbeginning-Math-9-12": {
-    level: "Beginning (Level 2)", grade: "9-12", subject: "Math",
+  "levelbeginning-Mathematics-9-12": {
+    level: "Beginning (Level 2)", grade: "9-12", subject: "Mathematics",
     listening: ["Identify key information in a simple math word problem.", "Follow multi-step procedural directions."],
     speaking: ["Describe mathematical steps using simple phrases ('First, add...').", "Explain a pattern or relationship using simple sentences."],
     reading: ["Read and understand simple word problems.", "Interpret information from graphs and charts with labels."],
@@ -75,8 +75,8 @@ const widaContent = {
     reading: ["Identify themes and literary devices (e.g., simile) in adapted texts.", "Summarize paragraphs and short sections of text."],
     writing: ["Write a paragraph with a topic sentence and supporting details.", "Compare and contrast characters or ideas using a Venn diagram."],
   },
-  "leveldeveloping-Math-9-12": {
-    level: "Developing (Level 3)", grade: "9-12", subject: "Math",
+  "leveldeveloping-Mathematics-9-12": {
+    level: "Developing (Level 3)", grade: "9-12", subject: "Mathematics",
     listening: ["Identify specific information and steps from a word problem.", "Follow explanations of abstract mathematical concepts."],
     speaking: ["Explain the process of solving a problem in sequence.", "Justify a mathematical choice using simple reasons."],
     reading: ["Interpret multi-step word problems.", "Analyze and compare data from multiple graphs or tables."],
@@ -100,28 +100,28 @@ const widaContent = {
   // =======================================================================
   // --- LEVEL 4: EXPANDING ---
   // =======================================================================
-  "leveldeveloping-English Language Arts-9-12": {
+  "levelexpanding-English Language Arts-9-12": {
     level: "Expanding (Level 4)", grade: "9-12", subject: "English Language Arts",
     listening: ["Analyze and critique a speaker's argument and use of evidence.", "Infer mood and tone from oral readings of literary texts."],
     speaking: ["Initiate and sustain academic discussions.", "Use figurative language to describe ideas and events."],
     reading: ["Analyze character development and plot structure in grade-level texts.", "Compare and contrast themes across different texts."],
     writing: ["Write a multi-paragraph essay with an introduction, body, and conclusion.", "Analyze literary texts with supporting evidence."],
   },
-  "leveldeveloping-Math-9-12": {
-    level: "Expanding (Level 4)", grade: "9-12", subject: "Math",
+  "levelexpanding-Mathematics-9-12": {
+    level: "Expanding (Level 4)", grade: "9-12", subject: "Mathematics",
     listening: ["Follow and summarize complex mathematical explanations.", "Identify unstated assumptions in a mathematical argument."],
     speaking: ["Explain abstract mathematical concepts to a partner.", "Defend a solution and respond to clarifying questions."],
     reading: ["Interpret complex, multi-step word problems with abstract concepts.", "Extract and synthesize information from dense mathematical texts."],
     writing: ["Write detailed justifications for mathematical solutions.", "Construct a simple mathematical proof."],
   },
-  "leveldeveloping-Science-9-12": {
+  "levelexpanding-Science-9-12": {
     level: "Expanding (Level 4)", grade: "9-12", subject: "Science",
     listening: ["Synthesize information from multiple oral sources.", "Critique the design of a scientific investigation from an oral description."],
     speaking: ["Present findings from an investigation using scientific terminology.", "Engage in debates about scientific controversies."],
     reading: ["Evaluate the strength of evidence and claims in a scientific article.", "Compare and synthesize information from multiple scientific texts."],
     writing: ["Write a full lab report, including analysis and conclusion.", "Develop a scientific argument with claims, evidence, and reasoning."],
   },
-  "leveldeveloping-Social Studies-9-12": {
+  "levelexpanding-Social Studies-9-12": {
     level: "Expanding (Level 4)", grade: "9-12", subject: "Social Studies",
     listening: ["Analyze the nuances of different historical interpretations from a lecture.", "Evaluate the credibility of an oral source."],
     speaking: ["Present a historical argument with supporting evidence.", "Moderate a group discussion on a complex historical topic."],
@@ -139,8 +139,8 @@ const widaContent = {
     reading: ["Interpret and analyze complex, grade-level literary and informational texts.", "Infer themes and implicit meanings with minimal support."],
     writing: ["Write sophisticated analytical essays with a clear, persuasive thesis.", "Use a wide range of sentence structures and vocabulary."],
   },
-  "levelbridging-Math-9-12": {
-    level: "Bridging (Level 5)", grade: "9-12", subject: "Math",
+  "levelbridging-Mathematics-9-12": {
+    level: "Bridging (Level 5)", grade: "9-12", subject: "Mathematics",
     listening: ["Understand and process abstract and technical mathematical discourse.", "Critique the reasoning of others in mathematical discussions."],
     speaking: ["Articulate complex mathematical reasoning clearly and concisely.", "Use precise mathematical language to explain abstract concepts."],
     reading: ["Read and interpret dense, theoretical mathematical texts.", "Independently learn new concepts from mathematical literature."],
@@ -171,8 +171,8 @@ const widaContent = {
     reading: ["Reads, understands, and analyzes grade-level complex texts at a level comparable to English-proficient peers."],
     writing: ["Composes well-structured, complex written work that meets grade-level expectations."],
   },
-  "levelreaching-Math-9-12": {
-    level: "Reaching (Level 6)", grade: "9-12", subject: "Math",
+  "levelreaching-Mathematics-9-12": {
+    level: "Reaching (Level 6)", grade: "9-12", subject: "Mathematics",
     listening: ["Understands and engages with complex, grade-level mathematical discourse comparable to English-proficient peers."],
     speaking: ["Articulates mathematical reasoning and concepts at a grade-level appropriate manner."],
     reading: ["Interprets and analyzes grade-level mathematical texts and problems effectively."],
@@ -192,4 +192,42 @@ const widaContent = {
     reading: ["Critically analyzes grade-level historical sources and texts effectively."],
     writing: ["Constructs sophisticated historical arguments in writing that meet grade-level standards."],
   },
+};
+
+
+// HELPER FUNCTION TO MAP SPECIFIC SUBJECTS TO BROAD CATEGORIES
+const getSubjectCategory = (subject) => {
+  switch (subject) {
+    case 'History':
+      return 'Social Studies';
+    
+    case 'Biology':
+    case 'Chemistry':
+    case 'Physics':
+      return 'Science';
+      
+    case 'Algebra':
+    case 'Geometry':
+      return 'Mathematics';
+
+    default:
+      // This will return "Mathematics", "Science", "English Language Arts", etc. directly
+      return subject;
+  }
+};
+
+
+// UPDATED MAIN FUNCTION
+export const getWidaDescriptors = (level, subject, grade) => {
+  // Step 1: Map the specific subject to a general category
+  const subjectCategory = getSubjectCategory(subject);
+  
+  // Step 2: Determine the grade band
+  const gradeBand = (grade && (grade.includes('9') || grade.includes('10') || grade.includes('11') || grade.includes('12'))) ? '9-12' : '9-12';
+  
+  // Step 3: Create the final key using the category
+  const key = `level${level}-${subjectCategory}-${gradeBand}`;
+  
+  // Step 4: Return the data
+  return widaContent[key] || null;
 };
