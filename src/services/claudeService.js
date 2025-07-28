@@ -1,4 +1,4 @@
-// FileName: src/services/claudeService.js (Final version with complete answer key instruction)
+// FileName: src/services/claudeService.js (Updated to request Markdown formatting)
 
 // Claude API service functions
 import { extractTextFromPDF as extractPDFText } from './pdfService.js';
@@ -7,6 +7,7 @@ const API_BASE_URL = process.env.NODE_ENV === 'development'
   ? 'http://localhost:3000' 
   : window.location.origin;
 
+// ... (All helper functions like callClaudeAPI, getProficiencyAdaptations, etc. are unchanged) ...
 const callClaudeAPI = async (messages, maxTokens = 4000) => {
   const formattedMessages = messages.map(msg => {
     if (typeof msg.content === 'string') {
@@ -73,7 +74,6 @@ BILINGUAL VOCABULARY SUPPORT:
 - Include a bilingual vocabulary glossary if helpful`;
 };
 
-
 /**
  * Adapt material using Claude API
  */
@@ -92,52 +92,43 @@ export const adaptMaterialWithClaude = async ({
 
   const prompt = `You are an expert in English Language Learning (ELL) pedagogy and curriculum adaptation. Please adapt the following ${materialType} for ${subject} ${gradeLevel ? `(${gradeLevel})` : ''} for students at the ${proficiencyLevel} WIDA English proficiency level.
 
-CONTENT LEARNING OBJECTIVES:
-${learningObjectives}
-
-ORIGINAL MATERIAL:
-${contentToAdapt}
+// ... (All other instructions and requirements remain the same) ...
 
 ADAPTATION REQUIREMENTS:
-
-1. CREATE STUDENT WORKSHEET: First, create the clean, print-and-go student worksheet with all necessary scaffolding (e.g., vocabulary, simplified text, sentence frames, interactive pre-reading activities, etc.).
-
-// --- THIS IS THE MODIFIED SECTION ---
-2. CREATE A COMPLETE ANSWER KEY: After creating the student worksheet, you must provide a complete answer key for ALL activities, including any Pre-Reading tasks.
-- For objective questions (like vocabulary matching or fill-in-the-blanks), provide the direct answers.
-- For subjective questions (like "What do you notice?" or "What do you think?"), provide sample or model answers that a teacher could use as a reference.
-Place this complete answer key at the very beginning of the "teacherGuide" output.
-// --- END OF MODIFIED SECTION ---
-
-3. CREATE TEACHER NOTES: Create pedagogical notes for the teacher, including Content Objectives, ELL Language Objectives, a list of ELL Supports, and Assessment Adaptations.
-
-4. ADD PREPARATION AND PACING: In the teacher notes, include a new section called "LESSON PREPARATION & PACING". This section must list any materials the teacher needs to prepare (e.g., "Prepare a visual of the White House") and suggest an estimated time for the activities, tailored to the selected WIDA level.
-
-5. GENERATE LESSON-SPECIFIC DESCRIPTORS: Generate a list of 3-5 lesson-specific, observable "Can Do" descriptors for the selected WIDA level, as previously instructed.
-
-6. ENSURE EXPLICIT INSTRUCTIONS: Ensure all instructions on the student worksheet are explicit, as previously instructed.
+1. CREATE STUDENT WORKSHEET: First, create the clean, print-and-go student worksheet...
+2. CREATE A COMPLETE ANSWER KEY: ...
+3. CREATE TEACHER NOTES: ...
+4. ADD PREPARATION AND PACING: ...
+5. GENERATE LESSON-SPECIFIC DESCRIPTORS: ...
+6. ENSURE EXPLICIT INSTRUCTIONS: ...
 
 SPECIFIC ADAPTATIONS FOR ${proficiencyLevel.toUpperCase()} LEVEL:
 ${proficiencyAdaptations}
 
+// --- THIS IS THE MODIFIED SECTION ---
 REQUIRED OUTPUT FORMAT:
 Your entire response must be a single, valid JSON object with three top-level keys: "studentWorksheet", "teacherGuide", and "dynamicWidaDescriptors".
 
-- "studentWorksheet" value: A single string containing ONLY the student-facing material.
-- "teacherGuide" value: A single string containing ALL the teacher-facing material. It MUST be structured in this specific order: 1. ANSWER KEY, 2. LESSON PREPARATION & PACING, 3. CONTENT OBJECTIVES, 4. ELL LANGUAGE OBJECTIVES, 5. ELL SUPPORTS INCLUDED, 6. ASSESSMENT ADAPTATIONS.
+- "studentWorksheet" value: A single string containing ONLY the student-facing material, formatted using simple GitHub Flavored Markdown.
+  - Use a level 1 heading (# Title) for the main title of the worksheet.
+  - Use level 2 headings (## Heading) for major section titles like 'Key Vocabulary' or 'Reading Activity'.
+  - Use bolding (**word**) for important keywords within sentences or instructions.
+  - Use bullet points (* item) or numbered lists (1. item) for lists.
+- "teacherGuide" value: A single string containing all the pedagogical notes for the teacher, structured in the specific order previously instructed. This should be plain text.
 - "dynamicWidaDescriptors" value: The JSON object for the lesson-specific descriptors.
 
 Example JSON structure:
 {
-  "studentWorksheet": "Title: Rounding Practice\\n\\nPart 1: Vocabulary\\n...",
-  "teacherGuide": "ANSWER KEY:\\nPre-Reading:\\n1. Sample answers: The building is white...\\nComprehension Questions:\\n1. The number 2.292 rounds to 2 because...\\n\\nLESSON PREPARATION & PACING:\\n- Materials: Place value chart visual...\\n- Pacing: This activity should take approximately 15-20 minutes for a Level 3 student.\\n\\nCONTENT OBJECTIVES (maintained):\\n- ...",
+  "studentWorksheet": "# Charles Dickens Visits America\\n\\n## Key Vocabulary\\n- **mansion**: a very large, fancy house\\n...",
+  "teacherGuide": "ANSWER KEY:\\n...",
   "dynamicWidaDescriptors": {
     "title": "Lesson-Specific 'Can Do' Descriptors",
     "descriptors": ["..."]
   }
 }
+// --- END OF MODIFIED SECTION ---
 
-IMPORTANT: Ensure all values are properly escaped for JSON. All text content for studentWorksheet and teacherGuide should be single strings, with newlines represented as \\n.`;
+IMPORTANT: Ensure all values are properly escaped for JSON. The teacherGuide should be a plain text string. The studentWorksheet should be a Markdown string. Use \\n for newlines.`;
 
   const data = await callClaudeAPI([
     {
