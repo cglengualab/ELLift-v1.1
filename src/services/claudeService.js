@@ -1,4 +1,4 @@
-// FileName: src/services/claudeService.js (Definitive version with advanced bilingual features)
+// FileName: src/services/claudeService.js (Definitive version with final formatting fixes)
 
 // Claude API service functions
 import { extractTextFromPDF as extractPDFText } from './pdfService.js';
@@ -50,7 +50,7 @@ const getProficiencyAdaptations = (proficiencyLevel) => {
   return adaptations[proficiencyLevel] || adaptations.developing;
 };
 
-// --- NEW, MORE POWERFUL BILINGUAL INSTRUCTION BUILDER ---
+// --- THIS IS THE UPDATED, MORE PRECISE HELPER FUNCTION ---
 const buildBilingualInstructions = ({
   includeBilingualSupport,
   nativeLanguage,
@@ -62,14 +62,14 @@ const buildBilingualInstructions = ({
 
   let instructions = `\n\n  **BILINGUAL SUPPORT REQUIREMENTS (Language: ${nativeLanguage}):**\n`;
 
-  instructions += `- For the 'Key Vocabulary' section, provide a translation for each term in ${nativeLanguage} in parentheses. Example: **mansion**: a large house (Spanish: mansión)\n`;
+  instructions += `- For each term in the 'Key Vocabulary' section, provide its translation in ${nativeLanguage}. The translation MUST be formatted in parentheses and italics, without the language name. Example: **mansion**: a large house (*mansión*)\n`;
   
   if (translateSummary) {
     instructions += `- At the very top of the 'studentWorksheet' before the title, provide a 1-2 sentence summary of the topic in ${nativeLanguage}.\n`;
   }
   
   if (translateInstructions) {
-    instructions += `- For each set of 'Directions' on the student worksheet, provide a translation in ${nativeLanguage} on the next line, formatted in italics. Example: *Instrucciones: Completa esta tabla.*\n`;
+    instructions += `- For **every** 'Directions:' line on the student worksheet (including for Pre-Reading, Comprehension, and Extension activities), you MUST insert a newline character (\\n) immediately after the English text, and then provide the translation in ${nativeLanguage} formatted in italics. Example: *Instrucciones: ...*\n`;
   }
   
   if (listCognates) {
@@ -92,12 +92,10 @@ export const adaptMaterialWithClaude = async ({
   learningObjectives,
   includeBilingualSupport,
   nativeLanguage,
-  // NEW PROPS TO CONTROL THE FEATURES
   translateSummary,
   translateInstructions,
   listCognates
 }) => {
-  // We now call the new, smarter helper function
   const bilingualInstructions = buildBilingualInstructions({
     includeBilingualSupport,
     nativeLanguage,
@@ -145,7 +143,7 @@ export const adaptMaterialWithClaude = async ({
       - **Teacher's Note for Charts:** In the "ELL SUPPORTS INCLUDED" section of the teacher guide, if you have replaced a table/chart with a "series of lists" on the student worksheet, add a bullet point under a "Teacher's Note" subheading suggesting that they can create a formal table themselves. Provide the recommended column headings for that table.
 
   8.  **Lesson-Specific Descriptors:** Generate 3-5 observable, lesson-specific "Can Do" descriptors as previously instructed.
-
+  
   ${bilingualInstructions}
 
   **SPECIFIC ADAPTATIONS FOR ${proficiencyLevel.toUpperCase()} LEVEL:**
