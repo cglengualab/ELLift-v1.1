@@ -36,7 +36,6 @@ const ActionButtons = ({ adaptMaterial, clearAll, isLoading, isFormValid }) => {
   );
 };
 
-
 const ELLMaterialAdapter = () => {
   // All state declarations remain the same
   const [inputMethod, setInputMethod] = useState('text');
@@ -57,7 +56,7 @@ const ELLMaterialAdapter = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // All functions (isFormValid, handleFileUpload, adaptMaterial, etc.) remain the same
+  // All functions remain the same
   const isFormValid = useMemo(() => {
     const basicFieldsValid = originalMaterial.trim() && materialType && subject && proficiencyLevel && learningObjectives.trim();
     const bilingualValid = !includeBilingualSupport || nativeLanguage;
@@ -155,13 +154,12 @@ const ELLMaterialAdapter = () => {
     setOriginalMaterial('');
   }, []);
 
-  // The JSX layout is the main part that has changed
   return (
     <div className="max-w-7xl mx-auto p-6">
       <div className="text-center mb-8">
         <h1 className="text-4xl font-bold text-gray-800 mb-2">ELLift</h1>
         <p className="text-gray-600 mb-6">Transform your classroom materials to support English Language Learners</p>
-        {/* --- REMOVED: Top "Clear All Fields" button is now in the ActionButtons component --- */}
+        {/* The top 'Clear All' button is now handled by the ActionButtons component */}
       </div>
 
       {error && <ErrorAlert message={error} onClose={() => setError('')} />}
@@ -172,14 +170,121 @@ const ELLMaterialAdapter = () => {
           <div className="card bg-blue-50 border-blue-200 sticky top-6">
             <h2 className="section-header text-blue-800">ELL Adaptation Settings</h2>
             
-            {/* The entire settings form is unchanged */}
-            <div className="mb-6">{/* Material Type */}</div>
-            <div className="grid grid-cols-1 gap-4 mb-6">{/* Subject and Grade */}</div>
-            <div className="mb-6">{/* Learning Objectives */}</div>
-            <div className="mb-6">{/* Proficiency Level */}</div>
-            <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">{/* Bilingual Support */}</div>
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-3">Material Type *</label>
+              <div className="grid grid-cols-2 gap-3">
+                {materialTypes.map((type) => {
+                  const IconComponent = type.icon;
+                  return (
+                    <button
+                      key={type.value}
+                      onClick={() => setMaterialType(type.value)}
+                      className={`p-3 rounded-lg border-2 transition-all text-center ${
+                        materialType === type.value
+                          ? 'border-blue-500 bg-blue-100 text-blue-700'
+                          : 'border-gray-200 bg-white text-gray-600 hover:border-blue-300'
+                      }`}
+                    >
+                      <IconComponent className="w-5 h-5 mx-auto mb-1" />
+                      <div className="text-xs font-medium">{type.label}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
-            {/* --- NEW: First set of action buttons --- */}
+            <div className="grid grid-cols-1 gap-4 mb-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Subject *</label>
+                <select
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  className="input-field"
+                >
+                  <option value="">Select Subject</option>
+                  {subjects.map(subj => (
+                    <option key={subj} value={subj}>{subj}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Grade Level</label>
+                <select
+                  value={gradeLevel}
+                  onChange={(e) => setGradeLevel(e.target.value)}
+                  className="input-field"
+                >
+                  <option value="">Select Grade</option>
+                  {gradeLevels.map(grade => (
+                    <option key={grade} value={grade}>{grade}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Content Learning Objectives *
+                <span className="text-xs text-gray-500 block mt-1">What should students learn?</span>
+              </label>
+              <textarea
+                value={learningObjectives}
+                onChange={(e) => setLearningObjectives(e.target.value)}
+                placeholder="e.g., Students will solve linear equations..."
+                className="input-field h-20 resize-none custom-scrollbar"
+              />
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">WIDA Proficiency Level *</label>
+              <select
+                value={proficiencyLevel}
+                onChange={(e) => setProficiencyLevel(e.target.value)}
+                className="input-field"
+              >
+                <option value="">Select Level</option>
+                {proficiencyLevels.map(level => (
+                  <option key={level.value} value={level.value}>{level.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="flex items-center mb-3">
+                <input
+                  type="checkbox"
+                  id="bilingual-support"
+                  checked={includeBilingualSupport}
+                  onChange={(e) => setIncludeBilingualSupport(e.target.checked)}
+                  className="mr-3 w-4 h-4 text-blue-600"
+                />
+                <label htmlFor="bilingual-support" className="text-sm font-medium text-gray-700">
+                  Include bilingual vocabulary support
+                </label>
+              </div>
+              
+              {includeBilingualSupport && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Student's Native Language *
+                  </label>
+                  <select
+                    value={nativeLanguage}
+                    onChange={(e) => setNativeLanguage(e.target.value)}
+                    className="input-field"
+                  >
+                    <option value="">Select Language</option>
+                    {commonLanguages.map(lang => (
+                      <option key={lang} value={lang}>{lang}</option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Strategic translations for key academic vocabulary
+                  </p>
+                </div>
+              )}
+            </div>
+            
             <ActionButtons 
               adaptMaterial={adaptMaterial}
               clearAll={clearAll}
@@ -187,7 +292,6 @@ const ELLMaterialAdapter = () => {
               isFormValid={isFormValid}
             />
 
-            {/* Processing Status */}
             {processingStep && (
               <div className="mt-4 p-3 bg-blue-100 text-blue-800 rounded-md text-sm font-medium">
                 {processingStep}
@@ -198,44 +302,154 @@ const ELLMaterialAdapter = () => {
 
         {/* Right Column: Original Material & Adapted Material */}
         <div className="xl:col-span-2 space-y-6">
-          {/* Original Material Section (unchanged) */}
           <div className="card bg-gray-50 border-gray-200">
-            {/* ... all the content for the original material card ... */}
+            <h2 className="section-header text-gray-800">Original Material</h2>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-3">How would you like to add your material?</label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setInputMethod('text')}
+                  className={`p-3 rounded-lg border-2 transition-all ${
+                    inputMethod === 'text'
+                      ? 'border-blue-500 bg-blue-100 text-blue-700'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-blue-300'
+                  }`}
+                >
+                  <FileText className="w-5 h-5 mx-auto mb-1" />
+                  <div className="text-sm font-medium">Type/Paste Text</div>
+                </button>
+                <button
+                  onClick={() => setInputMethod('upload')}
+                  className={`p-3 rounded-lg border-2 transition-all ${
+                    inputMethod === 'upload'
+                      ? 'border-blue-500 bg-blue-100 text-blue-700'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-blue-300'
+                  }`}
+                >
+                  <Upload className="w-5 h-5 mx-auto mb-1" />
+                  <div className="text-sm font-medium">Upload PDF</div>
+                </button>
+              </div>
+            </div>
+            {inputMethod === 'upload' && (
+              <div className="mb-4">
+                <div className="border-2 border-dashed border-blue-300 rounded-lg p-4 text-center bg-blue-50">
+                  {uploadedFile ? (
+                    <div className="space-y-2">
+                      <File className="w-8 h-8 text-green-500 mx-auto" />
+                      <p className="text-sm font-medium text-gray-900">{uploadedFile.name}</p>
+                      <button onClick={removeFile} className="text-xs text-red-600 hover:text-red-800">
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <Upload className="w-8 h-8 text-blue-400 mx-auto" />
+                      <input type="file" accept=".pdf" onChange={handleFileUpload} className="hidden" id="pdf-upload" />
+                      <label htmlFor="pdf-upload" className="inline-flex items-center btn-primary cursor-pointer text-sm py-2 px-3">
+                        Choose PDF
+                      </label>
+                    </div>
+                  )}
+                </div>
+                
+                {uploadedFile && extractedText && (
+                  <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-md">
+                    <p className="text-xs text-green-800 font-medium">✅ Text extracted and added below</p>
+                  </div>
+                )}
+              </div>
+            )}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Material Content *
+                {uploadedFile && extractedText && (
+                  <span className="text-blue-600 text-xs ml-2">(from PDF)</span>
+                )}
+              </label>
+              <textarea
+                value={originalMaterial}
+                onChange={(e) => setOriginalMaterial(e.target.value)}
+                placeholder={
+                  inputMethod === 'upload' 
+                    ? "Upload a PDF above to extract text here..." 
+                    : "Enter your lesson material, quiz questions, worksheet content..."
+                }
+                className="input-field h-96 resize-none custom-scrollbar"
+              />
+            </div>
           </div>
-
-          {/* --- NEW: Second set of action buttons --- */}
+          
           <ActionButtons 
             adaptMaterial={adaptMaterial}
             clearAll={clearAll}
             isLoading={isLoading}
             isFormValid={isFormValid}
           />
-          
-          {/* Adapted Material Section (unchanged, appears below the new buttons) */}
+
           {adaptedMaterial && (
             <div className="card bg-green-50 border-green-200">
-              {/* ... all the content for the adapted material card ... */}
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="section-header text-green-800">Adapted ELL Material</h2>
+                {adaptedMaterial && (
+                  <button
+                    onClick={copyToClipboard}
+                    className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 transition-colors"
+                  >
+                    <Download className="w-4 h-4" />
+                    Copy
+                  </button>
+                )}
+              </div>
+              
+              {isLoading ? (
+                <div className="flex items-center justify-center h-96">
+                  <LoadingSpinner 
+                    message={processingStep || 'Adapting your material...'}
+                  />
+                </div>
+              ) : (
+                <div className="bg-white p-6 rounded-md border border-green-200 h-96 overflow-y-auto custom-scrollbar">
+                  <pre className="whitespace-pre-wrap text-sm text-gray-800 font-sans leading-relaxed">
+                    {adaptedMaterial}
+                  </pre>
+                </div>
+              )}
+
+              {processingStep && !isLoading && (
+                <div className="mt-4 p-3 bg-blue-100 text-blue-800 rounded-md text-sm font-medium">
+                  {processingStep}
+                </div>
+              )}
             </div>
           )}
 
-          {/* The Lesson-Specific (teal/orange) card now comes FIRST */}
           {dynamicDescriptors && (
             <DynamicWidaCard data={dynamicDescriptors} />
           )}
 
-          {/* The General (purple) card now comes SECOND */}
           {widaDescriptors && (
             <WidaCard descriptors={widaDescriptors} />
           )}
         </div>
 
-        {/* Tips Section and Bottom Button (unchanged, but bottom button is now removed) */}
         <div className="xl:col-span-3">
-          {/* ... Tips card ... */}
+          <div className="card bg-yellow-50 border-yellow-200">
+            <h3 className="font-semibold text-yellow-800 mb-3 flex items-center gap-2">
+              💡 Tips for Best Results
+            </h3>
+            <ul className="text-sm text-yellow-700 space-y-2 grid grid-cols-1 md:grid-cols-2 gap-x-6">
+              <li>• <strong>PDF uploads:</strong> Works best with text-based PDFs</li>
+              <li>• <strong>Learning objectives:</strong> Be specific about what students should learn</li>
+              <li>• <strong>WIDA levels:</strong> Choose the level that matches your students</li>
+              <li>• <strong>Bilingual support:</strong> Optional translations for key vocabulary</li>
+              <li>• <strong>Review output:</strong> Always check adapted content for accuracy</li>
+              <li>• <strong>Edit text:</strong> You can modify extracted text before adapting</li>
+            </ul>
+          </div>
         </div>
       </div>
-
-      {/* --- REMOVED: The bottom "Clear All Fields" button is now handled by ActionButtons --- */}
+      {/* The bottom clear button is now handled by the ActionButtons component */}
     </div>
   );
 };
