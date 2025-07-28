@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookCheck } from 'lucide-react'; // A fitting icon
+import { BookOpen } from 'lucide-react'; // CHANGED: Replaced BookCheck with BookOpen
 
 // This component receives the descriptor object and displays it.
 // It uses TailwindCSS classes consistent with your project's design.
@@ -9,7 +9,7 @@ const WidaCard = ({ descriptors }) => {
   return (
     <div className="card bg-purple-50 border-purple-200">
       <h2 className="section-header text-purple-800 flex items-center gap-2">
-        <BookCheck className="w-6 h-6" />
+        <BookOpen className="w-6 h-6" /> {/* CHANGED: Replaced BookCheck with BookOpen */}
         Alignment with WIDA "Can Do" Descriptors
       </h2>
       
