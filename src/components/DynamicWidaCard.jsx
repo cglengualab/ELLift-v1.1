@@ -10,8 +10,8 @@ const DynamicWidaCard = ({ data }) => {
   }
 
   return (
-    <div className="card bg-teal-50 border-teal-200">
-      <h2 className="section-header text-teal-800 flex items-center gap-2">
+    <div className="card bg-orange-50 border-orange-200">
+      <h2 className="section-header text-orange-800 flex items-center gap-2">
         <Target className="w-6 h-6" />
         {data.title || "Lesson-Specific 'Can Do' Descriptors"}
       </h2>
