@@ -1,4 +1,4 @@
-// FileName: src/services/claudeService.js (Corrected syntax error)
+// FileName: src/services/claudeService.js (Final version with complete answer key instruction)
 
 // Claude API service functions
 import { extractTextFromPDF as extractPDFText } from './pdfService.js';
@@ -50,7 +50,6 @@ const getProficiencyAdaptations = (proficiencyLevel) => {
   return adaptations[proficiencyLevel] || adaptations.developing;
 };
 
-// --- THIS IS THE CORRECTED FUNCTION ---
 const getBilingualInstructions = (includeBilingualSupport, nativeLanguage, proficiencyLevel) => {
   if (!includeBilingualSupport || !nativeLanguage) return '';
 
@@ -73,7 +72,6 @@ BILINGUAL VOCABULARY SUPPORT:
 - For ${proficiencyLevel} level: ${supportLevel}
 - Include a bilingual vocabulary glossary if helpful`;
 };
-// --- END OF CORRECTED FUNCTION ---
 
 
 /**
@@ -102,9 +100,14 @@ ${contentToAdapt}
 
 ADAPTATION REQUIREMENTS:
 
-1. CREATE STUDENT WORKSHEET: First, create the clean, print-and-go student worksheet with all necessary scaffolding (e.g., vocabulary, simplified text, sentence frames, etc.).
+1. CREATE STUDENT WORKSHEET: First, create the clean, print-and-go student worksheet with all necessary scaffolding (e.g., vocabulary, simplified text, sentence frames, interactive pre-reading activities, etc.).
 
-2. CREATE ANSWER KEY: After creating the student worksheet, solve all the problems and complete all the activities to create a complete answer key.
+// --- THIS IS THE MODIFIED SECTION ---
+2. CREATE A COMPLETE ANSWER KEY: After creating the student worksheet, you must provide a complete answer key for ALL activities, including any Pre-Reading tasks.
+- For objective questions (like vocabulary matching or fill-in-the-blanks), provide the direct answers.
+- For subjective questions (like "What do you notice?" or "What do you think?"), provide sample or model answers that a teacher could use as a reference.
+Place this complete answer key at the very beginning of the "teacherGuide" output.
+// --- END OF MODIFIED SECTION ---
 
 3. CREATE TEACHER NOTES: Create pedagogical notes for the teacher, including Content Objectives, ELL Language Objectives, a list of ELL Supports, and Assessment Adaptations.
 
@@ -127,7 +130,7 @@ Your entire response must be a single, valid JSON object with three top-level ke
 Example JSON structure:
 {
   "studentWorksheet": "Title: Rounding Practice\\n\\nPart 1: Vocabulary\\n...",
-  "teacherGuide": "ANSWER KEY:\\n1. The number 2.292 rounds to 2 because...\\n\\nLESSON PREPARATION & PACING:\\n- Materials: Place value chart visual...\\n- Pacing: This activity should take approximately 15-20 minutes for a Level 3 student.\\n\\nCONTENT OBJECTIVES (maintained):\\n- ...",
+  "teacherGuide": "ANSWER KEY:\\nPre-Reading:\\n1. Sample answers: The building is white...\\nComprehension Questions:\\n1. The number 2.292 rounds to 2 because...\\n\\nLESSON PREPARATION & PACING:\\n- Materials: Place value chart visual...\\n- Pacing: This activity should take approximately 15-20 minutes for a Level 3 student.\\n\\nCONTENT OBJECTIVES (maintained):\\n- ...",
   "dynamicWidaDescriptors": {
     "title": "Lesson-Specific 'Can Do' Descriptors",
     "descriptors": ["..."]
