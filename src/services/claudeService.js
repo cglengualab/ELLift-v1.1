@@ -1,4 +1,4 @@
-// FileName: src/services/claudeService.js (Definitive version with reliable charts and teacher notes)
+// FileName: src/services/claudeService.js (Definitive version with advanced bilingual features)
 
 // Claude API service functions
 import { extractTextFromPDF as extractPDFText } from './pdfService.js';
@@ -7,7 +7,6 @@ const API_BASE_URL = process.env.NODE_ENV === 'development'
   ? 'http://localhost:3000' 
   : window.location.origin;
 
-// ... (All helper functions like callClaudeAPI, extractTextFromPDF, etc. remain unchanged) ...
 const callClaudeAPI = async (messages, maxTokens = 4000) => {
   const formattedMessages = messages.map(msg => {
     if (typeof msg.content === 'string') {
@@ -51,28 +50,35 @@ const getProficiencyAdaptations = (proficiencyLevel) => {
   return adaptations[proficiencyLevel] || adaptations.developing;
 };
 
-const getBilingualInstructions = (includeBilingualSupport, nativeLanguage, proficiencyLevel) => {
+// --- NEW, MORE POWERFUL BILINGUAL INSTRUCTION BUILDER ---
+const buildBilingualInstructions = ({
+  includeBilingualSupport,
+  nativeLanguage,
+  translateSummary,
+  translateInstructions,
+  listCognates
+}) => {
   if (!includeBilingualSupport || !nativeLanguage) return '';
 
-  let supportLevel = '';
-  if (['entering', 'emerging'].includes(proficiencyLevel)) {
-    supportLevel = 'Provide more extensive bilingual support to aid comprehension';
-  } else if (proficiencyLevel === 'developing') {
-    supportLevel = 'Provide moderate bilingual support, focusing on academic vocabulary';
-  } else {
-    supportLevel = 'Provide minimal, strategic bilingual support for complex concepts only';
+  let instructions = `\n\n  **BILINGUAL SUPPORT REQUIREMENTS (Language: ${nativeLanguage}):**\n`;
+
+  instructions += `- For the 'Key Vocabulary' section, provide a translation for each term in ${nativeLanguage} in parentheses. Example: **mansion**: a large house (Spanish: mansión)\n`;
+  
+  if (translateSummary) {
+    instructions += `- At the very top of the 'studentWorksheet' before the title, provide a 1-2 sentence summary of the topic in ${nativeLanguage}.\n`;
+  }
+  
+  if (translateInstructions) {
+    instructions += `- For each set of 'Directions' on the student worksheet, provide a translation in ${nativeLanguage} on the next line, formatted in italics. Example: *Instrucciones: Completa esta tabla.*\n`;
+  }
+  
+  if (listCognates) {
+    instructions += `- In the 'teacherGuide' under 'ELL SUPPORTS INCLUDED', create a 'Cognates to Highlight' list of English/${nativeLanguage} cognates found in the text.\n`;
   }
 
-  return `
-
-BILINGUAL VOCAB-SUPPORT:
-- Include ${nativeLanguage} translations for key academic vocabulary and technical terms
-- Focus on cognates between ${nativeLanguage} and English when available
-- Provide ${nativeLanguage} support for complex concepts that are difficult to visualize
-- Use bilingual support strategically - as a bridge to English, not a replacement
-- For ${proficiencyLevel} level: ${supportLevel}
-- Include a bilingual vocabulary glossary if helpful`;
+  return instructions;
 };
+
 
 /**
  * Adapt material using Claude API
@@ -85,9 +91,20 @@ export const adaptMaterialWithClaude = async ({
   proficiencyLevel,
   learningObjectives,
   includeBilingualSupport,
-  nativeLanguage
+  nativeLanguage,
+  // NEW PROPS TO CONTROL THE FEATURES
+  translateSummary,
+  translateInstructions,
+  listCognates
 }) => {
-  const bilingualInstructions = getBilingualInstructions(includeBilingualSupport, nativeLanguage, proficiencyLevel);
+  // We now call the new, smarter helper function
+  const bilingualInstructions = buildBilingualInstructions({
+    includeBilingualSupport,
+    nativeLanguage,
+    translateSummary,
+    translateInstructions,
+    listCognates
+  });
   const proficiencyAdaptations = getProficiencyAdaptations(proficiencyLevel);
 
   const prompt = `You are an expert in English Language Learning (ELL) pedagogy and curriculum adaptation. Your task is to adapt the following material for an ELL student.
@@ -129,9 +146,10 @@ export const adaptMaterialWithClaude = async ({
 
   8.  **Lesson-Specific Descriptors:** Generate 3-5 observable, lesson-specific "Can Do" descriptors as previously instructed.
 
+  ${bilingualInstructions}
+
   **SPECIFIC ADAPTATIONS FOR ${proficiencyLevel.toUpperCase()} LEVEL:**
   ${proficiencyAdaptations}
-  ${bilingualInstructions}
 
   **REQUIRED OUTPUT FORMAT:**
   Your entire response must be a single, valid JSON object, formatted on a single line with no line breaks outside of the string values. It must have three top-level keys: "studentWorksheet", "teacherGuide", and "dynamicWidaDescriptors".
