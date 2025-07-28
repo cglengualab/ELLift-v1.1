@@ -1,4 +1,4 @@
-// FileName: src/services/claudeService.js (Updated to request separate student/teacher outputs)
+// FileName: src/services/claudeService.js (Final version with Answer Key and Teacher Notes)
 
 // Claude API service functions
 import { extractTextFromPDF as extractPDFText } from './pdfService.js';
@@ -56,7 +56,6 @@ const getBilingualInstructions = (includeBilingualSupport, nativeLanguage, profi
 
   const supportLevel = ['entering', 'emerging'].includes(proficiencyLevel) 
     ? 'Provide more extensive bilingual support to aid comprehension'
-    : proficiencyLevel === 'developing'
     ? 'Provide moderate bilingual support, focusing on academic vocabulary'
     : 'Provide minimal, strategic bilingual support for complex concepts only';
 
@@ -70,6 +69,7 @@ BILINGUAL VOCABULARY SUPPORT:
 - For ${proficiencyLevel} level: ${supportLevel}
 - Include a bilingual vocabulary glossary if helpful`;
 };
+
 
 /**
  * Adapt material using Claude API
@@ -97,45 +97,39 @@ ${contentToAdapt}
 
 ADAPTATION REQUIREMENTS:
 
-1. MAINTAIN CONTENT OBJECTIVES: Ensure the adapted material still allows students to achieve the same content learning objectives listed above. Do not lower academic expectations.
+// --- THIS SECTION HAS BEEN UPDATED WITH NEW INSTRUCTIONS ---
+1. CREATE STUDENT WORKSHEET: First, create the clean, print-and-go student worksheet with all necessary scaffolding (e.g., vocabulary, simplified text, sentence frames, etc.).
 
-2. ADD ELL LANGUAGE OBJECTIVES: Include specific WIDA-aligned language objectives that specify what students will be able to do linguistically (listening, speaking, reading, writing) at the ${proficiencyLevel} level.
+2. CREATE ANSWER KEY: After creating the student worksheet, solve all the problems and complete all the activities to create a complete answer key.
 
-3. ALIGN WITH ELL STANDARDS: Follow WIDA English Language Development Standards and research-based ELL best practices.${bilingualInstructions}
+3. CREATE TEACHER NOTES: Create pedagogical notes for the teacher, including Content Objectives, ELL Language Objectives, a list of ELL Supports, and Assessment Adaptations.
 
-4. GENERATE LESSON-SPECIFIC DESCRIPTORS: After creating the adapted material, generate a new list of 3-5 lesson-specific "Can Do" descriptors for the selected WIDA level. These descriptors must be directly tied to the specific tasks and language objectives in the adapted material you just created.
+4. ADD PREPARATION AND PACING: In the teacher notes, include a new section called "LESSON PREPARATION & PACING". This section must list any materials the teacher needs to prepare (e.g., "Prepare a visual of the White House") and suggest an estimated time for the activities, tailored to the selected WIDA level.
 
-CRUCIAL INSTRUCTION: The descriptors MUST use verbs that describe simple, observable actions that a teacher can easily assess.
-- GOOD, OBSERVABLE VERBS: Point to, Label, Match, Name, Draw, Select, Sequence, Orally state, Circle, Underline.
-- AVOID VAGUE VERBS: understand, learn, analyze, know, engage, explain.
-Each descriptor should be a concrete "I can..." statement from the student's perspective, tailored to the lesson content.
+5. GENERATE LESSON-SPECIFIC DESCRIPTORS: Generate a list of 3-5 lesson-specific, observable "Can Do" descriptors for the selected WIDA level, as previously instructed.
 
-5. ENSURE EXPLICIT INSTRUCTIONS: Analyze the original material. If instructions are given only once at the top of the page (e.g., a title like 'Solve for X' or 'Round each number'), you MUST add a clear, explicit instruction to EACH adapted problem or small group of problems. This is a critical scaffolding step for ELLs. For example, a math problem "1. 2x = 10" should become "1. Solve for x: 2x = 10". A rounding problem "1. 5,970" should become "1. Round 5,970 to the nearest thousand".
+6. ENSURE EXPLICIT INSTRUCTIONS: Ensure all instructions on the student worksheet are explicit, as previously instructed.
+// --- END OF UPDATED SECTION ---
 
 SPECIFIC ADAPTATIONS FOR ${proficiencyLevel.toUpperCase()} LEVEL:
 ${proficiencyAdaptations}
 
-// --- THIS IS THE MODIFIED SECTION ---
 REQUIRED OUTPUT FORMAT:
-Your entire response must be a single, valid JSON object. Do not include any text outside of the JSON structure. The JSON object must have three top-level keys: "studentWorksheet", "teacherGuide", and "dynamicWidaDescriptors".
+Your entire response must be a single, valid JSON object with three top-level keys: "studentWorksheet", "teacherGuide", and "dynamicWidaDescriptors".
 
-- "studentWorksheet" value: A single string containing ONLY the student-facing material. This should be a clean, print-and-go document with the title, vocabulary, instructions, and problems. Do NOT include objectives or teacher notes in this string.
-- "teacherGuide" value: A single string containing all the pedagogical notes for the teacher. This must include the sections for CONTENT OBJECTIVES, ELL LANGUAGE OBJECTIVES, ELL SUPPORTS INCLUDED, and ASSESSMENT ADAPTATIONS.
-- "dynamicWidaDescriptors" value: A JSON object with a "title" and an array of "descriptors" strings, as previously instructed.
+- "studentWorksheet" value: A single string containing ONLY the student-facing material.
+- "teacherGuide" value: A single string containing ALL the teacher-facing material. It MUST be structured in this specific order: 1. ANSWER KEY, 2. LESSON PREPARATION & PACING, 3. CONTENT OBJECTIVES, 4. ELL LANGUAGE OBJECTIVES, 5. ELL SUPPORTS INCLUDED, 6. ASSESSMENT ADAPTATIONS.
+- "dynamicWidaDescriptors" value: The JSON object for the lesson-specific descriptors.
 
 Example JSON structure:
 {
   "studentWorksheet": "Title: Rounding Practice\\n\\nPart 1: Vocabulary\\n...",
-  "teacherGuide": "CONTENT OBJECTIVES (maintained):\\n- Students will...\\n\\nELL LANGUAGE OBJECTIVES:\\n- LISTENING: ...",
+  "teacherGuide": "ANSWER KEY:\\n1. The number 2.292 rounds to 2 because...\\n\\nLESSON PREPARATION & PACING:\\n- Materials: Place value chart visual...\\n- Pacing: This activity should take approximately 15-20 minutes for a Level 3 student.\\n\\nCONTENT OBJECTIVES (maintained):\\n- ...",
   "dynamicWidaDescriptors": {
     "title": "Lesson-Specific 'Can Do' Descriptors",
-    "descriptors": [
-      "First descriptor.",
-      "Second descriptor."
-    ]
+    "descriptors": ["..."]
   }
 }
-// --- END OF MODIFIED SECTION ---
 
 IMPORTANT: Ensure all values are properly escaped for JSON. All text content for studentWorksheet and teacherGuide should be single strings, with newlines represented as \\n.`;
 
@@ -144,7 +138,7 @@ IMPORTANT: Ensure all values are properly escaped for JSON. All text content for
       role: "user",
       content: prompt
     }
-  ], 4000); // Using 4000 to be safe, as JSON structure adds tokens
+  ], 4000);
 
   try {
     const parsedData = JSON.parse(data.content[0].text);
