@@ -1,4 +1,4 @@
-// FileName: src/constants/widaData.js
+// FileName: src/constants/widaData.js (Corrected Version)
 
 const widaContent = {
   // =======================================================================
@@ -34,31 +34,31 @@ const widaContent = {
   },
 
   // =======================================================================
-  // --- LEVEL 2: BEGINNING ---
+  // --- LEVEL 2: EMERGING ---
   // =======================================================================
-  "levelbeginning-English Language Arts-9-12": {
-    level: "Beginning (Level 2)", grade: "9-12", subject: "English Language Arts",
+  "levelemerging-English Language Arts-9-12": {
+    level: "Emerging (Level 2)", grade: "9-12", subject: "English Language Arts",
     listening: ["Follow multi-step oral directions.", "Identify the main topic and key details from a supported read-aloud."],
     speaking: ["Describe characters, settings, and events using short sentences.", "Ask simple questions about the text (Who, What, Where)."],
     reading: ["Locate key details in a simplified text.", "Use context clues and visuals to infer meaning."],
     writing: ["Write short, simple sentences about a text.", "Complete graphic organizers with key details."],
   },
-  "levelbeginning-Mathematics-9-12": {
-    level: "Beginning (Level 2)", grade: "9-12", subject: "Mathematics",
+  "levelemerging-Mathematics-9-12": {
+    level: "Emerging (Level 2)", grade: "9-12", subject: "Mathematics",
     listening: ["Identify key information in a simple math word problem.", "Follow multi-step procedural directions."],
     speaking: ["Describe mathematical steps using simple phrases ('First, add...').", "Explain a pattern or relationship using simple sentences."],
     reading: ["Read and understand simple word problems.", "Interpret information from graphs and charts with labels."],
     writing: ["Write down steps to solve a problem.", "Create simple graphs or tables with support."],
   },
-  "levelbeginning-Science-9-12": {
-    level: "Beginning (Level 2)", grade: "9-12", subject: "Science",
+  "levelemerging-Science-9-12": {
+    level: "Emerging (Level 2)", grade: "9-12", subject: "Science",
     listening: ["Sequence procedural steps from an oral explanation.", "Identify a hypothesis or main idea in a discussion."],
     speaking: ["Describe observations using simple sentences.", "Make predictions using phrases like 'I think...'."],
     reading: ["Identify the main idea and supporting details in a simplified lab report.", "Interpret diagrams with labels and captions."],
     writing: ["Write simple sentences to describe observations.", "Record data in charts or tables."],
   },
-  "levelbeginning-Social Studies-9-12": {
-    level: "Beginning (Level 2)", grade: "9-12", subject: "Social Studies",
+  "levelemerging-Social Studies-9-12": {
+    level: "Emerging (Level 2)", grade: "9-12", subject: "Social Studies",
     listening: ["Identify cause and effect from a supported oral narrative.", "Sequence historical events from a read-aloud."],
     speaking: ["Describe historical events or figures using simple sentences.", "Ask clarifying questions about historical topics."],
     reading: ["Locate main ideas and details in a simplified historical text.", "Interpret maps and timelines with keys and labels."],
@@ -119,7 +119,7 @@ const widaContent = {
     listening: ["Synthesize information from multiple oral sources.", "Critique the design of a scientific investigation from an oral description."],
     speaking: ["Present findings from an investigation using scientific terminology.", "Engage in debates about scientific controversies."],
     reading: ["Evaluate the strength of evidence and claims in a scientific article.", "Compare and synthesize information from multiple scientific texts."],
-    writing: ["Write a full lab report, including analysis and conclusion.", "Develop a scientific argument with claims, evidence, and reasoning."],
+    writing: ["Write a full lab report, including analysis, and conclusion.", "Develop a scientific argument with claims, evidence, and reasoning."],
   },
   "levelexpanding-Social Studies-9-12": {
     level: "Expanding (Level 4)", grade: "9-12", subject: "Social Studies",
@@ -160,7 +160,7 @@ const widaContent = {
     reading: ["Critically analyze and compare multiple primary and secondary sources.", "Interpret complex historical narratives and arguments."],
     writing: ["Write a thesis-driven research paper with extensive sourcing and analysis.", "Construct sophisticated historical arguments and counterarguments."],
   },
-
+  
   // =======================================================================
   // --- LEVEL 6: REACHING ---
   // =======================================================================
