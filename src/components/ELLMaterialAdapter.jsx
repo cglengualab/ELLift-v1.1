@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
 import { FileText, Users, BookOpen, ClipboardList, Download, Upload, File, AlertCircle, Book, Target } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { materialTypes, subjects, gradeLevels, proficiencyLevels, commonLanguages } from '../constants/options';
@@ -38,7 +38,6 @@ const ActionButtons = ({ adaptMaterial, clearAll, isLoading, isFormValid }) => {
 };
 
 const ELLMaterialAdapter = () => {
-  // All state and functions are unchanged
   const [inputMethod, setInputMethod] = useState('text');
   const [materialType, setMaterialType] = useState('');
   const [subject, setSubject] = useState('');
@@ -57,6 +56,7 @@ const ELLMaterialAdapter = () => {
   const [dynamicDescriptors, setDynamicDescriptors] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const worksheetRef = useRef(null);
 
   const isFormValid = useMemo(() => {
     const basicFieldsValid = originalMaterial.trim() && materialType && subject && proficiencyLevel && learningObjectives.trim();
@@ -142,14 +142,34 @@ const ELLMaterialAdapter = () => {
   }, []);
 
   const copyToClipboard = useCallback(async () => {
+    if (!worksheetRef.current) {
+      setError('Could not copy content.');
+      return;
+    }
     try {
-      await navigator.clipboard.writeText(studentWorksheet);
-      setProcessingStep('Copied to clipboard!');
+      const htmlContent = worksheetRef.current.innerHTML;
+      const styles = `
+        <style>
+          h1 { text-align: center; font-size: 24px; font-weight: bold; margin-bottom: 20px; }
+          h2 { font-size: 18px; font-weight: bold; font-style: italic; margin-top: 24px; margin-bottom: 12px; }
+          p, li { font-size: 14px; line-height: 1.5; }
+          strong { font-weight: bold; }
+        </style>
+      `;
+      const fullHtml = `<html><head>${styles}</head><body>${htmlContent}</body></html>`;
+      const blob = new Blob([fullHtml], { type: 'text/html' });
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          [blob.type]: blob
+        })
+      ]);
+      setProcessingStep('Formatted text copied to clipboard!');
       setTimeout(() => setProcessingStep(''), 2000);
     } catch (err) {
-      setError('Failed to copy to clipboard');
+      console.error('Failed to copy rich text:', err);
+      setError('Failed to copy formatted text.');
     }
-  }, [studentWorksheet]);
+  }, []);
 
   const removeFile = useCallback(() => {
     setUploadedFile(null);
@@ -389,10 +409,10 @@ const ELLMaterialAdapter = () => {
                     className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 transition-colors"
                   >
                     <ClipboardList className="w-4 h-4" />
-                    Copy Worksheet
+                    Copy Formatted Text
                   </button>
                 </div>
-                <div className="bg-white p-6 rounded-md border border-green-200 h-96 overflow-y-auto custom-scrollbar prose max-w-full">
+                <div ref={worksheetRef} className="bg-white p-6 rounded-md border border-green-200 h-96 overflow-y-auto custom-scrollbar prose max-w-full">
                   <ReactMarkdown>{studentWorksheet}</ReactMarkdown>
                 </div>
               </div>
