@@ -1,4 +1,4 @@
-// FileName: src/services/claudeService.js (Updated with Markdown table instruction)
+// FileName: src/services/claudeService.js (Definitive version with reliable charts and teacher notes)
 
 // Claude API service functions
 import { extractTextFromPDF as extractPDFText } from './pdfService.js';
@@ -119,16 +119,15 @@ export const adaptMaterialWithClaude = async ({
       - If the text contains a list of items or observations, format them as a bulleted list.
       - **Crucially, find the words from your 'Key Vocabulary' section within this simplified text and make them bold using Markdown (**word**).**
 
-  6.  **Comprehension Activities:** Create a variety of tasks. Include at least one concrete, interactive task like "Find and underline evidence in the text," "Complete a T-chart," or "Label a diagram." Also, include scaffolded writing tasks with sentence frames or starters.
+  6.  **Comprehension Activities & Charts:** Create a variety of tasks. For any activity that requires a chart or table (like a T-chart or multi-column chart), you MUST format it for the student worksheet as a **series of bolded headings, each followed by a bulleted list for the student to fill in.** DO NOT use Markdown table syntax for the student worksheet, as it is unreliable.
 
   7.  **Teacher Guide Content:** In a separate document, you will create a teacher guide. This guide must include:
       - **A COMPLETE ANSWER KEY:** Provide answers for ALL activities on the student worksheet, including pre-reading tasks. For subjective questions, provide sample answers.
       - **LESSON PREPARATION & PACING:** List necessary materials and suggest a time frame for the lesson.
       - **OBJECTIVES, SUPPORTS, and ADAPTATIONS:** Write the Content Objectives, ELL Language Objectives, a list of ELL Supports Included, and Assessment Adaptations.
+      - **Teacher's Note for Charts:** In the "ELL SUPPORTS INCLUDED" section of the teacher guide, if you have replaced a table/chart with a "series of lists" on the student worksheet, add a bullet point under a "Teacher's Note" subheading suggesting that they can create a formal table themselves. Provide the recommended column headings for that table.
 
   8.  **Lesson-Specific Descriptors:** Generate 3-5 observable, lesson-specific "Can Do" descriptors as previously instructed.
-  
-  9.  **Table Formatting:** If you create a T-chart, comparison chart, or any other table, you MUST format it using GitHub Flavored Markdown table syntax. Do not use plain text characters to draw the table.
 
   **SPECIFIC ADAPTATIONS FOR ${proficiencyLevel.toUpperCase()} LEVEL:**
   ${proficiencyAdaptations}
@@ -137,7 +136,7 @@ export const adaptMaterialWithClaude = async ({
   **REQUIRED OUTPUT FORMAT:**
   Your entire response must be a single, valid JSON object, formatted on a single line with no line breaks outside of the string values. It must have three top-level keys: "studentWorksheet", "teacherGuide", and "dynamicWidaDescriptors".
 
-  - **"studentWorksheet" value**: A single string containing the complete student worksheet, formatted using simple GitHub Flavored Markdown (# for title, ## for headings, ** for bold, * for bullets, and proper table syntax).
+  - **"studentWorksheet" value**: A single string containing the complete student worksheet, formatted using simple GitHub Flavored Markdown (# for title, ## for headings, ** for bold, * for bullets).
   - **"teacherGuide" value**: A single string containing all teacher-facing material, starting with the ANSWER KEY, followed by LESSON PREPARATION & PACING, and then the objectives and support lists. This should be plain text with newlines represented as \\n.
   - **"dynamicWidaDescriptors" value**: The JSON object for the lesson-specific descriptors.
   `;
