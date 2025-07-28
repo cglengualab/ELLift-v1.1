@@ -6,7 +6,7 @@ import { getWidaDescriptors } from '../constants/widaData';
 import LoadingSpinner from './LoadingSpinner';
 import ErrorAlert from './ErrorAlert';
 import WidaCard from './WidaCard';
-import DynamicWidaCard from './DynamicWidaCard'; // <-- ADDED: Import the new component
+import DynamicWidaCard from './DynamicWidaCard';
 
 const ELLMaterialAdapter = () => {
   // Input method state
@@ -30,7 +30,7 @@ const ELLMaterialAdapter = () => {
   const [processingStep, setProcessingStep] = useState('');
   const [adaptedMaterial, setAdaptedMaterial] = useState('');
   const [widaDescriptors, setWidaDescriptors] = useState(null);
-  const [dynamicDescriptors, setDynamicDescriptors] = useState(null); // <-- ADDED: New state for the dynamic card
+  const [dynamicDescriptors, setDynamicDescriptors] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -42,7 +42,6 @@ const ELLMaterialAdapter = () => {
   }, [originalMaterial, materialType, subject, proficiencyLevel, learningObjectives, includeBilingualSupport, nativeLanguage]);
 
   const handleFileUpload = useCallback(async (event) => {
-    // This function remains unchanged
     const file = event.target.files[0];
     if (!file) return;
 
@@ -60,7 +59,9 @@ const ELLMaterialAdapter = () => {
       const text = await extractTextFromPDF(file, setProcessingStep);
       setOriginalMaterial(text);
       setExtractedText(text);
-      setInputMethod('text');
+      
+      // setInputMethod('text'); // <-- THIS IS THE BUG. I HAVE REMOVED THIS LINE.
+      
       setProcessingStep('PDF text extracted successfully! You can edit the text below if needed.');
       setTimeout(() => setProcessingStep(''), 3000);
     } catch (error) {
@@ -74,7 +75,6 @@ const ELLMaterialAdapter = () => {
   }, []);
 
   const adaptMaterial = useCallback(async () => {
-    // This function is MODIFIED to handle the new JSON response
     const contentToAdapt = originalMaterial;
     
     if (!contentToAdapt.trim() || !materialType || !subject || !proficiencyLevel || !learningObjectives.trim()) {
@@ -92,7 +92,6 @@ const ELLMaterialAdapter = () => {
     setProcessingStep('Adapting material for ELL students...');
     
     try {
-      // The `adaptedData` is now an object: { adaptedMaterial, dynamicWidaDescriptors }
       const adaptedData = await adaptMaterialWithClaude({
         contentToAdapt,
         materialType,
@@ -104,13 +103,9 @@ const ELLMaterialAdapter = () => {
         nativeLanguage
       });
 
-      // Set the state for the adapted material text
       setAdaptedMaterial(adaptedData.adaptedMaterial);
-      
-      // Set the state for the NEW dynamic descriptors
       setDynamicDescriptors(adaptedData.dynamicWidaDescriptors);
 
-      // Set the state for the GENERAL descriptors (the original purple card)
       const generalDescriptors = getWidaDescriptors(proficiencyLevel, subject, gradeLevel);
       setWidaDescriptors(generalDescriptors);
       
@@ -125,14 +120,13 @@ const ELLMaterialAdapter = () => {
   }, [originalMaterial, materialType, subject, gradeLevel, proficiencyLevel, learningObjectives, includeBilingualSupport, nativeLanguage]);
 
   const clearAll = useCallback(() => {
-    // This function is MODIFIED to clear the new state
     setOriginalMaterial('');
     setLearningObjectives('');
     setNativeLanguage('');
     setIncludeBilingualSupport(false);
     setAdaptedMaterial('');
     setWidaDescriptors(null);
-    setDynamicDescriptors(null); // <-- ADDED
+    setDynamicDescriptors(null);
     setMaterialType('');
     setSubject('');
     setGradeLevel('');
@@ -145,7 +139,6 @@ const ELLMaterialAdapter = () => {
   }, []);
 
   const copyToClipboard = useCallback(async () => {
-    // This function remains unchanged
     try {
       await navigator.clipboard.writeText(adaptedMaterial);
       setProcessingStep('Copied to clipboard!');
@@ -156,7 +149,6 @@ const ELLMaterialAdapter = () => {
   }, [adaptedMaterial]);
 
   const removeFile = useCallback(() => {
-    // This function remains unchanged
     setUploadedFile(null);
     setExtractedText('');
     setOriginalMaterial('');
@@ -164,7 +156,6 @@ const ELLMaterialAdapter = () => {
 
   return (
     <div className="max-w-7xl mx-auto p-6">
-      {/* ... Header and Left Column remain unchanged ... */}
       <div className="text-center mb-8">
         <h1 className="text-4xl font-bold text-gray-800 mb-2">ELLift</h1>
         <p className="text-gray-600 mb-6">Transform your classroom materials to support English Language Learners</p>
@@ -182,7 +173,6 @@ const ELLMaterialAdapter = () => {
         {/* Left Column: ELL Settings */}
         <div className="xl:col-span-1">
           <div className="card bg-blue-50 border-blue-200 sticky top-6">
-            {/* The entire settings form is unchanged */}
             <h2 className="section-header text-blue-800">ELL Adaptation Settings</h2>
             
             <div className="mb-6">
@@ -240,225 +230,4 @@ const ELLMaterialAdapter = () => {
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Content Learning Objectives *
-                <span className="text-xs text-gray-500 block mt-1">What should students learn?</span>
-              </label>
-              <textarea
-                value={learningObjectives}
-                onChange={(e) => setLearningObjectives(e.target.value)}
-                placeholder="e.g., Students will solve linear equations..."
-                className="input-field h-20 resize-none custom-scrollbar"
-              />
-            </div>
-
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">WIDA Proficiency Level *</label>
-              <select
-                value={proficiencyLevel}
-                onChange={(e) => setProficiencyLevel(e.target.value)}
-                className="input-field"
-              >
-                <option value="">Select Level</option>
-                {proficiencyLevels.map(level => (
-                  <option key={level.value} value={level.value}>{level.label}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-              <div className="flex items-center mb-3">
-                <input
-                  type="checkbox"
-                  id="bilingual-support"
-                  checked={includeBilingualSupport}
-                  onChange={(e) => setIncludeBilingualSupport(e.target.checked)}
-                  className="mr-3 w-4 h-4 text-blue-600"
-                />
-                <label htmlFor="bilingual-support" className="text-sm font-medium text-gray-700">
-                  Include bilingual vocabulary support
-                </label>
-              </div>
-              
-              {includeBilingualSupport && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Student's Native Language *
-                  </label>
-                  <select
-                    value={nativeLanguage}
-                    onChange={(e) => setNativeLanguage(e.target.value)}
-                    className="input-field"
-                  >
-                    <option value="">Select Language</option>
-                    {commonLanguages.map(lang => (
-                      <option key={lang} value={lang}>{lang}</option>
-                    ))}
-                  </select>
-                  <p className="text-xs text-gray-500 mt-2">
-                    Strategic translations for key academic vocabulary
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <button
-              onClick={adaptMaterial}
-              disabled={isLoading || !isFormValid}
-              className="w-full btn-primary text-lg py-3 disabled:opacity-50"
-            >
-              {isLoading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  Processing...
-                </span>
-              ) : (
-                'Adapt Material'
-              )}
-            </button>
-
-            {processingStep && (
-              <div className="mt-4 p-3 bg-blue-100 text-blue-800 rounded-md text-sm font-medium">
-                {processingStep}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Right Column: Original Material & Adapted Material - MODIFIED */}
-        <div className="xl:col-span-2 space-y-6">
-          {/* Original Material Section (unchanged) */}
-          <div className="card bg-gray-50 border-gray-200">
-            {/*...*/}
-            <h2 className="section-header text-gray-800">Original Material</h2>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-3">How would you like to add your material?</label>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => setInputMethod('text')}
-                  className={`p-3 rounded-lg border-2 transition-all ${
-                    inputMethod === 'text'
-                      ? 'border-blue-500 bg-blue-100 text-blue-700'
-                      : 'border-gray-200 bg-white text-gray-600 hover:border-blue-300'
-                  }`}
-                >
-                  <FileText className="w-5 h-5 mx-auto mb-1" />
-                  <div className="text-sm font-medium">Type/Paste Text</div>
-                </button>
-                <button
-                  onClick={() => setInputMethod('upload')}
-                  className={`p-3 rounded-lg border-2 transition-all ${
-                    inputMethod === 'upload'
-                      ? 'border-blue-500 bg-blue-100 text-blue-700'
-                      : 'border-gray-200 bg-white text-gray-600 hover:border-blue-300'
-                  }`}
-                >
-                  <Upload className="w-5 h-5 mx-auto mb-1" />
-                  <div className="text-sm font-medium">Upload PDF</div>
-                </button>
-              </div>
-            </div>
-            {inputMethod === 'upload' && ( <div className="mb-4"> {/*...*/} </div> )}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Material Content *
-                {uploadedFile && extractedText && (
-                  <span className="text-blue-600 text-xs ml-2">(from PDF)</span>
-                )}
-              </label>
-              <textarea
-                value={originalMaterial}
-                onChange={(e) => setOriginalMaterial(e.target.value)}
-                placeholder={
-                  inputMethod === 'upload' 
-                    ? "Upload a PDF above to extract text here..." 
-                    : "Enter your lesson material, quiz questions, worksheet content..."
-                }
-                className="input-field h-96 resize-none custom-scrollbar"
-              />
-            </div>
-          </div>
-
-          {/* Adapted Material Section (unchanged) */}
-          <div className="card bg-green-50 border-green-200">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="section-header text-green-800">Adapted ELL Material</h2>
-              {adaptedMaterial && (
-                <button
-                  onClick={copyToClipboard}
-                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 transition-colors"
-                >
-                  <Download className="w-4 h-4" />
-                  Copy
-                </button>
-              )}
-            </div>
-            
-            {isLoading ? (
-              <div className="flex items-center justify-center h-96">
-                <LoadingSpinner 
-                  message={processingStep || 'Adapting your material...'}
-                />
-              </div>
-            ) : adaptedMaterial ? (
-              <div className="bg-white p-6 rounded-md border border-green-200 h-96 overflow-y-auto custom-scrollbar">
-                <pre className="whitespace-pre-wrap text-sm text-gray-800 font-sans leading-relaxed">
-                  {adaptedMaterial}
-                </pre>
-              </div>
-            ) : (
-              <div className="bg-white p-6 rounded-md border border-green-200 h-96 flex items-center justify-center">
-                <p className="text-gray-500 text-center">
-                  Your ELL-adapted material will appear here after processing
-                </p>
-              </div>
-            )}
-
-            {processingStep && !isLoading && (
-              <div className="mt-4 p-3 bg-blue-100 text-blue-800 rounded-md text-sm font-medium">
-                {processingStep}
-              </div>
-            )}
-          </div>
-
-          {/* General WIDA Card (unchanged) */}
-          {widaDescriptors && (
-            <WidaCard descriptors={widaDescriptors} />
-          )}
-
-          {/* ADDED: Dynamic WIDA Card */}
-          {dynamicDescriptors && (
-            <DynamicWidaCard data={dynamicDescriptors} />
-          )}
-        </div>
-
-        {/* ... Tips Section and Bottom Button remain unchanged ... */}
-        <div className="xl:col-span-3">
-          <div className="card bg-yellow-50 border-yellow-200">
-            <h3 className="font-semibold text-yellow-800 mb-3 flex items-center gap-2">
-              💡 Tips for Best Results
-            </h3>
-            <ul className="text-sm text-yellow-700 space-y-2 grid grid-cols-1 md:grid-cols-2 gap-x-6">
-              <li>• <strong>PDF uploads:</strong> Works best with text-based PDFs</li>
-              <li>• <strong>Learning objectives:</strong> Be specific about what students should learn</li>
-              <li>• <strong>WIDA levels:</strong> Choose the level that matches your students</li>
-              <li>• <strong>Bilingual support:</strong> Optional translations for key vocabulary</li>
-              <li>• <strong>Review output:</strong> Always check adapted content for accuracy</li>
-              <li>• <strong>Edit text:</strong> You can modify extracted text before adapting</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      <div className="text-center mt-12">
-        <button
-          onClick={clearAll}
-          className="btn-danger px-8 py-3 shadow-lg text-lg"
-        >
-          🗑️ Clear All Fields & Start Over
-        </button>
-        <p className="text-gray-500 text-sm mt-2">Reset all fields to begin with new material</p>
-      </div>
-    </div>
-  );
-};
-
-export default ELLMaterialAdapter;
+                <span className="text-xs
