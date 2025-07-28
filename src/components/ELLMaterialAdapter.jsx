@@ -60,8 +60,6 @@ const ELLMaterialAdapter = () => {
       setOriginalMaterial(text);
       setExtractedText(text);
       
-      // setInputMethod('text'); // <-- THIS IS THE BUG. I HAVE REMOVED THIS LINE.
-      
       setProcessingStep('PDF text extracted successfully! You can edit the text below if needed.');
       setTimeout(() => setProcessingStep(''), 3000);
     } catch (error) {
@@ -112,7 +110,7 @@ const ELLMaterialAdapter = () => {
       setProcessingStep('');
     } catch (error) {
       console.error('Error adapting material:', error);
-      setError('Sorry, there was an error adapting your material. Please try again.');
+      setError(error.message || 'Sorry, there was an error adapting your material. Please try again.');
       setProcessingStep('');
     }
     
@@ -175,6 +173,7 @@ const ELLMaterialAdapter = () => {
           <div className="card bg-blue-50 border-blue-200 sticky top-6">
             <h2 className="section-header text-blue-800">ELL Adaptation Settings</h2>
             
+            {/* The entire settings form is unchanged */}
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-3">Material Type *</label>
               <div className="grid grid-cols-2 gap-3">
@@ -315,6 +314,7 @@ const ELLMaterialAdapter = () => {
 
         {/* Right Column: Original Material & Adapted Material */}
         <div className="xl:col-span-2 space-y-6">
+          {/* Original Material Section (unchanged) */}
           <div className="card bg-gray-50 border-gray-200">
             <h2 className="section-header text-gray-800">Original Material</h2>
             <div className="mb-4">
@@ -393,6 +393,7 @@ const ELLMaterialAdapter = () => {
             </div>
           </div>
 
+          {/* Adapted Material Section (unchanged) */}
           <div className="card bg-green-50 border-green-200">
             <div className="flex items-center justify-between mb-4">
               <h2 className="section-header text-green-800">Adapted ELL Material</h2>
@@ -434,15 +435,20 @@ const ELLMaterialAdapter = () => {
             )}
           </div>
 
-          {widaDescriptors && (
-            <WidaCard descriptors={widaDescriptors} />
-          )}
-
+          {/* --- MODIFIED ORDER OF CARDS BELOW --- */}
+          {/* The Lesson-Specific (teal) card now comes FIRST */}
           {dynamicDescriptors && (
             <DynamicWidaCard data={dynamicDescriptors} />
           )}
+
+          {/* The General (purple) card now comes SECOND */}
+          {widaDescriptors && (
+            <WidaCard descriptors={widaDescriptors} />
+          )}
+          {/* --- END OF MODIFIED ORDER --- */}
         </div>
 
+        {/* Tips Section and Bottom Button (unchanged) */}
         <div className="xl:col-span-3">
           <div className="card bg-yellow-50 border-yellow-200">
             <h3 className="font-semibold text-yellow-800 mb-3 flex items-center gap-2">
