@@ -1,4 +1,4 @@
-// FileName: src/services/claudeService.js (Final version with comprehensive prompt)
+// FileName: src/services/claudeService.js (Updated with Markdown table instruction)
 
 // Claude API service functions
 import { extractTextFromPDF as extractPDFText } from './pdfService.js';
@@ -65,7 +65,7 @@ const getBilingualInstructions = (includeBilingualSupport, nativeLanguage, profi
 
   return `
 
-BILINGUAL VOCABULARY SUPPORT:
+BILINGUAL VOCAB-SUPPORT:
 - Include ${nativeLanguage} translations for key academic vocabulary and technical terms
 - Focus on cognates between ${nativeLanguage} and English when available
 - Provide ${nativeLanguage} support for complex concepts that are difficult to visualize
@@ -73,7 +73,6 @@ BILINGUAL VOCABULARY SUPPORT:
 - For ${proficiencyLevel} level: ${supportLevel}
 - Include a bilingual vocabulary glossary if helpful`;
 };
-
 
 /**
  * Adapt material using Claude API
@@ -91,7 +90,6 @@ export const adaptMaterialWithClaude = async ({
   const bilingualInstructions = getBilingualInstructions(includeBilingualSupport, nativeLanguage, proficiencyLevel);
   const proficiencyAdaptations = getProficiencyAdaptations(proficiencyLevel);
 
-  // --- THIS IS THE NEW, FULLY UPGRADED PROMPT ---
   const prompt = `You are an expert in English Language Learning (ELL) pedagogy and curriculum adaptation. Your task is to adapt the following material for an ELL student.
 
   **ORIGINAL MATERIAL DETAILS:**
@@ -129,6 +127,8 @@ export const adaptMaterialWithClaude = async ({
       - **OBJECTIVES, SUPPORTS, and ADAPTATIONS:** Write the Content Objectives, ELL Language Objectives, a list of ELL Supports Included, and Assessment Adaptations.
 
   8.  **Lesson-Specific Descriptors:** Generate 3-5 observable, lesson-specific "Can Do" descriptors as previously instructed.
+  
+  9.  **Table Formatting:** If you create a T-chart, comparison chart, or any other table, you MUST format it using GitHub Flavored Markdown table syntax. Do not use plain text characters to draw the table.
 
   **SPECIFIC ADAPTATIONS FOR ${proficiencyLevel.toUpperCase()} LEVEL:**
   ${proficiencyAdaptations}
@@ -137,7 +137,7 @@ export const adaptMaterialWithClaude = async ({
   **REQUIRED OUTPUT FORMAT:**
   Your entire response must be a single, valid JSON object, formatted on a single line with no line breaks outside of the string values. It must have three top-level keys: "studentWorksheet", "teacherGuide", and "dynamicWidaDescriptors".
 
-  - **"studentWorksheet" value**: A single string containing the complete student worksheet, formatted using simple GitHub Flavored Markdown (# for title, ## for headings, ** for bold, * for bullets).
+  - **"studentWorksheet" value**: A single string containing the complete student worksheet, formatted using simple GitHub Flavored Markdown (# for title, ## for headings, ** for bold, * for bullets, and proper table syntax).
   - **"teacherGuide" value**: A single string containing all teacher-facing material, starting with the ANSWER KEY, followed by LESSON PREPARATION & PACING, and then the objectives and support lists. This should be plain text with newlines represented as \\n.
   - **"dynamicWidaDescriptors" value**: The JSON object for the lesson-specific descriptors.
   `;
