@@ -19,7 +19,8 @@ export const proficiencyLevels = [
   { value: 'emerging', label: 'Emerging (Level 2)' },
   { value: 'developing', label: 'Developing (Level 3)' },
   { value: 'expanding', label: 'Expanding (Level 4)' },
-  { value: 'bridging', label: 'Bridging (Level 5)' }
+  { value: 'bridging', label: 'Bridging (Level 5)' },
+  { value: 'reaching', label: 'Reaching (Level 6)' }, // <-- ADDED
 ];
 
 export const commonLanguages = [
