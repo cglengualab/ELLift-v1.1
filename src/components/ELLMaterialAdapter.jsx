@@ -2,11 +2,13 @@ import React, { useState, useCallback, useMemo } from 'react';
 import { FileText, Users, BookOpen, ClipboardList, Download, Upload, File, AlertCircle } from 'lucide-react';
 import { materialTypes, subjects, gradeLevels, proficiencyLevels, commonLanguages } from '../constants/options';
 import { extractTextFromPDF, adaptMaterialWithClaude } from '../services/claudeService';
+import { getWidaDescriptors } from '../constants/widaData';
+import WidaCard from './WidaCard';
 import LoadingSpinner from './LoadingSpinner';
 import ErrorAlert from './ErrorAlert';
 
 const ELLMaterialAdapter = () => {
-  // Input method state - declare first since it's used early
+  // Input method state
   const [inputMethod, setInputMethod] = useState('text');
   
   // Form state
@@ -23,13 +25,14 @@ const ELLMaterialAdapter = () => {
   const [uploadedFile, setUploadedFile] = useState(null);
   const [extractedText, setExtractedText] = useState('');
   
-  // Processing state
+  // Processing and output state
   const [processingStep, setProcessingStep] = useState('');
   const [adaptedMaterial, setAdaptedMaterial] = useState('');
+  const [widaDescriptors, setWidaDescriptors] = useState(null); // <-- ADDED
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Validation - simplified since we only use originalMaterial now
+  // Form validation
   const isFormValid = useMemo(() => {
     const basicFieldsValid = originalMaterial.trim() && materialType && subject && proficiencyLevel && learningObjectives.trim();
     const bilingualValid = !includeBilingualSupport || nativeLanguage;
@@ -51,19 +54,11 @@ const ELLMaterialAdapter = () => {
     setProcessingStep('Starting PDF processing...');
 
     try {
-      // Extract text using PDF.js (client-side)
       const text = await extractTextFromPDF(file, setProcessingStep);
-      
-      // Put the extracted text into the main text area
       setOriginalMaterial(text);
       setExtractedText(text);
-      
-      // Switch to text mode to show the extracted content
       setInputMethod('text');
-      
       setProcessingStep('PDF text extracted successfully! You can edit the text below if needed.');
-      
-      // Clear the success message after a few seconds
       setTimeout(() => setProcessingStep(''), 3000);
     } catch (error) {
       console.error('Error processing PDF:', error);
@@ -76,7 +71,6 @@ const ELLMaterialAdapter = () => {
   }, []);
 
   const adaptMaterial = useCallback(async () => {
-    // Use the text from the main text area (works for both manual input and PDF extraction)
     const contentToAdapt = originalMaterial;
     
     if (!contentToAdapt.trim() || !materialType || !subject || !proficiencyLevel || !learningObjectives.trim()) {
@@ -106,6 +100,11 @@ const ELLMaterialAdapter = () => {
       });
 
       setAdaptedMaterial(adapted);
+
+      // Get and set WIDA descriptors after successful adaptation <-- MODIFIED
+      const descriptors = getWidaDescriptors(proficiencyLevel, subject, gradeLevel);
+      setWidaDescriptors(descriptors);
+      
       setProcessingStep('');
     } catch (error) {
       console.error('Error adapting material:', error);
@@ -122,13 +121,14 @@ const ELLMaterialAdapter = () => {
     setNativeLanguage('');
     setIncludeBilingualSupport(false);
     setAdaptedMaterial('');
+    setWidaDescriptors(null); // <-- MODIFIED
     setMaterialType('');
     setSubject('');
     setGradeLevel('');
     setProficiencyLevel('');
     setUploadedFile(null);
     setExtractedText('');
-    setInputMethod('text'); // Default back to text mode
+    setInputMethod('text');
     setProcessingStep('');
     setError('');
   }, []);
@@ -170,6 +170,7 @@ const ELLMaterialAdapter = () => {
           <div className="card bg-blue-50 border-blue-200 sticky top-6">
             <h2 className="section-header text-blue-800">ELL Adaptation Settings</h2>
             
+            {/* ... (All form fields remain the same) ... */}
             {/* Material Type Selection */}
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-3">Material Type *</label>
@@ -443,6 +444,12 @@ const ELLMaterialAdapter = () => {
               </div>
             )}
           </div>
+
+          {/* ADD THE WIDA CARD RENDER LOGIC HERE <-- MODIFIED */}
+          {widaDescriptors && (
+            <WidaCard descriptors={widaDescriptors} />
+          )}
+
         </div>
 
         {/* Tips Section - Full Width Below */}
