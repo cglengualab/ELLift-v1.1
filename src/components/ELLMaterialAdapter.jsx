@@ -230,4 +230,247 @@ const ELLMaterialAdapter = () => {
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Content Learning Objectives *
-                <span className="text-xs
+                <span className="text-xs text-gray-500 block mt-1">What should students learn?</span>
+              </label>
+              <textarea
+                value={learningObjectives}
+                onChange={(e) => setLearningObjectives(e.target.value)}
+                placeholder="e.g., Students will solve linear equations..."
+                className="input-field h-20 resize-none custom-scrollbar"
+              />
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">WIDA Proficiency Level *</label>
+              <select
+                value={proficiencyLevel}
+                onChange={(e) => setProficiencyLevel(e.target.value)}
+                className="input-field"
+              >
+                <option value="">Select Level</option>
+                {proficiencyLevels.map(level => (
+                  <option key={level.value} value={level.value}>{level.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="flex items-center mb-3">
+                <input
+                  type="checkbox"
+                  id="bilingual-support"
+                  checked={includeBilingualSupport}
+                  onChange={(e) => setIncludeBilingualSupport(e.target.checked)}
+                  className="mr-3 w-4 h-4 text-blue-600"
+                />
+                <label htmlFor="bilingual-support" className="text-sm font-medium text-gray-700">
+                  Include bilingual vocabulary support
+                </label>
+              </div>
+              
+              {includeBilingualSupport && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Student's Native Language *
+                  </label>
+                  <select
+                    value={nativeLanguage}
+                    onChange={(e) => setNativeLanguage(e.target.value)}
+                    className="input-field"
+                  >
+                    <option value="">Select Language</option>
+                    {commonLanguages.map(lang => (
+                      <option key={lang} value={lang}>{lang}</option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Strategic translations for key academic vocabulary
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <button
+              onClick={adaptMaterial}
+              disabled={isLoading || !isFormValid}
+              className="w-full btn-primary text-lg py-3 disabled:opacity-50"
+            >
+              {isLoading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Processing...
+                </span>
+              ) : (
+                'Adapt Material'
+              )}
+            </button>
+
+            {processingStep && (
+              <div className="mt-4 p-3 bg-blue-100 text-blue-800 rounded-md text-sm font-medium">
+                {processingStep}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right Column: Original Material & Adapted Material */}
+        <div className="xl:col-span-2 space-y-6">
+          <div className="card bg-gray-50 border-gray-200">
+            <h2 className="section-header text-gray-800">Original Material</h2>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-3">How would you like to add your material?</label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setInputMethod('text')}
+                  className={`p-3 rounded-lg border-2 transition-all ${
+                    inputMethod === 'text'
+                      ? 'border-blue-500 bg-blue-100 text-blue-700'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-blue-300'
+                  }`}
+                >
+                  <FileText className="w-5 h-5 mx-auto mb-1" />
+                  <div className="text-sm font-medium">Type/Paste Text</div>
+                </button>
+                <button
+                  onClick={() => setInputMethod('upload')}
+                  className={`p-3 rounded-lg border-2 transition-all ${
+                    inputMethod === 'upload'
+                      ? 'border-blue-500 bg-blue-100 text-blue-700'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-blue-300'
+                  }`}
+                >
+                  <Upload className="w-5 h-5 mx-auto mb-1" />
+                  <div className="text-sm font-medium">Upload PDF</div>
+                </button>
+              </div>
+            </div>
+            {inputMethod === 'upload' && (
+              <div className="mb-4">
+                <div className="border-2 border-dashed border-blue-300 rounded-lg p-4 text-center bg-blue-50">
+                  {uploadedFile ? (
+                    <div className="space-y-2">
+                      <File className="w-8 h-8 text-green-500 mx-auto" />
+                      <p className="text-sm font-medium text-gray-900">{uploadedFile.name}</p>
+                      <button onClick={removeFile} className="text-xs text-red-600 hover:text-red-800">
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <Upload className="w-8 h-8 text-blue-400 mx-auto" />
+                      <input type="file" accept=".pdf" onChange={handleFileUpload} className="hidden" id="pdf-upload" />
+                      <label htmlFor="pdf-upload" className="inline-flex items-center btn-primary cursor-pointer text-sm py-2 px-3">
+                        Choose PDF
+                      </label>
+                    </div>
+                  )}
+                </div>
+                
+                {uploadedFile && extractedText && (
+                  <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-md">
+                    <p className="text-xs text-green-800 font-medium">✅ Text extracted and added below</p>
+                  </div>
+                )}
+              </div>
+            )}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Material Content *
+                {uploadedFile && extractedText && (
+                  <span className="text-blue-600 text-xs ml-2">(from PDF)</span>
+                )}
+              </label>
+              <textarea
+                value={originalMaterial}
+                onChange={(e) => setOriginalMaterial(e.target.value)}
+                placeholder={
+                  inputMethod === 'upload' 
+                    ? "Upload a PDF above to extract text here..." 
+                    : "Enter your lesson material, quiz questions, worksheet content..."
+                }
+                className="input-field h-96 resize-none custom-scrollbar"
+              />
+            </div>
+          </div>
+
+          <div className="card bg-green-50 border-green-200">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="section-header text-green-800">Adapted ELL Material</h2>
+              {adaptedMaterial && (
+                <button
+                  onClick={copyToClipboard}
+                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                  Copy
+                </button>
+              )}
+            </div>
+            
+            {isLoading ? (
+              <div className="flex items-center justify-center h-96">
+                <LoadingSpinner 
+                  message={processingStep || 'Adapting your material...'}
+                />
+              </div>
+            ) : adaptedMaterial ? (
+              <div className="bg-white p-6 rounded-md border border-green-200 h-96 overflow-y-auto custom-scrollbar">
+                <pre className="whitespace-pre-wrap text-sm text-gray-800 font-sans leading-relaxed">
+                  {adaptedMaterial}
+                </pre>
+              </div>
+            ) : (
+              <div className="bg-white p-6 rounded-md border border-green-200 h-96 flex items-center justify-center">
+                <p className="text-gray-500 text-center">
+                  Your ELL-adapted material will appear here after processing
+                </p>
+              </div>
+            )}
+
+            {processingStep && !isLoading && (
+              <div className="mt-4 p-3 bg-blue-100 text-blue-800 rounded-md text-sm font-medium">
+                {processingStep}
+              </div>
+            )}
+          </div>
+
+          {widaDescriptors && (
+            <WidaCard descriptors={widaDescriptors} />
+          )}
+
+          {dynamicDescriptors && (
+            <DynamicWidaCard data={dynamicDescriptors} />
+          )}
+        </div>
+
+        <div className="xl:col-span-3">
+          <div className="card bg-yellow-50 border-yellow-200">
+            <h3 className="font-semibold text-yellow-800 mb-3 flex items-center gap-2">
+              💡 Tips for Best Results
+            </h3>
+            <ul className="text-sm text-yellow-700 space-y-2 grid grid-cols-1 md:grid-cols-2 gap-x-6">
+              <li>• <strong>PDF uploads:</strong> Works best with text-based PDFs</li>
+              <li>• <strong>Learning objectives:</strong> Be specific about what students should learn</li>
+              <li>• <strong>WIDA levels:</strong> Choose the level that matches your students</li>
+              <li>• <strong>Bilingual support:</strong> Optional translations for key vocabulary</li>
+              <li>• <strong>Review output:</strong> Always check adapted content for accuracy</li>
+              <li>• <strong>Edit text:</strong> You can modify extracted text before adapting</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div className="text-center mt-12">
+        <button
+          onClick={clearAll}
+          className="btn-danger px-8 py-3 shadow-lg text-lg"
+        >
+          🗑️ Clear All Fields & Start Over
+        </button>
+        <p className="text-gray-500 text-sm mt-2">Reset all fields to begin with new material</p>
+      </div>
+    </div>
+  );
+};
+
+export default ELLMaterialAdapter;
