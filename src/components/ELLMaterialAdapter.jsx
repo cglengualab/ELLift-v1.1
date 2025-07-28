@@ -57,6 +57,11 @@ const ELLMaterialAdapter = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const worksheetRef = useRef(null);
+  
+  // --- NEW STATE FOR BILINGUAL FEATURES ---
+  const [translateSummary, setTranslateSummary] = useState(false);
+  const [translateInstructions, setTranslateInstructions] = useState(false);
+  const [listCognates, setListCognates] = useState(false);
 
   const isFormValid = useMemo(() => {
     const basicFieldsValid = originalMaterial.trim() && materialType && subject && proficiencyLevel && learningObjectives.trim();
@@ -105,7 +110,11 @@ const ELLMaterialAdapter = () => {
     setProcessingStep('Adapting material for ELL students...');
     try {
       const adaptedData = await adaptMaterialWithClaude({
-        contentToAdapt, materialType, subject, gradeLevel, proficiencyLevel, learningObjectives, includeBilingualSupport, nativeLanguage
+        contentToAdapt, materialType, subject, gradeLevel, proficiencyLevel, learningObjectives, includeBilingualSupport, nativeLanguage,
+        // --- PASSING NEW OPTIONS TO THE API ---
+        translateSummary,
+        translateInstructions,
+        listCognates
       });
       setStudentWorksheet(adaptedData.studentWorksheet);
       setTeacherGuide(adaptedData.teacherGuide);
@@ -119,7 +128,7 @@ const ELLMaterialAdapter = () => {
       setProcessingStep('');
     }
     setIsLoading(false);
-  }, [originalMaterial, materialType, subject, gradeLevel, proficiencyLevel, learningObjectives, includeBilingualSupport, nativeLanguage]);
+  }, [originalMaterial, materialType, subject, gradeLevel, proficiencyLevel, learningObjectives, includeBilingualSupport, nativeLanguage, translateSummary, translateInstructions, listCognates]); // --- ADDED DEPENDENCIES ---
 
   const clearAll = useCallback(() => {
     setOriginalMaterial('');
@@ -139,6 +148,10 @@ const ELLMaterialAdapter = () => {
     setInputMethod('text');
     setProcessingStep('');
     setError('');
+    // --- RESETTING NEW STATE ---
+    setTranslateSummary(false);
+    setTranslateInstructions(false);
+    setListCognates(false);
   }, []);
 
   const copyToClipboard = useCallback(async () => {
@@ -217,28 +230,16 @@ const ELLMaterialAdapter = () => {
             <div className="grid grid-cols-1 gap-4 mb-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Subject *</label>
-                <select
-                  value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
-                  className="input-field"
-                >
+                <select value={subject} onChange={(e) => setSubject(e.target.value)} className="input-field">
                   <option value="">Select Subject</option>
-                  {subjects.map(subj => (
-                    <option key={subj} value={subj}>{subj}</option>
-                  ))}
+                  {subjects.map(subj => ( <option key={subj} value={subj}>{subj}</option> ))}
                 </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Grade Level</label>
-                <select
-                  value={gradeLevel}
-                  onChange={(e) => setGradeLevel(e.target.value)}
-                  className="input-field"
-                >
+                <select value={gradeLevel} onChange={(e) => setGradeLevel(e.target.value)} className="input-field">
                   <option value="">Select Grade</option>
-                  {gradeLevels.map(grade => (
-                    <option key={grade} value={grade}>{grade}</option>
-                  ))}
+                  {gradeLevels.map(grade => ( <option key={grade} value={grade}>{grade}</option> ))}
                 </select>
               </div>
             </div>
@@ -258,15 +259,9 @@ const ELLMaterialAdapter = () => {
 
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">WIDA Proficiency Level *</label>
-              <select
-                value={proficiencyLevel}
-                onChange={(e) => setProficiencyLevel(e.target.value)}
-                className="input-field"
-              >
+              <select value={proficiencyLevel} onChange={(e) => setProficiencyLevel(e.target.value)} className="input-field">
                 <option value="">Select Level</option>
-                {proficiencyLevels.map(level => (
-                  <option key={level.value} value={level.value}>{level.label}</option>
-                ))}
+                {proficiencyLevels.map(level => ( <option key={level.value} value={level.value}>{level.label}</option> ))}
               </select>
             </div>
 
@@ -285,23 +280,54 @@ const ELLMaterialAdapter = () => {
               </div>
               
               {includeBilingualSupport && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Student's Native Language *
-                  </label>
-                  <select
-                    value={nativeLanguage}
-                    onChange={(e) => setNativeLanguage(e.target.value)}
-                    className="input-field"
-                  >
-                    <option value="">Select Language</option>
-                    {commonLanguages.map(lang => (
-                      <option key={lang} value={lang}>{lang}</option>
-                    ))}
-                  </select>
-                  <p className="text-xs text-gray-500 mt-2">
-                    Strategic translations for key academic vocabulary
-                  </p>
+                <div className="space-y-3 pt-3 border-t mt-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Student's Native Language *
+                    </label>
+                    <select value={nativeLanguage} onChange={(e) => setNativeLanguage(e.target.value)} className="input-field">
+                      <option value="">Select Language</option>
+                      {commonLanguages.map(lang => ( <option key={lang} value={lang}>{lang}</option> ))}
+                    </select>
+                  </div>
+                  
+                  {/* --- NEW CHECKBOXES FOR ADVANCED FEATURES --- */}
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="translate-summary"
+                      checked={translateSummary}
+                      onChange={(e) => setTranslateSummary(e.target.checked)}
+                      className="mr-3 w-4 h-4 text-blue-600"
+                    />
+                    <label htmlFor="translate-summary" className="text-sm text-gray-700">
+                      Add bilingual background summary
+                    </label>
+                  </div>
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="translate-instructions"
+                      checked={translateInstructions}
+                      onChange={(e) => setTranslateInstructions(e.target.checked)}
+                      className="mr-3 w-4 h-4 text-blue-600"
+                    />
+                    <label htmlFor="translate-instructions" className="text-sm text-gray-700">
+                      Translate activity instructions
+                    </label>
+                  </div>
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="list-cognates"
+                      checked={listCognates}
+                      onChange={(e) => setListCognates(e.target.checked)}
+                      className="mr-3 w-4 h-4 text-blue-600"
+                    />
+                    <label htmlFor="list-cognates" className="text-sm text-gray-700">
+                      List cognates in Teacher's Guide
+                    </label>
+                  </div>
                 </div>
               )}
             </div>
