@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useMemo, useRef } from 'react';
 import { FileText, Users, BookOpen, ClipboardList, Download, Upload, File, AlertCircle, Book, Target } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import rehypeRaw from 'rehype-raw';
 import { materialTypes, subjects, gradeLevels, proficiencyLevels, commonLanguages } from '../constants/options';
 import { extractTextFromPDF, adaptMaterialWithClaude } from '../services/claudeService';
 import { getWidaDescriptors } from '../constants/widaData';
@@ -57,8 +58,6 @@ const ELLMaterialAdapter = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const worksheetRef = useRef(null);
-  
-  // --- NEW STATE FOR BILINGUAL FEATURES ---
   const [translateSummary, setTranslateSummary] = useState(false);
   const [translateInstructions, setTranslateInstructions] = useState(false);
   const [listCognates, setListCognates] = useState(false);
@@ -111,7 +110,6 @@ const ELLMaterialAdapter = () => {
     try {
       const adaptedData = await adaptMaterialWithClaude({
         contentToAdapt, materialType, subject, gradeLevel, proficiencyLevel, learningObjectives, includeBilingualSupport, nativeLanguage,
-        // --- PASSING NEW OPTIONS TO THE API ---
         translateSummary,
         translateInstructions,
         listCognates
@@ -128,7 +126,7 @@ const ELLMaterialAdapter = () => {
       setProcessingStep('');
     }
     setIsLoading(false);
-  }, [originalMaterial, materialType, subject, gradeLevel, proficiencyLevel, learningObjectives, includeBilingualSupport, nativeLanguage, translateSummary, translateInstructions, listCognates]); // --- ADDED DEPENDENCIES ---
+  }, [originalMaterial, materialType, subject, gradeLevel, proficiencyLevel, learningObjectives, includeBilingualSupport, nativeLanguage, translateSummary, translateInstructions, listCognates]);
 
   const clearAll = useCallback(() => {
     setOriginalMaterial('');
@@ -148,7 +146,6 @@ const ELLMaterialAdapter = () => {
     setInputMethod('text');
     setProcessingStep('');
     setError('');
-    // --- RESETTING NEW STATE ---
     setTranslateSummary(false);
     setTranslateInstructions(false);
     setListCognates(false);
@@ -291,7 +288,6 @@ const ELLMaterialAdapter = () => {
                     </select>
                   </div>
                   
-                  {/* --- NEW CHECKBOXES FOR ADVANCED FEATURES --- */}
                   <div className="flex items-center">
                     <input
                       type="checkbox"
@@ -439,7 +435,7 @@ const ELLMaterialAdapter = () => {
                   </button>
                 </div>
                 <div ref={worksheetRef} className="bg-white p-6 rounded-md border border-green-200 h-96 overflow-y-auto custom-scrollbar prose max-w-full">
-                  <ReactMarkdown>{studentWorksheet}</ReactMarkdown>
+                  <ReactMarkdown rehypePlugins={[rehypeRaw]}>{studentWorksheet}</ReactMarkdown>
                 </div>
               </div>
 
