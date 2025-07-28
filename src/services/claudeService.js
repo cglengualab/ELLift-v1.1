@@ -1,4 +1,4 @@
-// FileName: src/services/claudeService.js (with universal instruction added)
+// FileName: src/services/claudeService.js (Updated to request separate student/teacher outputs)
 
 // Claude API service functions
 import { extractTextFromPDF as extractPDFText } from './pdfService.js';
@@ -8,7 +8,7 @@ const API_BASE_URL = process.env.NODE_ENV === 'development'
   : window.location.origin;
 
 // ... (callClaudeAPI, extractTextFromPDF, getProficiencyAdaptations, getBilingualInstructions functions are unchanged) ...
-const callClaudeAPI = async (messages, maxTokens = 3000) => {
+const callClaudeAPI = async (messages, maxTokens = 4000) => {
   const formattedMessages = messages.map(msg => {
     if (typeof msg.content === 'string') {
       return { role: msg.role, content: msg.content };
@@ -71,7 +71,6 @@ BILINGUAL VOCABULARY SUPPORT:
 - Include a bilingual vocabulary glossary if helpful`;
 };
 
-
 /**
  * Adapt material using Claude API
  */
@@ -111,37 +110,41 @@ CRUCIAL INSTRUCTION: The descriptors MUST use verbs that describe simple, observ
 - AVOID VAGUE VERBS: understand, learn, analyze, know, engage, explain.
 Each descriptor should be a concrete "I can..." statement from the student's perspective, tailored to the lesson content.
 
-// --- THIS IS THE NEW UNIVERSAL RULE ---
 5. ENSURE EXPLICIT INSTRUCTIONS: Analyze the original material. If instructions are given only once at the top of the page (e.g., a title like 'Solve for X' or 'Round each number'), you MUST add a clear, explicit instruction to EACH adapted problem or small group of problems. This is a critical scaffolding step for ELLs. For example, a math problem "1. 2x = 10" should become "1. Solve for x: 2x = 10". A rounding problem "1. 5,970" should become "1. Round 5,970 to the nearest thousand".
-// --- END OF NEW RULE ---
 
 SPECIFIC ADAPTATIONS FOR ${proficiencyLevel.toUpperCase()} LEVEL:
 ${proficiencyAdaptations}
 
+// --- THIS IS THE MODIFIED SECTION ---
 REQUIRED OUTPUT FORMAT:
-Your entire response must be a single, valid JSON object. Do not include any text or explanations outside of the JSON structure. The JSON object must have two top-level keys: "adaptedMaterial" and "dynamicWidaDescriptors".
+Your entire response must be a single, valid JSON object. Do not include any text outside of the JSON structure. The JSON object must have three top-level keys: "studentWorksheet", "teacherGuide", and "dynamicWidaDescriptors".
+
+- "studentWorksheet" value: A single string containing ONLY the student-facing material. This should be a clean, print-and-go document with the title, vocabulary, instructions, and problems. Do NOT include objectives or teacher notes in this string.
+- "teacherGuide" value: A single string containing all the pedagogical notes for the teacher. This must include the sections for CONTENT OBJECTIVES, ELL LANGUAGE OBJECTIVES, ELL SUPPORTS INCLUDED, and ASSESSMENT ADAPTATIONS.
+- "dynamicWidaDescriptors" value: A JSON object with a "title" and an array of "descriptors" strings, as previously instructed.
 
 Example JSON structure:
 {
-  "adaptedMaterial": "ADAPTED MATERIAL:\\n[The adapted content]...\\n\\nCONTENT OBJECTIVES (maintained):\\n...\\n\\nELL LANGUAGE OBJECTIVES:\\n...\\n\\nELL SUPPORTS INCLUDED:\\n...\\n\\nASSESSMENT ADAPTATIONS:\\n...",
+  "studentWorksheet": "Title: Rounding Practice\\n\\nPart 1: Vocabulary\\n...",
+  "teacherGuide": "CONTENT OBJECTIVES (maintained):\\n- Students will...\\n\\nELL LANGUAGE OBJECTIVES:\\n- LISTENING: ...",
   "dynamicWidaDescriptors": {
     "title": "Lesson-Specific 'Can Do' Descriptors",
     "descriptors": [
-      "First dynamic descriptor based on the lesson.",
-      "Second dynamic descriptor based on the lesson.",
-      "Third dynamic descriptor based on the lesson."
+      "First descriptor.",
+      "Second descriptor."
     ]
   }
 }
+// --- END OF MODIFIED SECTION ---
 
-IMPORTANT: Ensure the "adaptedMaterial" value is a single string containing the full, multi-part adapted lesson, with newlines represented as \\n. Do not use any markdown formatting like **bold** or ### headers in the content.`;
+IMPORTANT: Ensure all values are properly escaped for JSON. All text content for studentWorksheet and teacherGuide should be single strings, with newlines represented as \\n.`;
 
   const data = await callClaudeAPI([
     {
       role: "user",
       content: prompt
     }
-  ], 4000);
+  ], 4000); // Using 4000 to be safe, as JSON structure adds tokens
 
   try {
     const parsedData = JSON.parse(data.content[0].text);
