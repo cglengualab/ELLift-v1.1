@@ -1,4 +1,4 @@
-// FileName: src/services/claudeService.js (Enhanced version with improvements)
+// FileName: src/services/claudeService.js (Enhanced version with improvements and image prompts)
 
 // Claude API service functions
 import { extractTextFromPDF as extractPDFText } from './pdfService.js';
@@ -26,6 +26,31 @@ const CONFIG = {
 const SUBJECT_GROUPS = {
   MATH_SCIENCE: ['Mathematics', 'Algebra', 'Geometry', 'Science', 'Chemistry', 'Physics', 'Biology'],
   ELA_SOCIAL: ['English Language Arts', 'History', 'Social Studies']
+};
+
+// Keywords that indicate images would be helpful
+const IMAGE_KEYWORDS = [
+  'diagram', 'chart', 'graph', 'figure', 'illustration', 'photo', 'image', 
+  'visual', 'picture', 'drawing', 'map', 'timeline', 'flowchart', 'table',
+  'geometric shape', 'triangle', 'circle', 'rectangle', 'square',
+  'cell structure', 'ecosystem', 'food chain', 'water cycle', 'solar system',
+  'coordinate plane', 'number line', 'fraction', 'pie chart', 'bar graph',
+  'character', 'setting', 'plot diagram', 'story map', 'vocabulary card',
+  'historical figure', 'government building', 'community', 'continent'
+];
+
+// Subject-specific visual terms
+const SUBJECT_VISUAL_TERMS = {
+  'Mathematics': ['graph', 'coordinate plane', 'geometric shape', 'fraction model', 'number line', 'chart'],
+  'Algebra': ['coordinate plane', 'graph', 'equation', 'slope', 'linear function'],
+  'Geometry': ['triangle', 'circle', 'rectangle', 'polygon', '3D shape', 'angle'],
+  'Science': ['cell diagram', 'ecosystem', 'food chain', 'water cycle', 'solar system', 'lab equipment'],
+  'Biology': ['cell', 'organ', 'system', 'DNA', 'photosynthesis', 'respiratory system'],
+  'Chemistry': ['molecule', 'atom', 'periodic table', 'chemical reaction', 'lab equipment'],
+  'Physics': ['wave', 'circuit', 'magnet', 'simple machine', 'light spectrum'],
+  'English Language Arts': ['story map', 'character', 'setting', 'plot diagram', 'parts of speech'],
+  'Social Studies': ['map', 'timeline', 'government building', 'community', 'historical figure'],
+  'History': ['timeline', 'historical figure', 'monument', 'artifact', 'battle map']
 };
 
 const API_BASE_URL = process.env.NODE_ENV === 'development' 
@@ -74,6 +99,103 @@ const sanitizeInput = (text) => {
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
     .replace(/\s+/g, ' ')
     .trim();
+};
+
+// Function to detect image opportunities in text
+const detectImageOpportunities = (text, subject) => {
+  const opportunities = [];
+  const lowerText = text.toLowerCase();
+  
+  // Check for general image keywords
+  IMAGE_KEYWORDS.forEach(keyword => {
+    if (lowerText.includes(keyword.toLowerCase())) {
+      opportunities.push({
+        keyword,
+        context: extractContext(text, keyword),
+        type: 'general'
+      });
+    }
+  });
+  
+  // Check for subject-specific terms
+  const subjectTerms = SUBJECT_VISUAL_TERMS[subject] || [];
+  subjectTerms.forEach(term => {
+    if (lowerText.includes(term.toLowerCase())) {
+      opportunities.push({
+        keyword: term,
+        context: extractContext(text, term),
+        type: 'subject-specific'
+      });
+    }
+  });
+  
+  // Remove duplicates and limit to most relevant
+  const unique = opportunities.filter((item, index, self) => 
+    index === self.findIndex(t => t.keyword === item.keyword)
+  );
+  
+  return unique.slice(0, 5); // Limit to 5 most relevant
+};
+
+// Helper function to extract context around a keyword
+const extractContext = (text, keyword) => {
+  const lowerText = text.toLowerCase();
+  const lowerKeyword = keyword.toLowerCase();
+  const index = lowerText.indexOf(lowerKeyword);
+  
+  if (index === -1) return '';
+  
+  const start = Math.max(0, index - 50);
+  const end = Math.min(text.length, index + keyword.length + 50);
+  
+  return text.substring(start, end).trim();
+};
+
+// Function to generate image prompts using Claude
+const generateImagePrompts = async (opportunities, subject, proficiencyLevel, materialType) => {
+  if (opportunities.length === 0) return null;
+  
+  const promptText = `You are an expert at creating image prompts for educational AI image generators like DALL-E. 
+
+Based on the following detected visual needs from a teacher's guide, create specific, detailed prompts that teachers can copy and paste into an AI image generator.
+
+**Context:**
+- Subject: ${subject}
+- Student Level: ${proficiencyLevel} WIDA proficiency
+- Material Type: ${materialType}
+
+**Visual needs detected:**
+${opportunities.map((opp, index) => 
+  `${index + 1}. "${opp.keyword}" - Context: "${opp.context}"`
+).join('\n')}
+
+**Instructions:**
+Create a JSON object with an array called "imagePrompts" containing objects with:
+- "title": A brief title for what the image shows
+- "prompt": A detailed, specific prompt optimized for AI image generation
+- "usage": How teachers might use this image
+
+Make prompts educational, clear, and appropriate for ${proficiencyLevel} level students. Focus on:
+- Simple, clean educational style
+- High contrast and clarity for classroom use
+- Age-appropriate content
+- No text in images (teachers will add labels)
+
+Respond ONLY with valid JSON. No other text.`;
+
+  try {
+    const result = await callClaudeAPIWithRetry([
+      { role: 'user', content: promptText }
+    ], CONFIG.TOKENS.DEFAULT_MAX, 1);
+    
+    const responseText = result.content[0].text;
+    const cleanedResponse = responseText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    
+    return JSON.parse(cleanedResponse);
+  } catch (error) {
+    console.error('Error generating image prompts:', error);
+    return null;
+  }
 };
 
 // Enhanced API call with retry logic
@@ -273,6 +395,7 @@ const createTeacherGuidePrompt = (details, studentWorksheet) => {
   - After the Answer Key, create a "Lesson Preparation & Pacing" section, highlighting materials with <mark> tags.
   - Then, list the Content and ELL Language Objectives.
   - Then, list the ELL Supports Included.
+  - **IMPORTANT:** When mentioning visual aids like diagrams, charts, images, maps, timelines, or any visual elements, be specific about what they should show. Use phrases like "diagram showing...", "chart displaying...", "image of...", etc.
   - **CRUCIAL:** Do NOT repeat or copy the student worksheet content. Your purpose is to provide the answers and pedagogical notes FOR the worksheet.
   ${bilingualInstructions}
 
@@ -287,7 +410,7 @@ export const adaptMaterialWithClaude = async (params, setProcessingStep) => {
     // Validate input parameters
     validateAdaptationParams(params);
     
-    const { subject, proficiencyLevel, includeBilingualSupport, nativeLanguage, translateSummary, translateInstructions, listCognates, worksheetLength, addStudentChecklist, useMultipleChoice } = params;
+    const { subject, proficiencyLevel, materialType, includeBilingualSupport, nativeLanguage, translateSummary, translateInstructions, listCognates, worksheetLength, addStudentChecklist, useMultipleChoice } = params;
 
     setProcessingStep?.('Preparing adaptation instructions...');
 
@@ -342,13 +465,36 @@ export const adaptMaterialWithClaude = async (params, setProcessingStep) => {
     
     console.log("Step 2: Teacher's Guide received.");
 
+    // STEP 3: Generate Image Prompts (NEW!)
+    setProcessingStep?.('Generating image suggestions...');
+    console.log("Step 3: Detecting image opportunities...");
+    
+    const imageOpportunities = detectImageOpportunities(teacherGuide, subject);
+    let imagePrompts = null;
+    
+    if (imageOpportunities.length > 0) {
+      console.log(`Found ${imageOpportunities.length} image opportunities`);
+      await delay(CONFIG.DELAYS.BETWEEN_CALLS);
+      
+      imagePrompts = await generateImagePrompts(
+        imageOpportunities, 
+        subject, 
+        proficiencyLevel, 
+        materialType
+      );
+      console.log("Step 3: Image prompts generated.");
+    } else {
+      console.log("Step 3: No image opportunities detected.");
+    }
+
     setProcessingStep?.('Finalizing materials...');
 
-    // STEP 3: Assemble and return the final object
+    // STEP 4: Assemble and return the final object
     return {
       studentWorksheet,
       teacherGuide,
       dynamicWidaDescriptors,
+      imagePrompts, // NEW!
     };
 
   } catch (error) {
