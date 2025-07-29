@@ -1,4 +1,4 @@
-// FileName: src/services/claudeService.js (Final version with Subject-Aware instructions)
+// FileName: src/services/claudeService.js (Final version with IEP Accommodations)
 
 // Claude API service functions
 import { extractTextFromPDF as extractPDFText } from './pdfService.js';
@@ -70,7 +70,6 @@ const getProficiencyAdaptations = (proficiencyLevel) => {
   return `Adapt the content to be appropriate for the ${proficiencyLevel} WIDA proficiency level, using research-based ELL best practices.`;
 };
 
-// --- NEW HELPER FUNCTION FOR SUBJECT-AWARE INSTRUCTIONS ---
 const getSubjectAwareInstructions = (subject, proficiencyLevel) => {
   const mathAndScience = ['Mathematics', 'Algebra', 'Geometry', 'Science', 'Chemistry', 'Physics', 'Biology'];
   const elaAndSocial = ['English Language Arts', 'History', 'Social Studies'];
@@ -101,8 +100,31 @@ const getSubjectAwareInstructions = (subject, proficiencyLevel) => {
   return ''; // Default case, no special instructions
 };
 
+// --- NEW HELPER FUNCTION FOR IEP ACCOMMODATIONS ---
+const getIepAccommodationInstructions = ({
+  worksheetLength,
+  addStudentChecklist,
+  useMultipleChoice
+}) => {
+  let instructions = `\n\n  **IEP ACCOMMODATION REQUIREMENTS:**\n`;
+  
+  if (worksheetLength) {
+    instructions += `- **Worksheet Length:** Adjust the number of activities to fit a "${worksheetLength}" time frame. Short: 5-10 min, Medium: 15-25 min, Long: 30+ min.\n`;
+  }
+  
+  if (addStudentChecklist) {
+    instructions += `- **Student Checklist:** At the very top of the student worksheet, add a section called "My Checklist" with 3-5 simple, sequential steps for completing the worksheet. Example: 1. [ ] Read Key Vocabulary. 2. [ ] Read the text.\n`;
+  }
+
+  if (useMultipleChoice) {
+    instructions += `- **Multiple Choice:** Convert all open-ended comprehension questions into a multiple-choice format with 3-4 clear options.\n`;
+  }
+
+  return instructions;
+};
+
 const createStudentWorksheetPrompt = (details) => {
-  const { materialType, subject, gradeLevel, proficiencyLevel, learningObjectives, contentToAdapt, bilingualInstructions, proficiencyAdaptations, subjectAwareInstructions } = details;
+  const { materialType, subject, gradeLevel, proficiencyLevel, learningObjectives, contentToAdapt, bilingualInstructions, proficiencyAdaptations, subjectAwareInstructions, iepInstructions } = details;
   return `You are an expert ELL curriculum adapter. Your task is to generate ONLY a student-facing worksheet.
   
   **DETAILS:**
@@ -113,6 +135,7 @@ const createStudentWorksheetPrompt = (details) => {
   - Learning Objectives: ${learningObjectives}
 
   ${subjectAwareInstructions}
+  ${iepInstructions}
 
   **ORIGINAL MATERIAL:**
   \`\`\`
@@ -174,21 +197,19 @@ const createDynamicDescriptorsPrompt = (details) => {
  * Adapt material using Claude API with a multi-call strategy
  */
 export const adaptMaterialWithClaude = async (params) => {
-  const { subject, proficiencyLevel, includeBilingualSupport, nativeLanguage, translateSummary, translateInstructions, listCognates } = params;
+  const { subject, proficiencyLevel, includeBilingualSupport, nativeLanguage, translateSummary, translateInstructions, listCognates, worksheetLength, addStudentChecklist, useMultipleChoice } = params;
 
-  // --- NEW: Generate the subject-aware instructions first ---
   const subjectAwareInstructions = getSubjectAwareInstructions(subject, proficiencyLevel);
-
   const proficiencyAdaptations = getProficiencyAdaptations(proficiencyLevel);
   const bilingualInstructions = buildBilingualInstructions({
-    includeBilingualSupport,
-    nativeLanguage,
-    translateSummary,
-    translateInstructions,
-    listCognates
+    includeBilingualSupport, nativeLanguage, translateSummary, translateInstructions, listCognates
+  });
+  // --- NEW: Generate the IEP accommodation instructions ---
+  const iepInstructions = getIepAccommodationInstructions({
+    worksheetLength, addStudentChecklist, useMultipleChoice
   });
   
-  const promptDetails = { ...params, subjectAwareInstructions, proficiencyAdaptations, bilingualInstructions };
+  const promptDetails = { ...params, subjectAwareInstructions, proficiencyAdaptations, bilingualInstructions, iepInstructions };
   
   try {
     console.log("Requesting Student Worksheet...");
