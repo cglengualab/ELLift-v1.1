@@ -9,7 +9,7 @@ import LoadingSpinner from './LoadingSpinner';
 import ErrorAlert from './ErrorAlert';
 import WidaCard from './WidaCard';
 import DynamicWidaCard from './DynamicWidaCard';
-import GenerateImageButton from './GenerateImageButton';
+import GenerateImageButton from './GenerateImageButton'; // <-- NEW IMPORT
 
 // This reusable component is for the single set of action buttons
 const ActionButtons = ({ adaptMaterial, clearAll, isLoading, isFormValid }) => {
@@ -63,8 +63,6 @@ const ELLMaterialAdapter = () => {
   const [translateSummary, setTranslateSummary] = useState(false);
   const [translateInstructions, setTranslateInstructions] = useState(false);
   const [listCognates, setListCognates] = useState(false);
-
-  // --- NEW STATE FOR IEP ACCOMMODATIONS ---
   const [worksheetLength, setWorksheetLength] = useState('Medium');
   const [addStudentChecklist, setAddStudentChecklist] = useState(false);
   const [useMultipleChoice, setUseMultipleChoice] = useState(false);
@@ -132,7 +130,6 @@ const ELLMaterialAdapter = () => {
         translateSummary,
         translateInstructions,
         listCognates,
-        // --- PASSING NEW IEP OPTIONS TO THE API ---
         worksheetLength,
         addStudentChecklist,
         useMultipleChoice
@@ -149,7 +146,7 @@ const ELLMaterialAdapter = () => {
       setProcessingStep('');
     }
     setIsLoading(false);
-  }, [originalMaterial, materialType, subject, gradeLevel, proficiencyLevel, learningObjectives, includeBilingualSupport, nativeLanguage, translateSummary, translateInstructions, listCognates, worksheetLength, addStudentChecklist, useMultipleChoice]); // --- ADDED DEPENDENCIES ---
+  }, [originalMaterial, materialType, subject, gradeLevel, proficiencyLevel, learningObjectives, includeBilingualSupport, nativeLanguage, translateSummary, translateInstructions, listCognates, worksheetLength, addStudentChecklist, useMultipleChoice]);
 
   const clearAll = useCallback(() => {
     setOriginalMaterial('');
@@ -172,7 +169,6 @@ const ELLMaterialAdapter = () => {
     setTranslateSummary(false);
     setTranslateInstructions(false);
     setListCognates(false);
-    // --- RESETTING NEW IEP STATE ---
     setWorksheetLength('Medium');
     setAddStudentChecklist(false);
     setUseMultipleChoice(false);
@@ -479,7 +475,25 @@ const ELLMaterialAdapter = () => {
                   </button>
                 </div>
                 <div ref={teacherGuideRef} className="bg-white p-6 rounded-md border border-slate-200 max-h-96 overflow-y-auto custom-scrollbar prose max-w-full">
-                   <ReactMarkdown rehypePlugins={[rehypeRaw]}>{teacherGuide}</ReactMarkdown>
+                   <ReactMarkdown
+                     rehypePlugins={[rehypeRaw]}
+                     components={{
+                       mark: ({ node, ...props }) => {
+                         const imagePrompt = node.properties['data-image-prompt'];
+                         if (imagePrompt) {
+                           return (
+                             <span className="bg-yellow-200 px-1 py-0.5 rounded-md">
+                               {props.children}
+                               <GenerateImageButton prompt={imagePrompt} />
+                             </span>
+                           );
+                         }
+                         return <mark>{props.children}</mark>;
+                       },
+                     }}
+                   >
+                     {teacherGuide}
+                   </ReactMarkdown>
                 </div>
               </div>
 
