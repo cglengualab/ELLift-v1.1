@@ -1,4 +1,4 @@
-// FileName: src/services/claudeService.js (Definitive version with correct sequential logic)
+// FileName: src/services/claudeService.js (Definitive version with correct sequential logic and delays)
 
 // Claude API service functions
 import { extractTextFromPDF as extractPDFText } from './pdfService.js';
