@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo, useRef } from 'react';
 import { FileText, Users, BookOpen, ClipboardList, Download, Upload, File, AlertCircle, Book, Target } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import rehypeRaw from 'rehype-raw';
+import rehypeRaw from 'rehype-raw'; // <-- The missing import
 import { materialTypes, subjects, gradeLevels, proficiencyLevels, commonLanguages } from '../constants/options';
 import { extractTextFromPDF, adaptMaterialWithClaude } from '../services/claudeService';
 import { getWidaDescriptors } from '../constants/widaData';
@@ -61,6 +61,18 @@ const ELLMaterialAdapter = () => {
   const [translateSummary, setTranslateSummary] = useState(false);
   const [translateInstructions, setTranslateInstructions] = useState(false);
   const [listCognates, setListCognates] = useState(false);
+
+  const handleBilingualSupportChange = (isChecked) => {
+    setIncludeBilingualSupport(isChecked);
+    if (isChecked) {
+      setNativeLanguage('Spanish');
+    } else {
+      setNativeLanguage('');
+      setTranslateSummary(false);
+      setTranslateInstructions(false);
+      setListCognates(false);
+    }
+  };
 
   const isFormValid = useMemo(() => {
     const basicFieldsValid = originalMaterial.trim() && materialType && subject && proficiencyLevel && learningObjectives.trim();
@@ -268,7 +280,7 @@ const ELLMaterialAdapter = () => {
                   type="checkbox"
                   id="bilingual-support"
                   checked={includeBilingualSupport}
-                  onChange={(e) => setIncludeBilingualSupport(e.target.checked)}
+                  onChange={(e) => handleBilingualSupportChange(e.target.checked)}
                   className="mr-3 w-4 h-4 text-blue-600"
                 />
                 <label htmlFor="bilingual-support" className="text-sm font-medium text-gray-700">
