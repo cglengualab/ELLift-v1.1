@@ -1,7 +1,7 @@
 // FileName: src/components/ImageGenerator.jsx
 
 import React, { useState } from 'react';
-import { Palette, Download, Copy, Lightbulb, AlertCircle, CheckCircle } from 'lucide-react';
+import { Palette, Download, Copy, Lightbulb, AlertCircle, CheckCircle, Server } from 'lucide-react';
 import { generateEducationalImage, downloadImage, copyImageToClipboard } from '../services/imageService';
 
 const ImageGenerator = ({ subject, proficiencyLevel }) => {
@@ -94,6 +94,42 @@ const ImageGenerator = ({ subject, proficiencyLevel }) => {
     ]
   };
 
+  const generateImage = async () => {
+    if (!imagePrompt.trim()) {
+      setError('Please enter a description for your image');
+      return;
+    }
+
+    setIsGenerating(true);
+    setError('');
+    setSuccessMessage('');
+
+    try {
+      // Build the enhanced prompt
+      const enhancedPrompt = buildEducationalPrompt(
+        imagePrompt, 
+        imageStyle, 
+        complexity, 
+        includeLabels, 
+        subject, 
+        proficiencyLevel
+      );
+
+      const imageData = await generateEducationalImage(enhancedPrompt);
+      setGeneratedImage(imageData);
+      setSuccessMessage('Image generated successfully!');
+    } catch (err) {
+      // Check if it's a backend connection error
+      if (err.message.includes('fetch') || err.message.includes('Failed to fetch')) {
+        setError('Image generation requires a backend server setup. This feature is currently not available in the frontend-only version.');
+      } else {
+        setError(`Failed to generate image: ${err.message}`);
+      }
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const buildEducationalPrompt = (prompt, style, complexity, labels, subject, level) => {
     let enhancedPrompt = `Educational illustration for ${level} level ${subject} students: ${prompt}. `;
     
@@ -127,37 +163,6 @@ const ImageGenerator = ({ subject, proficiencyLevel }) => {
     enhancedPrompt += 'White background, high contrast, suitable for printing and projection, educational quality.';
     
     return enhancedPrompt;
-  };
-
-  const generateImage = async () => {
-    if (!imagePrompt.trim()) {
-      setError('Please enter a description for your image');
-      return;
-    }
-
-    setIsGenerating(true);
-    setError('');
-    setSuccessMessage('');
-
-    try {
-      // Build the enhanced prompt
-      const enhancedPrompt = buildEducationalPrompt(
-        imagePrompt, 
-        imageStyle, 
-        complexity, 
-        includeLabels, 
-        subject, 
-        proficiencyLevel
-      );
-
-      const imageData = await generateEducationalImage(enhancedPrompt);
-      setGeneratedImage(imageData);
-      setSuccessMessage('Image generated successfully!');
-    } catch (err) {
-      setError(`Failed to generate image: ${err.message}`);
-    } finally {
-      setIsGenerating(false);
-    }
   };
 
   const handleDownload = async () => {
@@ -195,6 +200,21 @@ const ImageGenerator = ({ subject, proficiencyLevel }) => {
         AI Image Generator
         <span className="text-sm font-normal text-purple-600">for Visual Learning Supports</span>
       </h2>
+
+      {/* Backend Required Notice */}
+      <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+        <div className="flex items-center gap-2 mb-2">
+          <Server className="w-5 h-5 text-amber-600" />
+          <h3 className="font-medium text-amber-800">Backend Server Required</h3>
+        </div>
+        <p className="text-sm text-amber-700 mb-2">
+          The image generation feature requires a backend server to securely handle API keys. 
+          This protects your OpenAI API credentials from being exposed in the frontend code.
+        </p>
+        <p className="text-sm text-amber-700">
+          <strong>For now, you can:</strong> Use the text adaptation features, and consider setting up a backend server later for image generation.
+        </p>
+      </div>
       
       {/* Main Prompt Input */}
       <div className="mb-4">
@@ -212,6 +232,7 @@ const ImageGenerator = ({ subject, proficiencyLevel }) => {
 - A timeline showing the American Revolution events
 - Geometric shapes arranged in a pattern"
           className="input-field h-32"
+          disabled={true}
         />
       </div>
 
@@ -222,12 +243,13 @@ const ImageGenerator = ({ subject, proficiencyLevel }) => {
           {[
             { value: 'educational', label: '📚 Educational', desc: 'Clean diagrams' },
             { value: 'cartoon', label: '🎨 Cartoon', desc: 'Fun illustrations' },
-            { value: 'realistic', label = '📸 Realistic', desc: 'Photo-like images' }
+            { value: 'realistic', label: '📸 Realistic', desc: 'Photo-like images' }
           ].map(style => (
             <button
               key={style.value}
               onClick={() => setImageStyle(style.value)}
-              className={`p-3 rounded-lg border-2 text-center transition-all ${
+              disabled={true}
+              className={`p-3 rounded-lg border-2 text-center transition-all opacity-50 cursor-not-allowed ${
                 imageStyle === style.value
                   ? 'border-purple-500 bg-purple-100 text-purple-700'
                   : 'border-gray-200 bg-white hover:border-purple-300'
@@ -252,7 +274,8 @@ const ImageGenerator = ({ subject, proficiencyLevel }) => {
               <button 
                 key={prompt}
                 onClick={() => setImagePrompt(prompt)}
-                className="text-left p-2 bg-gray-50 rounded text-sm hover:bg-gray-100 transition-colors"
+                disabled={true}
+                className="text-left p-2 bg-gray-50 rounded text-sm opacity-50 cursor-not-allowed"
               >
                 💡 {prompt}
               </button>
@@ -269,6 +292,7 @@ const ImageGenerator = ({ subject, proficiencyLevel }) => {
             value={complexity} 
             onChange={(e) => setComplexity(e.target.value)}
             className="input-field text-sm"
+            disabled={true}
           >
             <option value="simple">Simple & Clear</option>
             <option value="detailed">Rich & Detailed</option>
@@ -280,6 +304,7 @@ const ImageGenerator = ({ subject, proficiencyLevel }) => {
             value={includeLabels} 
             onChange={(e) => setIncludeLabels(e.target.value)}
             className="input-field text-sm"
+            disabled={true}
           >
             <option value="no">No Text (I'll add later)</option>
             <option value="yes">Include Key Labels</option>
@@ -287,91 +312,30 @@ const ImageGenerator = ({ subject, proficiencyLevel }) => {
         </div>
       </div>
 
-      {/* Generate Button */}
+      {/* Generate Button - Disabled */}
       <button
         onClick={generateImage}
-        disabled={isGenerating || !imagePrompt.trim()}
-        className="w-full btn-primary py-3 mb-4 disabled:opacity-50 disabled:cursor-not-allowed"
+        disabled={true}
+        className="w-full btn-primary py-3 mb-4 opacity-50 cursor-not-allowed"
       >
-        {isGenerating ? (
-          <span className="flex items-center justify-center gap-2">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-            Generating Image... (this may take 30 seconds)
-          </span>
-        ) : (
-          <span className="flex items-center justify-center gap-2">
-            <Palette className="w-5 h-5" />
-            Generate Image
-          </span>
-        )}
+        <span className="flex items-center justify-center gap-2">
+          <Palette className="w-5 h-5" />
+          Generate Image (Requires Backend)
+        </span>
       </button>
-
-      {/* Error Display */}
-      {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
-          <p className="text-red-800 text-sm">{error}</p>
-        </div>
-      )}
-
-      {/* Success Display */}
-      {successMessage && (
-        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md flex items-center gap-2">
-          <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
-          <p className="text-green-800 text-sm">{successMessage}</p>
-        </div>
-      )}
-
-      {/* Generated Image Display */}
-      {generatedImage && (
-        <div className="bg-white p-4 rounded-lg border">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-medium">Generated Image:</h3>
-            <button 
-              onClick={clearImage}
-              className="text-gray-400 hover:text-gray-600 text-sm"
-            >
-              ✕ Clear
-            </button>
-          </div>
-          <div className="text-center">
-            <img 
-              src={generatedImage.url} 
-              alt="Generated educational image"
-              className="w-full max-w-md mx-auto rounded-lg shadow-md"
-            />
-            <div className="mt-3 flex gap-2 justify-center">
-              <button 
-                onClick={handleDownload}
-                className="btn-primary px-4 py-2 text-sm flex items-center gap-2"
-              >
-                <Download className="w-4 h-4" />
-                Download
-              </button>
-              <button 
-                onClick={handleCopy}
-                className="btn-secondary px-4 py-2 text-sm flex items-center gap-2"
-              >
-                <Copy className="w-4 h-4" />
-                Copy
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Tips */}
       <div className="mt-4 p-3 bg-blue-50 rounded-lg">
         <h4 className="font-medium text-blue-900 mb-2 flex items-center gap-2">
           <Lightbulb className="w-4 h-4" />
-          Tips for Better Images:
+          Image Generation Ideas:
         </h4>
         <ul className="text-sm text-blue-800 space-y-1">
-          <li>• Be specific about what you want to show</li>
-          <li>• Mention colors, shapes, or arrangements you prefer</li>
-          <li>• Consider your students' proficiency level</li>
-          <li>• Think about how you'll use it (worksheet, poster, presentation)</li>
-          <li>• Simple descriptions often work better than complex ones</li>
+          <li>• Visual vocabulary supports (objects, actions, concepts)</li>
+          <li>• Subject-specific diagrams (science processes, math concepts)</li>
+          <li>• Cultural context images (foods, places, celebrations)</li>
+          <li>• Step-by-step process illustrations</li>
+          <li>• Character emotions and social situations</li>
         </ul>
       </div>
     </div>
