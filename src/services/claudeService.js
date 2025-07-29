@@ -1,4 +1,4 @@
-// FileName: src/services/claudeService.js (Final version with reliable Lesson-Specific Descriptors)
+// FileName: src/services/claudeService.js (Final version with robust delimiter parsing)
 
 // Claude API service functions
 import { extractTextFromPDF as extractPDFText } from './pdfService.js';
@@ -7,6 +7,7 @@ const API_BASE_URL = process.env.NODE_ENV === 'development'
   ? 'http://localhost:3000' 
   : window.location.origin;
 
+// ... (callClaudeAPI, extractTextFromPDF, getProficiencyAdaptations, and buildBilingualInstructions functions are unchanged) ...
 const callClaudeAPI = async (messages, maxTokens = 4000) => {
   const formattedMessages = messages.map(msg => {
     if (typeof msg.content === 'string') {
@@ -104,7 +105,8 @@ export const adaptMaterialWithClaude = async ({
   });
   const proficiencyAdaptations = getProficiencyAdaptations(proficiencyLevel);
 
-  const prompt = `You are an expert in English Language Learning (ELL) pedagogy and curriculum adaptation. Your task is to adapt the following material for an ELL student.
+  // --- THE PROMPT IS NOW MUCH SIMPLER ---
+  const prompt = `You are an expert in English Language Learning (ELL) pedagogy and curriculum adaptation. Your task is to generate three distinct pieces of text based on the original material provided.
 
   **ORIGINAL MATERIAL DETAILS:**
   - Material Type: ${materialType}
@@ -117,32 +119,31 @@ export const adaptMaterialWithClaude = async ({
   ${contentToAdapt}
   \`\`\`
 
-  **ADAPTATION REQUIREMENTS:**
-  1.  **Worksheet Structure:** Create a student worksheet with the following sections in this exact order: Title, Background Knowledge, Key Vocabulary, Pre-Reading Activity, Reading Text, Comprehension Activities, and an optional Extension activity.
-  2.  **Background Knowledge:** Create a short, simple section with 2-3 bullet points of essential background information a student needs before reading.
-  3.  **Key Vocabulary:** Select 3-5 of the most important vocabulary words from the original text. Provide simple, student-friendly definitions.
-  4.  **Pre-Reading Activity:** Create a short, interactive activity to engage the student before they read.
-  5.  **Reading Text:**
-      - Simplify the original text to be appropriate for the target WIDA level.
-      - Break long paragraphs into smaller, more manageable chunks.
-      - If the text contains a list of items or observations, format them as a bulleted list.
-      - **Crucially, find the words from your 'Key Vocabulary' section within this simplified text and make them bold using Markdown (**word**).**
-  6.  **Comprehension Activities & Charts:** For any activity that requires a chart or table, you MUST format it for the student worksheet as a **series of bolded headings, each followed by a bulleted list.**
-  7.  **Teacher Guide Content:** Create a teacher guide that includes: A COMPLETE ANSWER KEY, LESSON PREPARATION & PACING, OBJECTIVES, SUPPORTS, and ADAPTATIONS.
+  **TASK:**
+  Generate three pieces of content in order: the Student Worksheet, the Teacher's Guide, and the Lesson-Specific Descriptors. You MUST separate each of the three pieces of content with the exact delimiter: |||---SPLIT---|||
+
+  **PART 1: Student Worksheet**
+  Generate the complete student worksheet based on all the ADAPTATION REQUIREMENTS listed below. The output for this part must be a single block of text formatted in GitHub Flavored Markdown.
+
+  **PART 2: Teacher's Guide**
+  Generate the complete teacher's guide based on all the ADAPTATION REQUIREMENTS. The output for this part must be a single block of plain text.
+
+  **PART 3: Lesson-Specific "Can Do" Descriptors**
+  Generate a valid JSON object for the dynamic WIDA descriptors. This object must have a "title" and a "descriptors" array. The output for this part must be only the JSON object.
+
+  **ADAPTATION REQUIREMENTS (Apply these to the content you generate):**
+  1.  **Worksheet Structure:** ...
+  2.  **Background Knowledge:** ...
+  3.  **Key Vocabulary:** ...
+  4.  **Pre-Reading Activity:** ...
+  5.  **Reading Text:** ...
+  6.  **Comprehension Activities & Charts:** Use a series of bolded headings and bulleted lists for any chart-like activities.
+  7.  **Teacher Guide Content:** Must contain: A COMPLETE ANSWER KEY, LESSON PREPARATION & PACING, OBJECTIVES, SUPPORTS, and ADAPTATIONS.
   
   ${bilingualInstructions}
 
   **SPECIFIC ADAPTATIONS FOR ${proficiencyLevel.toUpperCase()} LEVEL:**
   ${proficiencyAdaptations}
-
-  CRUCIAL FINAL INSTRUCTION: Your response MUST begin with the character '{' and end with the character '}'. The entire output must be only the raw JSON.
-
-  **REQUIRED OUTPUT FORMAT:**
-  Your entire response must be a single, valid JSON object with three top-level keys: "studentWorksheet", "teacherGuide", and "dynamicWidaDescriptors".
-
-  - "studentWorksheet" value: A single string containing the complete student worksheet, formatted using simple GitHub Flavored Markdown.
-  - "teacherGuide" value: A single string containing all the pedagogical notes for the teacher, structured in the specific order previously instructed. This should be plain text.
-  - **"dynamicWidaDescriptors" value**: This MUST be a JSON object with a "title" and a "descriptors" array. The "descriptors" array MUST contain 3-5 observable, lesson-specific "Can Do" statements that are directly tied to the activities in the student worksheet.
   `;
 
   const data = await callClaudeAPI([
@@ -152,13 +153,31 @@ export const adaptMaterialWithClaude = async ({
     }
   ], 4000);
 
+  // --- THIS LOGIC IS NEW AND MORE ROBUST ---
   try {
-    const parsedData = JSON.parse(data.content[0].text);
-    return parsedData;
-  } catch (e) {
-    console.error("Failed to parse Claude's JSON response. This is a critical error.", e);
+    // Get the entire raw text response from the AI
     const rawResponse = data.content[0].text;
-    console.log("RAW AI Response that failed parsing:", rawResponse);
-    throw new Error(`The AI returned an invalid format. The raw response started with: "${rawResponse.substring(0, 200)}..."`);
+
+    // Split the response into three parts using our special delimiter
+    const parts = rawResponse.split('|||---SPLIT---|||');
+
+    if (parts.length < 3) {
+      console.error("AI response did not contain the expected number of parts.", parts);
+      throw new Error("The AI returned a response in an unexpected structure.");
+    }
+    
+    // Assemble our own, guaranteed-valid JSON object
+    const structuredData = {
+      studentWorksheet: parts[0].trim(),
+      teacherGuide: parts[1].trim(),
+      dynamicWidaDescriptors: JSON.parse(parts[2].trim()) // We only parse the small, simple JSON part
+    };
+
+    return structuredData;
+  } catch (e) {
+    console.error("Final parsing/splitting failed. This is a critical error.", e);
+    const rawResponse = data.content[0].text;
+    console.log("RAW AI Response that failed:", rawResponse);
+    throw new Error(`There was a critical error processing the AI's response.`);
   }
 };
