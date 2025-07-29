@@ -9,7 +9,7 @@ import LoadingSpinner from './LoadingSpinner';
 import ErrorAlert from './ErrorAlert';
 import WidaCard from './WidaCard';
 import DynamicWidaCard from './DynamicWidaCard';
-import GenerateImageButton from './GenerateImageButton'; // <-- NEW IMPORT
+import GenerateImageButton from './GenerateImageButton';
 
 // This reusable component is for the single set of action buttons
 const ActionButtons = ({ adaptMaterial, clearAll, isLoading, isFormValid }) => {
