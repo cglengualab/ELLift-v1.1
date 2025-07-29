@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo, useRef } from 'react';
 import { FileText, Users, BookOpen, ClipboardList, Download, Upload, File, AlertCircle, Book, Target } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import rehypeRaw from 'rehype-raw'; // <-- The missing import
+import rehypeRaw from 'rehype-raw';
 import { materialTypes, subjects, gradeLevels, proficiencyLevels, commonLanguages } from '../constants/options';
 import { extractTextFromPDF, adaptMaterialWithClaude } from '../services/claudeService';
 import { getWidaDescriptors } from '../constants/widaData';
@@ -58,6 +58,7 @@ const ELLMaterialAdapter = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const worksheetRef = useRef(null);
+  const teacherGuideRef = useRef(null);
   const [translateSummary, setTranslateSummary] = useState(false);
   const [translateInstructions, setTranslateInstructions] = useState(false);
   const [listCognates, setListCognates] = useState(false);
@@ -162,33 +163,33 @@ const ELLMaterialAdapter = () => {
     setTranslateInstructions(false);
     setListCognates(false);
   }, []);
-
-  const copyToClipboard = useCallback(async () => {
-    if (!worksheetRef.current) {
-      setError('Could not copy content.');
-      return;
-    }
+  
+  const copyStudentWorksheet = useCallback(async () => {
+    if (!worksheetRef.current) return;
     try {
       const htmlContent = worksheetRef.current.innerHTML;
-      const styles = `
-        <style>
-          h1 { text-align: center; font-size: 24px; font-weight: bold; margin-bottom: 20px; }
-          h2 { font-size: 18px; font-weight: bold; font-style: italic; margin-top: 24px; margin-bottom: 12px; }
-          p, li { font-size: 14px; line-height: 1.5; }
-          strong { font-weight: bold; }
-        </style>
-      `;
+      const styles = `<style>h1 { text-align: center; font-size: 24px; font-weight: bold; margin-bottom: 20px; } h2 { font-size: 18px; font-weight: bold; font-style: italic; margin-top: 24px; margin-bottom: 12px; } p, li { font-size: 14px; line-height: 1.5; } strong { font-weight: bold; }</style>`;
       const fullHtml = `<html><head>${styles}</head><body>${htmlContent}</body></html>`;
       const blob = new Blob([fullHtml], { type: 'text/html' });
-      await navigator.clipboard.write([
-        new ClipboardItem({
-          [blob.type]: blob
-        })
-      ]);
-      setProcessingStep('Formatted text copied to clipboard!');
+      await navigator.clipboard.write([ new ClipboardItem({ [blob.type]: blob }) ]);
+      setProcessingStep('Worksheet copied to clipboard!');
       setTimeout(() => setProcessingStep(''), 2000);
     } catch (err) {
-      console.error('Failed to copy rich text:', err);
+      setError('Failed to copy formatted text.');
+    }
+  }, []);
+
+  const copyTeacherGuide = useCallback(async () => {
+    if (!teacherGuideRef.current) return;
+    try {
+      const htmlContent = teacherGuideRef.current.innerHTML;
+      const styles = `<style>h1 { text-align: center; font-size: 24px; font-weight: bold; margin-bottom: 20px; } h2 { font-size: 18px; font-weight: bold; font-style: italic; margin-top: 24px; margin-bottom: 12px; } p, li { font-size: 14px; line-height: 1.5; } strong { font-weight: bold; }</style>`;
+      const fullHtml = `<html><head>${styles}</head><body>${htmlContent}</body></html>`;
+      const blob = new Blob([fullHtml], { type: 'text/html' });
+      await navigator.clipboard.write([ new ClipboardItem({ [blob.type]: blob }) ]);
+      setProcessingStep("Teacher's Guide copied to clipboard!");
+      setTimeout(() => setProcessingStep(''), 2000);
+    } catch (err) {
       setError('Failed to copy formatted text.');
     }
   }, []);
@@ -439,11 +440,11 @@ const ELLMaterialAdapter = () => {
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="section-header text-green-800">Adapted Student Material</h2>
                   <button
-                    onClick={copyToClipboard}
+                    onClick={copyStudentWorksheet}
                     className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 transition-colors"
                   >
                     <ClipboardList className="w-4 h-4" />
-                    Copy Formatted Text
+                    Copy Worksheet
                   </button>
                 </div>
                 <div ref={worksheetRef} className="bg-white p-6 rounded-md border border-green-200 h-96 overflow-y-auto custom-scrollbar prose max-w-full">
@@ -457,11 +458,16 @@ const ELLMaterialAdapter = () => {
                     <Book className="w-6 h-6"/>
                     Teacher's Guide
                   </h2>
+                   <button
+                    onClick={copyTeacherGuide}
+                    className="flex items-center gap-2 px-4 py-2 bg-slate-600 text-white text-sm rounded-md hover:bg-slate-700 transition-colors"
+                  >
+                    <ClipboardList className="w-4 h-4" />
+                    Copy Guide
+                  </button>
                 </div>
-                <div className="bg-white p-6 rounded-md border border-slate-200 max-h-96 overflow-y-auto custom-scrollbar">
-                  <pre className="whitespace-pre-wrap text-sm text-gray-800 font-sans leading-relaxed">
-                    {teacherGuide}
-                  </pre>
+                <div ref={teacherGuideRef} className="bg-white p-6 rounded-md border border-slate-200 max-h-96 overflow-y-auto custom-scrollbar prose max-w-full">
+                   <ReactMarkdown rehypePlugins={[rehypeRaw]}>{teacherGuide}</ReactMarkdown>
                 </div>
               </div>
 
