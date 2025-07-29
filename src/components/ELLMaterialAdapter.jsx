@@ -9,6 +9,7 @@ import LoadingSpinner from './LoadingSpinner';
 import ErrorAlert from './ErrorAlert';
 import WidaCard from './WidaCard';
 import DynamicWidaCard from './DynamicWidaCard';
+import ImageGenerator from './ImageGenerator';
 
 // Enhanced status indicator component
 const StatusIndicator = ({ processingStep, error, success }) => {
@@ -715,46 +716,55 @@ const ELLMaterialAdapter = () => {
          )}
        </div>
 
-       <div className="xl:col-span-3">
-         <div className="card bg-yellow-50 border-yellow-200">
-           <h3 className="font-semibold text-yellow-800 mb-3 flex items-center gap-2">
-             💡 Tips for Best Results
-           </h3>
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
-             <div className="text-sm text-yellow-700 space-y-2">
-               <div className="flex items-start gap-2">
-                 <span className="font-bold text-yellow-800">📄 PDF uploads:</span>
-                 <span>Works best with text-based PDFs (not scanned images)</span>
-               </div>
-               <div className="flex items-start gap-2">
-                 <span className="font-bold text-yellow-800">🎯 Learning objectives:</span>
-                 <span>Be specific about what students should learn for better adaptation</span>
-               </div>
-               <div className="flex items-start gap-2">
-                 <span className="font-bold text-yellow-800">📊 WIDA levels:</span>
-                 <span>Choose the level that best matches your students' current abilities</span>
-               </div>
-             </div>
-             <div className="text-sm text-yellow-700 space-y-2">
-               <div className="flex items-start gap-2">
-                 <span className="font-bold text-yellow-800">🌍 Bilingual support:</span>
-                 <span>Optional translations help bridge language gaps</span>
-               </div>
-               <div className="flex items-start gap-2">
-                 <span className="font-bold text-yellow-800">✏️ Edit text:</span>
-                 <span>You can modify extracted PDF text before adapting</span>
-               </div>
-               <div className="flex items-start gap-2">
-                 <span className="font-bold text-yellow-800">🔍 Review output:</span>
-                 <span>Always check adapted content for accuracy and appropriateness</span>
-               </div>
-             </div>
-           </div>
-         </div>
-       </div>
-     </div>
-   </div>
- );
+       {/* Tips Section */}
+        <div className="xl:col-span-3">
+          <div className="card bg-yellow-50 border-yellow-200">
+            <h3 className="font-semibold text-yellow-800 mb-3 flex items-center gap-2">
+              💡 Tips for Best Results
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
+              <div className="text-sm text-yellow-700 space-y-2">
+                <div className="flex items-start gap-2">
+                  <span className="font-bold text-yellow-800">📄 PDF uploads:</span>
+                  <span>Works best with text-based PDFs (not scanned images)</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="font-bold text-yellow-800">🎯 Learning objectives:</span>
+                  <span>Be specific about what students should learn for better adaptation</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="font-bold text-yellow-800">📊 WIDA levels:</span>
+                  <span>Choose the level that best matches your students' current abilities</span>
+                </div>
+              </div>
+              <div className="text-sm text-yellow-700 space-y-2">
+                <div className="flex items-start gap-2">
+                  <span className="font-bold text-yellow-800">🌍 Bilingual support:</span>
+                  <span>Optional translations help bridge language gaps</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="font-bold text-yellow-800">✏️ Edit text:</span>
+                  <span>You can modify extracted PDF text before adapting</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="font-bold text-yellow-800">🔍 Review output:</span>
+                  <span>Always check adapted content for accuracy and appropriateness</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Image Generator Section - NEW! */}
+        <div className="xl:col-span-3">
+          <ImageGenerator 
+            subject={subject} 
+            proficiencyLevel={proficiencyLevel} 
+          />
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default ELLMaterialAdapter;
