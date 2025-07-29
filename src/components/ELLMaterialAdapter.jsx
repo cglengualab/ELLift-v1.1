@@ -62,9 +62,7 @@ const ELLMaterialAdapter = () => {
   const [translateSummary, setTranslateSummary] = useState(false);
   const [translateInstructions, setTranslateInstructions] = useState(false);
   const [listCognates, setListCognates] = useState(false);
-
-  // --- NEW STATE FOR IEP ACCOMMODATIONS ---
-  const [worksheetLength, setWorksheetLength] = useState('Medium'); // Default to Medium
+  const [worksheetLength, setWorksheetLength] = useState('Medium');
   const [addStudentChecklist, setAddStudentChecklist] = useState(false);
   const [useMultipleChoice, setUseMultipleChoice] = useState(false);
 
@@ -131,7 +129,6 @@ const ELLMaterialAdapter = () => {
         translateSummary,
         translateInstructions,
         listCognates,
-        // --- PASSING NEW IEP OPTIONS TO THE API ---
         worksheetLength,
         addStudentChecklist,
         useMultipleChoice
@@ -148,7 +145,7 @@ const ELLMaterialAdapter = () => {
       setProcessingStep('');
     }
     setIsLoading(false);
-  }, [originalMaterial, materialType, subject, gradeLevel, proficiencyLevel, learningObjectives, includeBilingualSupport, nativeLanguage, translateSummary, translateInstructions, listCognates, worksheetLength, addStudentChecklist, useMultipleChoice]); // --- ADDED DEPENDENCIES ---
+  }, [originalMaterial, materialType, subject, gradeLevel, proficiencyLevel, learningObjectives, includeBilingualSupport, nativeLanguage, translateSummary, translateInstructions, listCognates, worksheetLength, addStudentChecklist, useMultipleChoice]);
 
   const clearAll = useCallback(() => {
     setOriginalMaterial('');
@@ -171,7 +168,6 @@ const ELLMaterialAdapter = () => {
     setTranslateSummary(false);
     setTranslateInstructions(false);
     setListCognates(false);
-    // --- RESETTING NEW IEP STATE ---
     setWorksheetLength('Medium');
     setAddStudentChecklist(false);
     setUseMultipleChoice(false);
@@ -330,7 +326,6 @@ const ELLMaterialAdapter = () => {
               )}
             </div>
             
-            {/* --- NEW SECTION FOR IEP ACCOMMODATIONS --- */}
             <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
               <h3 className="text-sm font-medium text-gray-800 mb-3">Additional Accommodations</h3>
               <div className="space-y-3">
@@ -352,7 +347,6 @@ const ELLMaterialAdapter = () => {
                 </div>
               </div>
             </div>
-            {/* --- END OF NEW SECTION --- */}
             
             {processingStep && (
               <div className="mt-4 p-3 bg-blue-100 text-blue-800 rounded-md text-sm font-medium">
@@ -367,15 +361,74 @@ const ELLMaterialAdapter = () => {
             <h2 className="section-header text-gray-800">Original Material</h2>
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-3">How would you like to add your material?</label>
-              <div className="grid grid-cols-2 gap-3">{/*...*/}</div>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setInputMethod('text')}
+                  className={`p-3 rounded-lg border-2 transition-all ${
+                    inputMethod === 'text'
+                      ? 'border-blue-500 bg-blue-100 text-blue-700'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-blue-300'
+                  }`}
+                >
+                  <FileText className="w-5 h-5 mx-auto mb-1" />
+                  <div className="text-sm font-medium">Type/Paste Text</div>
+                </button>
+                <button
+                  onClick={() => setInputMethod('upload')}
+                  className={`p-3 rounded-lg border-2 transition-all ${
+                    inputMethod === 'upload'
+                      ? 'border-blue-500 bg-blue-100 text-blue-700'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-blue-300'
+                  }`}
+                >
+                  <Upload className="w-5 h-5 mx-auto mb-1" />
+                  <div className="text-sm font-medium">Upload PDF</div>
+                </button>
+              </div>
             </div>
-            {inputMethod === 'upload' && (<div className="mb-4">{/*...*/}</div>)}
+            {inputMethod === 'upload' && (
+              <div className="mb-4">
+                <div className="border-2 border-dashed border-blue-300 rounded-lg p-4 text-center bg-blue-50">
+                  {uploadedFile ? (
+                    <div className="space-y-2">
+                      <File className="w-8 h-8 text-green-500 mx-auto" />
+                      <p className="text-sm font-medium text-gray-900">{uploadedFile.name}</p>
+                      <button onClick={removeFile} className="text-xs text-red-600 hover:text-red-800">
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <Upload className="w-8 h-8 text-blue-400 mx-auto" />
+                      <input type="file" accept=".pdf" onChange={handleFileUpload} className="hidden" id="pdf-upload" />
+                      <label htmlFor="pdf-upload" className="inline-flex items-center btn-primary cursor-pointer text-sm py-2 px-3">
+                        Choose PDF
+                      </label>
+                    </div>
+                  )}
+                </div>
+                {uploadedFile && extractedText && (
+                  <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-md">
+                    <p className="text-xs text-green-800 font-medium">✅ Text extracted and added below</p>
+                  </div>
+                )}
+              </div>
+            )}
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Material Content *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Material Content *
+                {uploadedFile && extractedText && (
+                  <span className="text-blue-600 text-xs ml-2">(from PDF)</span>
+                )}
+              </label>
               <textarea
                 value={originalMaterial}
                 onChange={(e) => setOriginalMaterial(e.target.value)}
-                placeholder="Enter your lesson material..."
+                placeholder={
+                  inputMethod === 'upload' 
+                    ? "Upload a PDF above to extract text here..." 
+                    : "Enter your lesson material, quiz questions, worksheet content..."
+                }
                 className="input-field h-96 resize-none custom-scrollbar"
               />
             </div>
@@ -393,7 +446,10 @@ const ELLMaterialAdapter = () => {
               <div className="card bg-green-50 border-green-200">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="section-header text-green-800">Adapted Student Material</h2>
-                  <button onClick={copyStudentWorksheet} className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 transition-colors">
+                  <button
+                    onClick={copyStudentWorksheet}
+                    className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 transition-colors"
+                  >
                     <ClipboardList className="w-4 h-4" />
                     Copy Formatted Text
                   </button>
@@ -409,7 +465,10 @@ const ELLMaterialAdapter = () => {
                     <Book className="w-6 h-6"/>
                     Teacher's Guide
                   </h2>
-                   <button onClick={copyTeacherGuide} className="flex items-center gap-2 px-4 py-2 bg-slate-600 text-white text-sm rounded-md hover:bg-slate-700 transition-colors">
+                   <button
+                    onClick={copyTeacherGuide}
+                    className="flex items-center gap-2 px-4 py-2 bg-slate-600 text-white text-sm rounded-md hover:bg-slate-700 transition-colors"
+                  >
                     <ClipboardList className="w-4 h-4" />
                     Copy Guide
                   </button>
@@ -419,8 +478,12 @@ const ELLMaterialAdapter = () => {
                 </div>
               </div>
 
-              {dynamicDescriptors && ( <DynamicWidaCard data={dynamicDescriptors} /> )}
-              {widaDescriptors && ( <WidaCard descriptors={widaDescriptors} /> )}
+              {dynamicDescriptors && (
+                <DynamicWidaCard data={dynamicDescriptors} />
+              )}
+              {widaDescriptors && (
+                <WidaCard descriptors={widaDescriptors} />
+              )}
             </>
           )}
         </div>
