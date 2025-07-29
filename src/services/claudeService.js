@@ -1,4 +1,4 @@
-// FileName: src/services/claudeService.js (Final version with delays for stability)
+// FileName: src/services/claudeService.js (Final version with independent parallel prompts)
 
 // Claude API service functions
 import { extractTextFromPDF as extractPDFText } from './pdfService.js';
@@ -6,9 +6,6 @@ import { extractTextFromPDF as extractPDFText } from './pdfService.js';
 const API_BASE_URL = process.env.NODE_ENV === 'development' 
   ? 'http://localhost:3000' 
   : window.location.origin;
-
-// --- NEW: A helper function to create a short pause ---
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 const callClaudeAPI = async (messages, maxTokens = 4000) => {
   const formattedMessages = messages.map(msg => {
@@ -157,23 +154,27 @@ const createStudentWorksheetPrompt = (details) => {
   Provide ONLY the raw Markdown for the student worksheet, and nothing else.`;
 };
 
-const createTeacherGuidePrompt = (details, studentWorksheet) => {
-  const { bilingualInstructions, subjectAwareInstructions } = details;
-  return `You are an expert ELL curriculum adapter. Your task is to generate a teacher's guide for the student worksheet provided below.
+const createTeacherGuidePrompt = (details) => {
+  const { materialType, subject, gradeLevel, proficiencyLevel, learningObjectives, contentToAdapt, bilingualInstructions, subjectAwareInstructions, iepInstructions } = details;
+  return `You are an expert ELL curriculum adapter. Based on the original material below, your task is to generate ONLY a teacher's guide.
 
-  **STUDENT WORKSHEET CONTENT TO CREATE A GUIDE FOR:**
-  \`\`\`
-  ${studentWorksheet}
-  \`\`\`
+  **ORIGINAL MATERIAL DETAILS:**
+  - Material Type: ${materialType}
+  - Subject: ${subject}
+  - Grade Level: ${gradeLevel || 'not specified'}
+  - WIDA Level: ${proficiencyLevel}
+  - Learning Objectives: ${learningObjectives}
+  - Original Text: \`\`\`${contentToAdapt}\`\`\`
 
   ${subjectAwareInstructions}
+  ${iepInstructions}
 
   **TASK:**
-  Generate a complete teacher's guide in GitHub Flavored Markdown. **Your primary task is to create a complete Answer Key for ALL activities from the worksheet.**
+  Generate a complete teacher's guide in GitHub Flavored Markdown.
+  - Your primary task is to create a complete Answer Key for the student activities that would be generated from this original material.
   - After the Answer Key, create a "Lesson Preparation & Pacing" section, highlighting materials with <mark> tags.
   - Then, list the Content and ELL Language Objectives.
   - Then, list the ELL Supports Included.
-  - **CRUCIAL:** Do NOT repeat or copy the student worksheet content. Your purpose is to provide the answers and pedagogical notes FOR the worksheet.
   ${bilingualInstructions}
 
   Provide ONLY the raw Markdown for the teacher's guide, and nothing else.`;
@@ -215,34 +216,24 @@ export const adaptMaterialWithClaude = async (params) => {
   const promptDetails = { ...params, subjectAwareInstructions, proficiencyAdaptations, bilingualInstructions, iepInstructions };
   
   try {
-    // --- THIS IS THE FINAL, SEQUENTIAL LOGIC WITH DELAYS ---
+    // --- THIS IS THE FINAL, INDEPENDENT PARALLEL LOGIC ---
+    console.log("Requesting all three parts in parallel...");
     
-    // STEP 1: Get the Student Worksheet
-    console.log("Step 1: Requesting Student Worksheet...");
     const worksheetPrompt = createStudentWorksheetPrompt(promptDetails);
-    const worksheetResult = await callClaudeAPI([{ role: 'user', content: worksheetPrompt }]);
-    const studentWorksheet = worksheetResult.content[0].text;
-    console.log("Step 1: Student Worksheet received.");
-
-    await delay(1500); // Wait for 1.5 seconds before the next request
-
-    // STEP 2: Get the Teacher's Guide
-    console.log("Step 2: Requesting Teacher's Guide...");
-    const guidePrompt = createTeacherGuidePrompt(promptDetails, studentWorksheet);
-    const guideResult = await callClaudeAPI([{ role: 'user', content: guidePrompt }]);
-    const teacherGuide = guideResult.content[0].text;
-    console.log("Step 2: Teacher's Guide received.");
-    
-    await delay(1000); // Wait for 1 second before the next request
-
-    // STEP 3: Get the Descriptors
-    console.log("Step 3: Requesting Descriptors...");
+    const guidePrompt = createTeacherGuidePrompt(promptDetails);
     const descriptorsPrompt = createDynamicDescriptorsPrompt(promptDetails);
-    const descriptorsResult = await callClaudeAPI([{ role: 'user', content: descriptorsPrompt }], 500);
-    const dynamicWidaDescriptors = JSON.parse(descriptorsResult.content[0].text);
-    console.log("Step 3: Descriptors received.");
 
-    // STEP 4: Assemble and return the final object
+    const [worksheetResult, guideResult, descriptorsResult] = await Promise.all([
+      callClaudeAPI([{ role: 'user', content: worksheetPrompt }]),
+      callClaudeAPI([{ role: 'user', content: guidePrompt }]),
+      callClaudeAPI([{ role: 'user', content: descriptorsPrompt }], 500)
+    ]);
+    
+    const studentWorksheet = worksheetResult.content[0].text;
+    const teacherGuide = guideResult.content[0].text;
+    const dynamicWidaDescriptors = JSON.parse(descriptorsResult.content[0].text);
+    console.log("All three parts received and processed.");
+
     return {
       studentWorksheet,
       teacherGuide,
