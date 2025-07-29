@@ -1,4 +1,4 @@
-// FileName: src/services/claudeService.js (Corrected version with restored bilingual features)
+//  FileName: src/services/claudeService.js (Corrected version with restored bilingual features)
 
 // Claude API service functions
 import { extractTextFromPDF as extractPDFText } from './pdfService.js';
