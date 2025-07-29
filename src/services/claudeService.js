@@ -132,7 +132,7 @@ const createStudentAndDescriptorsPrompt = (details) => {
   Generate a complete student worksheet formatted in simple GitHub Flavored Markdown.
   - Structure: Title, Background Knowledge, Key Vocabulary, Pre-Reading Activity, Reading Text, Comprehension Activities.
   - Apply all subject-aware rules, IEP accommodations, and bilingual supports as instructed.
-  - CRUCIAL: You MUST write out all practice problems. Do NOT summarize.
+  - **CRUCIAL:** You MUST write out all practice problems. Do NOT summarize or use phrases like "[Continue in same format]". You must generate the complete, usable worksheet.
 
   **PART 2: LESSON-SPECIFIC DESCRIPTORS**
   Generate a valid JSON object with a "title" and a "descriptors" array of 3-5 observable "Can Do" statements for this lesson.
