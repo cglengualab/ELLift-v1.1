@@ -1,4 +1,4 @@
-//  FileName: src/services/claudeService.js (Corrected version with restored bilingual features)
+// FileName: src/services/claudeService.js (Updated to request Markdown for Teacher's Guide)
 
 // Claude API service functions
 import { extractTextFromPDF as extractPDFText } from './pdfService.js';
@@ -38,7 +38,6 @@ export const extractTextFromPDF = async (file, setProcessingStep) => {
   }
 };
 
-// --- THIS IS THE RESTORED, FULLY-FEATURED BILINGUAL HELPER FUNCTION ---
 const buildBilingualInstructions = ({
   includeBilingualSupport,
   nativeLanguage,
@@ -70,8 +69,6 @@ const buildBilingualInstructions = ({
 const getProficiencyAdaptations = (proficiencyLevel) => {
   return `Adapt the content to be appropriate for the ${proficiencyLevel} WIDA proficiency level, using research-based ELL best practices.`;
 };
-
-// --- HELPER FUNCTIONS TO BUILD THE THREE SEPARATE PROMPTS ---
 
 const createStudentWorksheetPrompt = (details) => {
   const { materialType, subject, gradeLevel, proficiencyLevel, learningObjectives, contentToAdapt, bilingualInstructions, proficiencyAdaptations } = details;
@@ -111,14 +108,14 @@ const createTeacherGuidePrompt = (details, studentWorksheet) => {
   \`\`\`
 
   **TASK:**
-  Generate a complete teacher's guide as a single block of plain text.
+  Generate a complete teacher's guide as a single block of **GitHub Flavored Markdown**.
   - Create a complete Answer Key for ALL activities on the student worksheet.
   - Create a "Lesson Preparation & Pacing" section.
   - List the Content and ELL Language Objectives.
   - List the ELL Supports Included.
   ${bilingualInstructions}
 
-  Provide ONLY the raw text for the teacher's guide, and nothing else.`;
+  Provide ONLY the raw Markdown for the teacher's guide, and nothing else.`;
 };
 
 const createDynamicDescriptorsPrompt = (details) => {
@@ -143,7 +140,6 @@ const createDynamicDescriptorsPrompt = (details) => {
  * Adapt material using Claude API with a multi-call strategy
  */
 export const adaptMaterialWithClaude = async (params) => {
-  // --- THIS SECTION IS CORRECTED TO USE ALL THE BILINGUAL PROPS ---
   const { proficiencyLevel, includeBilingualSupport, nativeLanguage, translateSummary, translateInstructions, listCognates } = params;
 
   const proficiencyAdaptations = getProficiencyAdaptations(proficiencyLevel);
