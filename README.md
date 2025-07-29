@@ -1,4 +1,4 @@
-# ELL Material Adapter
+ # ELL Material Adapter
 
 A modern web application built with Vite and React that helps teachers adapt classroom materials for English Language Learners (ELL students) using AI-powered content transformation.
 
