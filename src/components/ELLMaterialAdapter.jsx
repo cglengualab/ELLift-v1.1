@@ -148,7 +148,7 @@ const ELLMaterialAdapter = () => {
   const [teacherGuide, setTeacherGuide] = useState('');
   const [widaDescriptors, setWidaDescriptors] = useState(null);
   const [dynamicDescriptors, setDynamicDescriptors] = useState(null);
-  const [imagePrompts, setImagePrompts] = useState(null); // NEW!
+  const [imagePrompts, setImagePrompts] = useState(null);
   
   // Refs for copying content
   const worksheetRef = useRef(null);
@@ -273,7 +273,7 @@ const ELLMaterialAdapter = () => {
       setStudentWorksheet(adaptedData.studentWorksheet);
       setTeacherGuide(adaptedData.teacherGuide);
       setDynamicDescriptors(adaptedData.dynamicWidaDescriptors);
-      setImagePrompts(adaptedData.imagePrompts); // NEW!
+      setImagePrompts(adaptedData.imagePrompts);
 
       const generalDescriptors = getWidaDescriptors(proficiencyLevel, subject, gradeLevel);
       setWidaDescriptors(generalDescriptors);
@@ -315,7 +315,7 @@ const ELLMaterialAdapter = () => {
     setTeacherGuide('');
     setWidaDescriptors(null);
     setDynamicDescriptors(null);
-    setImagePrompts(null); // NEW!
+    setImagePrompts(null);
     setMaterialType('');
     setSubject('');
     setGradeLevel('');
@@ -661,11 +661,11 @@ const ELLMaterialAdapter = () => {
                 </p>
               </div>
             )}
-          </div>
-          
-          <ActionButtons 
-            adaptMaterial={adaptMaterial}
-            clearAll={clearAll}
+            </div>
+         
+         <ActionButtons 
+           adaptMaterial={adaptMaterial}
+           clearAll={clearAll}
            isLoading={isLoading}
            isFormValid={validationStatus.isValid}
            hasResults={hasResults}
@@ -708,51 +708,6 @@ const ELLMaterialAdapter = () => {
                  <ReactMarkdown rehypePlugins={[rehypeRaw]}>{teacherGuide}</ReactMarkdown>
               </div>
             </div>
-
-            {/* AI Image Prompts Section - NEW! */}
-            {imagePrompts && imagePrompts.imagePrompts && imagePrompts.imagePrompts.length > 0 && (
-              <div className="card bg-indigo-50 border-indigo-200">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="section-header text-indigo-800 flex items-center gap-2">
-                    <Palette className="w-6 h-6" />
-                    AI Image Prompts
-                    <span className="text-sm font-normal text-indigo-600">Ready to copy & paste</span>
-                  </h2>
-                </div>
-                <div className="space-y-4">
-                  <p className="text-sm text-indigo-700 mb-4">
-                    Based on your teacher's guide, here are AI image prompts you can copy and paste into any AI image generator:
-                  </p>
-                  {imagePrompts.imagePrompts.map((prompt, index) => (
-                    <div key={index} className="bg-white p-4 rounded-lg border border-indigo-200">
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="font-medium text-indigo-900">{prompt.title}</h3>
-                        <button
-                          onClick={() => {
-                            navigator.clipboard.writeText(prompt.prompt);
-                            setSuccessMessage('Image prompt copied to clipboard!');
-                          }}
-                          className="text-xs bg-indigo-600 text-white px-3 py-1 rounded hover:bg-indigo-700 transition-colors"
-                        >
-                          📋 Copy
-                        </button>
-                      </div>
-                      <div className="bg-gray-50 p-3 rounded text-sm font-mono text-gray-800 mb-2">
-                        {prompt.prompt}
-                      </div>
-                      <p className="text-xs text-indigo-600">
-                        <strong>Usage:</strong> {prompt.usage}
-                      </p>
-                    </div>
-                  ))}
-                  <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                    <p className="text-sm text-blue-800">
-                      💡 <strong>Tip:</strong> You can paste these prompts into ChatGPT, DALL-E, Midjourney, or your ELLift image generator below!
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {dynamicDescriptors && (
               <DynamicWidaCard data={dynamicDescriptors} />
@@ -803,13 +758,81 @@ const ELLMaterialAdapter = () => {
          </div>
        </div>
 
-       {/* Image Generator Section */}
-       <div className="xl:col-span-3">
-         <ImageGenerator 
-           subject={subject} 
-           proficiencyLevel={proficiencyLevel} 
-         />
-       </div>
+       {/* Bottom Section: AI Image Tools - Side by Side */}
+       {hasResults && (
+         <div className="xl:col-span-3">
+           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+             
+             {/* Left: AI Image Prompts */}
+             <div className="lg:col-span-1">
+               {imagePrompts && imagePrompts.imagePrompts && imagePrompts.imagePrompts.length > 0 && (
+                 <div className="card bg-indigo-50 border-indigo-200">
+                   <div className="flex items-center justify-between mb-4">
+                     <h2 className="section-header text-indigo-800 flex items-center gap-2">
+                       <Palette className="w-6 h-6" />
+                       AI Image Prompts
+                       <span className="text-sm font-normal text-indigo-600">Ready to copy & paste</span>
+                     </h2>
+                   </div>
+                   <div className="space-y-4">
+                     <p className="text-sm text-indigo-700 mb-4">
+                       Based on your teacher's guide, here are AI image prompts you can copy and paste into any AI image generator:
+                     </p>
+                     <div className="max-h-96 overflow-y-auto custom-scrollbar space-y-3">
+                       {imagePrompts.imagePrompts.map((prompt, index) => (
+                         <div key={index} className="bg-white p-4 rounded-lg border border-indigo-200">
+                           <div className="flex items-center justify-between mb-2">
+                             <h3 className="font-medium text-indigo-900 text-sm">{prompt.title}</h3>
+                             <button
+                               onClick={() => {
+                                 navigator.clipboard.writeText(prompt.prompt);
+                                 setSuccessMessage('Image prompt copied to clipboard!');
+                               }}
+                               className="text-xs bg-indigo-600 text-white px-3 py-1 rounded hover:bg-indigo-700 transition-colors flex-shrink-0"
+                             >
+                               📋 Copy
+                             </button>
+                           </div>
+                           <div className="bg-gray-50 p-3 rounded text-xs font-mono text-gray-800 mb-2 max-h-24 overflow-y-auto custom-scrollbar">
+                             {prompt.prompt}
+                           </div>
+                           <p className="text-xs text-indigo-600">
+                             <strong>Usage:</strong> {prompt.usage}
+                           </p>
+                         </div>
+                       ))}
+                     </div>
+                     <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                       <p className="text-sm text-blue-800">
+                         💡 <strong>Tip:</strong> Copy these prompts and paste them into ChatGPT, DALL-E, Midjourney, or the image generator on the right!
+                       </p>
+                     </div>
+                   </div>
+                 </div>
+               )}
+             </div>
+
+             {/* Right: Image Generator */}
+             <div className="lg:col-span-1">
+               <ImageGenerator 
+                 subject={subject} 
+                 proficiencyLevel={proficiencyLevel} 
+               />
+             </div>
+             
+           </div>
+         </div>
+       )}
+
+       {/* Image Generator Section (when no results yet) */}
+       {!hasResults && (
+         <div className="xl:col-span-3">
+           <ImageGenerator 
+             subject={subject} 
+             proficiencyLevel={proficiencyLevel} 
+           />
+         </div>
+       )}
      </div>
    </div>
  );
