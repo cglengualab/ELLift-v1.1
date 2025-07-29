@@ -1,4 +1,4 @@
-// FileName: src/services/claudeService.js (Updated to highlight teacher materials)
+// FileName: src/services/claudeService.js (Final version with Subject-Aware instructions)
 
 // Claude API service functions
 import { extractTextFromPDF as extractPDFText } from './pdfService.js';
@@ -70,8 +70,39 @@ const getProficiencyAdaptations = (proficiencyLevel) => {
   return `Adapt the content to be appropriate for the ${proficiencyLevel} WIDA proficiency level, using research-based ELL best practices.`;
 };
 
+// --- NEW HELPER FUNCTION FOR SUBJECT-AWARE INSTRUCTIONS ---
+const getSubjectAwareInstructions = (subject, proficiencyLevel) => {
+  const mathAndScience = ['Mathematics', 'Algebra', 'Geometry', 'Science', 'Chemistry', 'Physics', 'Biology'];
+  const elaAndSocial = ['English Language Arts', 'History', 'Social Studies'];
+
+  if (mathAndScience.includes(subject)) {
+    return `
+      **CRITICAL SUBJECT RULE: PRESERVE CORE PROBLEMS**
+      - For this ${subject} material, you MUST NOT change or alter the core numbers, equations, variables, or logic of the exercises.
+      - Your task is to add scaffolding and support **AROUND** the original problems (e.g., simplifying wordy instructions, pre-teaching vocabulary, providing visual aids) but the problems themselves must remain unchanged to ensure the teacher's answer key remains valid.
+    `;
+  }
+
+  if (elaAndSocial.includes(subject)) {
+    if (['bridging', 'reaching'].includes(proficiencyLevel)) {
+      return `
+        **CRITICAL SUBJECT RULE: PRESERVE AUTHOR'S VOICE**
+        - For this high-level ELA/Social Studies material, prioritize preserving the original author's tone and voice.
+        - Do not oversimplify. Focus on defining high-level academic or figurative language and clarifying only the most complex sentence structures. The student must engage with the text in a near-native form.
+      `;
+    }
+    return `
+      **CRITICAL SUBJECT RULE: SIMPLIFY AND REPHRASE**
+      - For this ${subject} material, your primary task is to simplify and rephrase complex reading passages to make them more accessible.
+      - Chunk the text into smaller paragraphs and adapt analytical questions with appropriate scaffolds.
+    `;
+  }
+
+  return ''; // Default case, no special instructions
+};
+
 const createStudentWorksheetPrompt = (details) => {
-  const { materialType, subject, gradeLevel, proficiencyLevel, learningObjectives, contentToAdapt, bilingualInstructions, proficiencyAdaptations } = details;
+  const { materialType, subject, gradeLevel, proficiencyLevel, learningObjectives, contentToAdapt, bilingualInstructions, proficiencyAdaptations, subjectAwareInstructions } = details;
   return `You are an expert ELL curriculum adapter. Your task is to generate ONLY a student-facing worksheet.
   
   **DETAILS:**
@@ -81,6 +112,8 @@ const createStudentWorksheetPrompt = (details) => {
   - WIDA Level: ${proficiencyLevel}
   - Learning Objectives: ${learningObjectives}
 
+  ${subjectAwareInstructions}
+
   **ORIGINAL MATERIAL:**
   \`\`\`
   ${contentToAdapt}
@@ -89,7 +122,7 @@ const createStudentWorksheetPrompt = (details) => {
   **TASK:**
   Generate a complete student worksheet formatted in simple GitHub Flavored Markdown.
   - Structure the worksheet with sections like Title, Background Knowledge, Key Vocabulary, Pre-Reading Activity, Reading Text, and Comprehension Activities.
-  - Simplify the text, create interactive activities, and use scaffolds like sentence frames.
+  - Simplify the text and create interactive activities based on the subject-specific rules above.
   - For any chart-like activities, use a series of bolded headings and bulleted lists.
   - Use **bold** for key terms from the vocabulary list within the reading text.
   ${bilingualInstructions}
@@ -98,9 +131,8 @@ const createStudentWorksheetPrompt = (details) => {
   Provide ONLY the raw Markdown for the student worksheet, and nothing else.`;
 };
 
-// --- THIS IS THE MODIFIED PROMPT HELPER ---
 const createTeacherGuidePrompt = (details, studentWorksheet) => {
-  const { bilingualInstructions } = details;
+  const { bilingualInstructions, subjectAwareInstructions } = details;
   return `You are an expert ELL curriculum adapter. Your task is to generate ONLY a teacher's guide for the provided student worksheet.
 
   **STUDENT WORKSHEET CONTENT:**
@@ -108,10 +140,12 @@ const createTeacherGuidePrompt = (details, studentWorksheet) => {
   ${studentWorksheet}
   \`\`\`
 
+  ${subjectAwareInstructions}
+
   **TASK:**
-  Generate a complete teacher's guide as a single block of **GitHub Flavored Markdown**.
+  Generate a complete teacher's guide as a single block of GitHub Flavored Markdown.
   - Create a complete Answer Key for ALL activities on the student worksheet.
-  - Create a "Lesson Preparation & Pacing" section. In this section, whenever you mention a specific material the teacher needs to prepare (like a picture, chart, or vocabulary cards), you MUST wrap that item in an HTML <mark> tag. Example: - Materials: <mark>Picture of the modern White House</mark>
+  - Create a "Lesson Preparation & Pacing" section, highlighting materials with <mark> tags.
   - List the Content and ELL Language Objectives.
   - List the ELL Supports Included.
   ${bilingualInstructions}
@@ -136,12 +170,14 @@ const createDynamicDescriptorsPrompt = (details) => {
   `;
 };
 
-
 /**
  * Adapt material using Claude API with a multi-call strategy
  */
 export const adaptMaterialWithClaude = async (params) => {
-  const { proficiencyLevel, includeBilingualSupport, nativeLanguage, translateSummary, translateInstructions, listCognates } = params;
+  const { subject, proficiencyLevel, includeBilingualSupport, nativeLanguage, translateSummary, translateInstructions, listCognates } = params;
+
+  // --- NEW: Generate the subject-aware instructions first ---
+  const subjectAwareInstructions = getSubjectAwareInstructions(subject, proficiencyLevel);
 
   const proficiencyAdaptations = getProficiencyAdaptations(proficiencyLevel);
   const bilingualInstructions = buildBilingualInstructions({
@@ -152,7 +188,7 @@ export const adaptMaterialWithClaude = async (params) => {
     listCognates
   });
   
-  const promptDetails = { ...params, proficiencyAdaptations, bilingualInstructions };
+  const promptDetails = { ...params, subjectAwareInstructions, proficiencyAdaptations, bilingualInstructions };
   
   try {
     console.log("Requesting Student Worksheet...");
