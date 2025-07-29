@@ -58,7 +58,7 @@ const ELLMaterialAdapter = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const worksheetRef = useRef(null);
-  const teacherGuideRef = useRef(null);
+  const teacherGuideRef = useRef(null); // <-- ADDED
   const [translateSummary, setTranslateSummary] = useState(false);
   const [translateInstructions, setTranslateInstructions] = useState(false);
   const [listCognates, setListCognates] = useState(false);
@@ -76,10 +76,11 @@ const ELLMaterialAdapter = () => {
   };
 
   const isFormValid = useMemo(() => {
-    const basicFieldsValid = originalMaterial.trim() && materialType && subject && proficiencyLevel && learningObjectives.trim();
+    // MODIFIED to make learning objectives optional
+    const basicFieldsValid = originalMaterial.trim() && materialType && subject && proficiencyLevel;
     const bilingualValid = !includeBilingualSupport || nativeLanguage;
     return basicFieldsValid && bilingualValid;
-  }, [originalMaterial, materialType, subject, proficiencyLevel, learningObjectives, includeBilingualSupport, nativeLanguage]);
+  }, [originalMaterial, materialType, subject, proficiencyLevel, includeBilingualSupport, nativeLanguage]);
 
   const handleFileUpload = useCallback(async (event) => {
     const file = event.target.files[0];
@@ -109,8 +110,9 @@ const ELLMaterialAdapter = () => {
 
   const adaptMaterial = useCallback(async () => {
     const contentToAdapt = originalMaterial;
-    if (!contentToAdapt.trim() || !materialType || !subject || !proficiencyLevel || !learningObjectives.trim()) {
-      setError('Please fill in all required fields including learning objectives');
+    // MODIFIED to remove learning objectives from validation
+    if (!contentToAdapt.trim() || !materialType || !subject || !proficiencyLevel) {
+      setError('Please fill in all required fields');
       return;
     }
     if (includeBilingualSupport && !nativeLanguage) {
@@ -163,7 +165,7 @@ const ELLMaterialAdapter = () => {
     setTranslateInstructions(false);
     setListCognates(false);
   }, []);
-  
+
   const copyStudentWorksheet = useCallback(async () => {
     if (!worksheetRef.current) return;
     try {
@@ -256,8 +258,8 @@ const ELLMaterialAdapter = () => {
 
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Content Learning Objectives *
-                <span className="text-xs text-gray-500 block mt-1">What should students learn?</span>
+                Content Learning Objectives
+                <span className="text-xs text-gray-500 block mt-1">What should students learn? (Optional)</span>
               </label>
               <textarea
                 value={learningObjectives}
