@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
-import { FileText, Users, BookOpen, ClipboardList, Download, Upload, File, AlertCircle, Book, Target, CheckCircle, XCircle } from 'lucide-react';
+import { FileText, Users, BookOpen, ClipboardList, Download, Upload, File, AlertCircle, Book, Target, CheckCircle, XCircle, Palette } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import { materialTypes, subjects, gradeLevels, proficiencyLevels, commonLanguages } from '../constants/options';
@@ -148,6 +148,7 @@ const ELLMaterialAdapter = () => {
   const [teacherGuide, setTeacherGuide] = useState('');
   const [widaDescriptors, setWidaDescriptors] = useState(null);
   const [dynamicDescriptors, setDynamicDescriptors] = useState(null);
+  const [imagePrompts, setImagePrompts] = useState(null); // NEW!
   
   // Refs for copying content
   const worksheetRef = useRef(null);
@@ -272,6 +273,7 @@ const ELLMaterialAdapter = () => {
       setStudentWorksheet(adaptedData.studentWorksheet);
       setTeacherGuide(adaptedData.teacherGuide);
       setDynamicDescriptors(adaptedData.dynamicWidaDescriptors);
+      setImagePrompts(adaptedData.imagePrompts); // NEW!
 
       const generalDescriptors = getWidaDescriptors(proficiencyLevel, subject, gradeLevel);
       setWidaDescriptors(generalDescriptors);
@@ -313,6 +315,7 @@ const ELLMaterialAdapter = () => {
     setTeacherGuide('');
     setWidaDescriptors(null);
     setDynamicDescriptors(null);
+    setImagePrompts(null); // NEW!
     setMaterialType('');
     setSubject('');
     setGradeLevel('');
@@ -663,108 +666,153 @@ const ELLMaterialAdapter = () => {
           <ActionButtons 
             adaptMaterial={adaptMaterial}
             clearAll={clearAll}
-            isLoading={isLoading}
-            isFormValid={validationStatus.isValid}
-            hasResults={hasResults}
-          />
+           isLoading={isLoading}
+           isFormValid={validationStatus.isValid}
+           hasResults={hasResults}
+         />
 
-          {studentWorksheet && (
-            <>
-              <div className="card bg-green-50 border-green-200">
-               <div className="flex items-center justify-between mb-4">
-                 <h2 className="section-header text-green-800 flex items-center gap-2">
-                   <BookOpen className="w-6 h-6" />
-                   Adapted Student Material
-                 </h2>
-                 <CopyButton
-                   onClick={copyStudentWorksheet}
-                   label="Worksheet"
-                   isLoading={isLoading}
-                   className="bg-green-600 hover:bg-green-700"
-                 />
-               </div>
-               <div ref={worksheetRef} className="bg-white p-6 rounded-md border border-green-200 h-96 overflow-y-auto custom-scrollbar prose max-w-full">
-                 <ReactMarkdown rehypePlugins={[rehypeRaw]}>{studentWorksheet}</ReactMarkdown>
-               </div>
-             </div>
-
-             <div className="card bg-slate-50 border-slate-200">
-               <div className="flex items-center justify-between mb-4">
-                 <h2 className="section-header text-slate-800 flex items-center gap-2">
-                   <Book className="w-6 h-6"/>
-                   Teacher's Guide
-                 </h2>
-                 <CopyButton
-                   onClick={copyTeacherGuide}
-                   label="Guide"
-                   isLoading={isLoading}
-                   className="bg-slate-600 hover:bg-slate-700"
-                 />
-               </div>
-               <div ref={teacherGuideRef} className="bg-white p-6 rounded-md border border-slate-200 max-h-96 overflow-y-auto custom-scrollbar prose max-w-full">
-                  <ReactMarkdown rehypePlugins={[rehypeRaw]}>{teacherGuide}</ReactMarkdown>
-               </div>
-             </div>
-
-             {dynamicDescriptors && (
-               <DynamicWidaCard data={dynamicDescriptors} />
-             )}
-             {widaDescriptors && (
-               <WidaCard descriptors={widaDescriptors} />
-             )}
-           </>
-         )}
-       </div>
-
-       {/* Tips Section */}
-        <div className="xl:col-span-3">
-          <div className="card bg-yellow-50 border-yellow-200">
-            <h3 className="font-semibold text-yellow-800 mb-3 flex items-center gap-2">
-              💡 Tips for Best Results
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
-              <div className="text-sm text-yellow-700 space-y-2">
-                <div className="flex items-start gap-2">
-                  <span className="font-bold text-yellow-800">📄 PDF uploads:</span>
-                  <span>Works best with text-based PDFs (not scanned images)</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="font-bold text-yellow-800">🎯 Learning objectives:</span>
-                  <span>Be specific about what students should learn for better adaptation</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="font-bold text-yellow-800">📊 WIDA levels:</span>
-                  <span>Choose the level that best matches your students' current abilities</span>
-                </div>
+         {studentWorksheet && (
+           <>
+             <div className="card bg-green-50 border-green-200">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="section-header text-green-800 flex items-center gap-2">
+                  <BookOpen className="w-6 h-6" />
+                  Adapted Student Material
+                </h2>
+                <CopyButton
+                  onClick={copyStudentWorksheet}
+                  label="Worksheet"
+                  isLoading={isLoading}
+                  className="bg-green-600 hover:bg-green-700"
+                />
               </div>
-              <div className="text-sm text-yellow-700 space-y-2">
-                <div className="flex items-start gap-2">
-                  <span className="font-bold text-yellow-800">🌍 Bilingual support:</span>
-                  <span>Optional translations help bridge language gaps</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="font-bold text-yellow-800">✏️ Edit text:</span>
-                  <span>You can modify extracted PDF text before adapting</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="font-bold text-yellow-800">🔍 Review output:</span>
-                  <span>Always check adapted content for accuracy and appropriateness</span>
-                </div>
+              <div ref={worksheetRef} className="bg-white p-6 rounded-md border border-green-200 h-96 overflow-y-auto custom-scrollbar prose max-w-full">
+                <ReactMarkdown rehypePlugins={[rehypeRaw]}>{studentWorksheet}</ReactMarkdown>
               </div>
             </div>
-          </div>
-        </div>
 
-        {/* Image Generator Section - NEW! */}
-        <div className="xl:col-span-3">
-          <ImageGenerator 
-            subject={subject} 
-            proficiencyLevel={proficiencyLevel} 
-          />
-        </div>
+            <div className="card bg-slate-50 border-slate-200">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="section-header text-slate-800 flex items-center gap-2">
+                  <Book className="w-6 h-6"/>
+                  Teacher's Guide
+                </h2>
+                <CopyButton
+                  onClick={copyTeacherGuide}
+                  label="Guide"
+                  isLoading={isLoading}
+                  className="bg-slate-600 hover:bg-slate-700"
+                />
+              </div>
+              <div ref={teacherGuideRef} className="bg-white p-6 rounded-md border border-slate-200 max-h-96 overflow-y-auto custom-scrollbar prose max-w-full">
+                 <ReactMarkdown rehypePlugins={[rehypeRaw]}>{teacherGuide}</ReactMarkdown>
+              </div>
+            </div>
+
+            {/* AI Image Prompts Section - NEW! */}
+            {imagePrompts && imagePrompts.imagePrompts && imagePrompts.imagePrompts.length > 0 && (
+              <div className="card bg-indigo-50 border-indigo-200">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="section-header text-indigo-800 flex items-center gap-2">
+                    <Palette className="w-6 h-6" />
+                    AI Image Prompts
+                    <span className="text-sm font-normal text-indigo-600">Ready to copy & paste</span>
+                  </h2>
+                </div>
+                <div className="space-y-4">
+                  <p className="text-sm text-indigo-700 mb-4">
+                    Based on your teacher's guide, here are AI image prompts you can copy and paste into any AI image generator:
+                  </p>
+                  {imagePrompts.imagePrompts.map((prompt, index) => (
+                    <div key={index} className="bg-white p-4 rounded-lg border border-indigo-200">
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="font-medium text-indigo-900">{prompt.title}</h3>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(prompt.prompt);
+                            setSuccessMessage('Image prompt copied to clipboard!');
+                          }}
+                          className="text-xs bg-indigo-600 text-white px-3 py-1 rounded hover:bg-indigo-700 transition-colors"
+                        >
+                          📋 Copy
+                        </button>
+                      </div>
+                      <div className="bg-gray-50 p-3 rounded text-sm font-mono text-gray-800 mb-2">
+                        {prompt.prompt}
+                      </div>
+                      <p className="text-xs text-indigo-600">
+                        <strong>Usage:</strong> {prompt.usage}
+                      </p>
+                    </div>
+                  ))}
+                  <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                    <p className="text-sm text-blue-800">
+                      💡 <strong>Tip:</strong> You can paste these prompts into ChatGPT, DALL-E, Midjourney, or your ELLift image generator below!
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {dynamicDescriptors && (
+              <DynamicWidaCard data={dynamicDescriptors} />
+            )}
+            {widaDescriptors && (
+              <WidaCard descriptors={widaDescriptors} />
+            )}
+          </>
+        )}
       </div>
-    </div>
-  );
+
+      {/* Tips Section */}
+       <div className="xl:col-span-3">
+         <div className="card bg-yellow-50 border-yellow-200">
+           <h3 className="font-semibold text-yellow-800 mb-3 flex items-center gap-2">
+             💡 Tips for Best Results
+           </h3>
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
+             <div className="text-sm text-yellow-700 space-y-2">
+               <div className="flex items-start gap-2">
+                 <span className="font-bold text-yellow-800">📄 PDF uploads:</span>
+                 <span>Works best with text-based PDFs (not scanned images)</span>
+               </div>
+               <div className="flex items-start gap-2">
+                 <span className="font-bold text-yellow-800">🎯 Learning objectives:</span>
+                 <span>Be specific about what students should learn for better adaptation</span>
+               </div>
+               <div className="flex items-start gap-2">
+                 <span className="font-bold text-yellow-800">📊 WIDA levels:</span>
+                 <span>Choose the level that best matches your students' current abilities</span>
+               </div>
+             </div>
+             <div className="text-sm text-yellow-700 space-y-2">
+               <div className="flex items-start gap-2">
+                 <span className="font-bold text-yellow-800">🌍 Bilingual support:</span>
+                 <span>Optional translations help bridge language gaps</span>
+               </div>
+               <div className="flex items-start gap-2">
+                 <span className="font-bold text-yellow-800">✏️ Edit text:</span>
+                 <span>You can modify extracted PDF text before adapting</span>
+               </div>
+               <div className="flex items-start gap-2">
+                 <span className="font-bold text-yellow-800">🔍 Review output:</span>
+                 <span>Always check adapted content for accuracy and appropriateness</span>
+               </div>
+             </div>
+           </div>
+         </div>
+       </div>
+
+       {/* Image Generator Section */}
+       <div className="xl:col-span-3">
+         <ImageGenerator 
+           subject={subject} 
+           proficiencyLevel={proficiencyLevel} 
+         />
+       </div>
+     </div>
+   </div>
+ );
 };
 
 export default ELLMaterialAdapter;
