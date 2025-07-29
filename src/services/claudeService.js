@@ -1,4 +1,4 @@
-// FileName: src/services/claudeService.js (Updated to request Markdown for Teacher's Guide)
+// FileName: src/services/claudeService.js (Updated to highlight teacher materials)
 
 // Claude API service functions
 import { extractTextFromPDF as extractPDFText } from './pdfService.js';
@@ -98,6 +98,7 @@ const createStudentWorksheetPrompt = (details) => {
   Provide ONLY the raw Markdown for the student worksheet, and nothing else.`;
 };
 
+// --- THIS IS THE MODIFIED PROMPT HELPER ---
 const createTeacherGuidePrompt = (details, studentWorksheet) => {
   const { bilingualInstructions } = details;
   return `You are an expert ELL curriculum adapter. Your task is to generate ONLY a teacher's guide for the provided student worksheet.
@@ -110,7 +111,7 @@ const createTeacherGuidePrompt = (details, studentWorksheet) => {
   **TASK:**
   Generate a complete teacher's guide as a single block of **GitHub Flavored Markdown**.
   - Create a complete Answer Key for ALL activities on the student worksheet.
-  - Create a "Lesson Preparation & Pacing" section.
+  - Create a "Lesson Preparation & Pacing" section. In this section, whenever you mention a specific material the teacher needs to prepare (like a picture, chart, or vocabulary cards), you MUST wrap that item in an HTML <mark> tag. Example: - Materials: <mark>Picture of the modern White House</mark>
   - List the Content and ELL Language Objectives.
   - List the ELL Supports Included.
   ${bilingualInstructions}
