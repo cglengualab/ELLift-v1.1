@@ -1,42 +1,152 @@
-// FileName: src/services/claudeService.js (Definitive version with correct sequential logic and delays)
+// FileName: src/services/claudeService.js (Enhanced version with improvements)
 
 // Claude API service functions
 import { extractTextFromPDF as extractPDFText } from './pdfService.js';
+
+// Configuration constants
+const CONFIG = {
+  DELAYS: {
+    BETWEEN_CALLS: 1000,
+    RETRY_DELAY: 2000
+  },
+  TOKENS: {
+    DEFAULT_MAX: 4000,
+    EXTENDED_MAX: 6000
+  },
+  DELIMITERS: {
+    SPLIT_MARKER: '|||---SPLIT---|||'
+  },
+  API: {
+    MAX_RETRIES: 3,
+    TIMEOUT: 30000
+  }
+};
+
+// Subject groupings
+const SUBJECT_GROUPS = {
+  MATH_SCIENCE: ['Mathematics', 'Algebra', 'Geometry', 'Science', 'Chemistry', 'Physics', 'Biology'],
+  ELA_SOCIAL: ['English Language Arts', 'History', 'Social Studies']
+};
 
 const API_BASE_URL = process.env.NODE_ENV === 'development' 
   ? 'http://localhost:3000' 
   : window.location.origin;
 
+// Custom error class for better error handling
+class ClaudeAPIError extends Error {
+  constructor(message, status = null, details = null) {
+    super(message);
+    this.name = 'ClaudeAPIError';
+    this.status = status;
+    this.details = details;
+  }
+}
+
+// Utility functions
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-const callClaudeAPI = async (messages, maxTokens = 4000) => {
+const validateAdaptationParams = (params) => {
+  const required = ['subject', 'proficiencyLevel', 'contentToAdapt'];
+  const missing = required.filter(field => !params[field]);
+  
+  if (missing.length > 0) {
+    throw new ClaudeAPIError(`Missing required parameters: ${missing.join(', ')}`);
+  }
+};
+
+const validateSplitResponse = (parts, expectedParts = 2) => {
+  if (parts.length < expectedParts) {
+    throw new ClaudeAPIError(`Expected ${expectedParts} parts in response, got ${parts.length}`);
+  }
+  
+  if (parts.some(part => !part.trim())) {
+    throw new ClaudeAPIError('One or more response parts are empty');
+  }
+  
+  return parts.map(part => part.trim());
+};
+
+const sanitizeInput = (text) => {
+  if (typeof text !== 'string') return text;
+  
+  // Basic sanitization - remove potential script tags and excessive whitespace
+  return text
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
+// Enhanced API call with retry logic
+const callClaudeAPIWithRetry = async (messages, maxTokens = CONFIG.TOKENS.DEFAULT_MAX, maxRetries = CONFIG.API.MAX_RETRIES) => {
   const formattedMessages = messages.map(msg => {
     if (typeof msg.content === 'string') {
-      return { role: msg.role, content: msg.content };
+      return { role: msg.role, content: sanitizeInput(msg.content) };
     }
     return msg;
   });
   
-  const response = await fetch(`${API_BASE_URL}/api/claude`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages: formattedMessages, max_tokens: maxTokens })
-  });
-  
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-    throw new Error(errorData.error || `API request failed: ${response.status}`);
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), CONFIG.API.TIMEOUT);
+      
+      const response = await fetch(`${API_BASE_URL}/api/claude`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          messages: formattedMessages, 
+          max_tokens: maxTokens 
+        }),
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new ClaudeAPIError(
+          errorData.error || `API request failed: ${response.status}`,
+          response.status,
+          errorData
+        );
+      }
+      
+      return await response.json();
+      
+    } catch (error) {
+      console.warn(`API call failed (attempt ${attempt}/${maxRetries}):`, error.message);
+      
+      // Don't retry on certain errors
+      if (error.name === 'AbortError') {
+        throw new ClaudeAPIError('Request timeout', 408, error);
+      }
+      
+      if (error.status === 401 || error.status === 403) {
+        throw error; // Don't retry authentication errors
+      }
+      
+      if (attempt === maxRetries) {
+        throw error;
+      }
+      
+      // Wait before retrying, with exponential backoff
+      await delay(CONFIG.DELAYS.RETRY_DELAY * attempt);
+    }
   }
-  
-  return response.json();
+};
+
+// Original callClaudeAPI function for backward compatibility
+const callClaudeAPI = async (messages, maxTokens = CONFIG.TOKENS.DEFAULT_MAX) => {
+  return callClaudeAPIWithRetry(messages, maxTokens, 1);
 };
 
 export const extractTextFromPDF = async (file, setProcessingStep) => {
   try {
+    setProcessingStep?.('Extracting text from PDF...');
     return await extractPDFText(file, setProcessingStep);
   } catch (error) {
     console.error('PDF extraction error:', error);
-    throw error;
+    throw new ClaudeAPIError('Failed to extract text from PDF', null, error);
   }
 };
 
@@ -73,10 +183,7 @@ const getProficiencyAdaptations = (proficiencyLevel) => {
 };
 
 const getSubjectAwareInstructions = (subject, proficiencyLevel) => {
-  const mathAndScience = ['Mathematics', 'Algebra', 'Geometry', 'Science', 'Chemistry', 'Physics', 'Biology'];
-  const elaAndSocial = ['English Language Arts', 'History', 'Social Studies'];
-
-  if (mathAndScience.includes(subject)) {
+  if (SUBJECT_GROUPS.MATH_SCIENCE.includes(subject)) {
     return `
       **CRITICAL SUBJECT RULE: PRESERVE CORE PROBLEMS**
       - For this ${subject} material, you MUST NOT change or alter the core numbers, equations, variables, or logic of the exercises.
@@ -84,8 +191,8 @@ const getSubjectAwareInstructions = (subject, proficiencyLevel) => {
     `;
   }
 
-  if (elaAndSocial.includes(subject)) {
-    if (['bridging', 'reaching'].includes(proficiencyLevel)) {
+  if (SUBJECT_GROUPS.ELA_SOCIAL.includes(subject)) {
+    if (['bridging', 'reaching'].includes(proficiencyLevel.toLowerCase())) {
       return `
         **CRITICAL SUBJECT RULE: PRESERVE AUTHOR'S VOICE**
         - For this high-level ELA/Social Studies material, prioritize preserving the original author's tone and voice.
@@ -126,7 +233,7 @@ const getIepAccommodationInstructions = ({
 
 const createStudentAndDescriptorsPrompt = (details) => {
   const { materialType, subject, gradeLevel, proficiencyLevel, learningObjectives, contentToAdapt, bilingualInstructions, proficiencyAdaptations, subjectAwareInstructions, iepInstructions } = details;
-  return `You are an expert ELL curriculum adapter. Your task is to generate two distinct pieces of text, separated by the exact delimiter: |||---SPLIT---|||
+  return `You are an expert ELL curriculum adapter. Your task is to generate two distinct pieces of text, separated by the exact delimiter: ${CONFIG.DELIMITERS.SPLIT_MARKER}
 
   **PART 1: STUDENT WORKSHEET**
   Generate a complete student worksheet formatted in simple GitHub Flavored Markdown.
@@ -175,40 +282,67 @@ const createTeacherGuidePrompt = (details, studentWorksheet) => {
 /**
  * Adapt material using Claude API with a multi-call strategy
  */
-export const adaptMaterialWithClaude = async (params) => {
-  const { subject, proficiencyLevel, includeBilingualSupport, nativeLanguage, translateSummary, translateInstructions, listCognates, worksheetLength, addStudentChecklist, useMultipleChoice } = params;
-
-  const subjectAwareInstructions = getSubjectAwareInstructions(subject, proficiencyLevel);
-  const proficiencyAdaptations = getProficiencyAdaptations(proficiencyLevel);
-  const bilingualInstructions = buildBilingualInstructions({
-    includeBilingualSupport, nativeLanguage, translateSummary, translateInstructions, listCognates
-  });
-  const iepInstructions = getIepAccommodationInstructions({
-    worksheetLength, addStudentChecklist, useMultipleChoice
-  });
-  
-  const promptDetails = { ...params, subjectAwareInstructions, proficiencyAdaptations, bilingualInstructions, iepInstructions };
-  
+export const adaptMaterialWithClaude = async (params, setProcessingStep) => {
   try {
-    // STEP 1: Get the Student Worksheet and Descriptors together
-    console.log("Step 1: Requesting Student Worksheet & Descriptors...");
-    const initialPrompt = createStudentAndDescriptorsPrompt(promptDetails);
-    const initialResult = await callClaudeAPI([{ role: 'user', content: initialPrompt }]);
-    const initialParts = initialResult.content[0].text.split('|||---SPLIT---|||');
-    if (initialParts.length < 2) throw new Error("Initial AI response was incomplete.");
+    // Validate input parameters
+    validateAdaptationParams(params);
     
-    const studentWorksheet = initialParts[0].trim();
-    const dynamicWidaDescriptors = JSON.parse(initialParts[1].trim());
+    const { subject, proficiencyLevel, includeBilingualSupport, nativeLanguage, translateSummary, translateInstructions, listCognates, worksheetLength, addStudentChecklist, useMultipleChoice } = params;
+
+    setProcessingStep?.('Preparing adaptation instructions...');
+
+    const subjectAwareInstructions = getSubjectAwareInstructions(subject, proficiencyLevel);
+    const proficiencyAdaptations = getProficiencyAdaptations(proficiencyLevel);
+    const bilingualInstructions = buildBilingualInstructions({
+      includeBilingualSupport, nativeLanguage, translateSummary, translateInstructions, listCognates
+    });
+    const iepInstructions = getIepAccommodationInstructions({
+      worksheetLength, addStudentChecklist, useMultipleChoice
+    });
+    
+    const promptDetails = { ...params, subjectAwareInstructions, proficiencyAdaptations, bilingualInstructions, iepInstructions };
+    
+    // STEP 1: Get the Student Worksheet and Descriptors together
+    setProcessingStep?.('Generating student worksheet and descriptors...');
+    console.log("Step 1: Requesting Student Worksheet & Descriptors...");
+    
+    const initialPrompt = createStudentAndDescriptorsPrompt(promptDetails);
+    const initialResult = await callClaudeAPIWithRetry([{ role: 'user', content: initialPrompt }]);
+    
+    const initialParts = validateSplitResponse(
+      initialResult.content[0].text.split(CONFIG.DELIMITERS.SPLIT_MARKER),
+      2
+    );
+    
+    const studentWorksheet = initialParts[0];
+    let dynamicWidaDescriptors;
+    
+    try {
+      dynamicWidaDescriptors = JSON.parse(initialParts[1]);
+    } catch (parseError) {
+      console.warn('Failed to parse descriptors JSON, using fallback');
+      dynamicWidaDescriptors = {
+        title: `${subject} - ${proficiencyLevel} Level`,
+        descriptors: ["Students can engage with adapted content at their proficiency level"]
+      };
+    }
+    
     console.log("Step 1: Received Student Worksheet & Descriptors.");
 
-    await delay(1000); // Wait 1 second before the next request
+    // Wait between API calls
+    await delay(CONFIG.DELAYS.BETWEEN_CALLS);
 
     // STEP 2: Get the Teacher's Guide
+    setProcessingStep?.('Generating teacher guide...');
     console.log("Step 2: Requesting Teacher's Guide...");
+    
     const guidePrompt = createTeacherGuidePrompt(promptDetails, studentWorksheet);
-    const guideResult = await callClaudeAPI([{ role: 'user', content: guidePrompt }]);
+    const guideResult = await callClaudeAPIWithRetry([{ role: 'user', content: guidePrompt }]);
     const teacherGuide = guideResult.content[0].text;
+    
     console.log("Step 2: Teacher's Guide received.");
+
+    setProcessingStep?.('Finalizing materials...');
 
     // STEP 3: Assemble and return the final object
     return {
@@ -217,8 +351,18 @@ export const adaptMaterialWithClaude = async (params) => {
       dynamicWidaDescriptors,
     };
 
-  } catch (e) {
-    console.error("A critical error occurred in the multi-call process.", e);
-    throw new Error(`A critical error occurred while processing the AI's response.`);
+  } catch (error) {
+    console.error("A critical error occurred in the multi-call process.", error);
+    
+    // Provide more specific error messages
+    if (error instanceof ClaudeAPIError) {
+      throw error;
+    }
+    
+    throw new ClaudeAPIError(
+      `Failed to adapt material: ${error.message}`,
+      null,
+      error
+    );
   }
 };
