@@ -1,4 +1,4 @@
-// FileName: src/services/claudeService.js (Final version with multi-call parallel processing)
+// FileName: src/services/claudeService.js (Corrected version with restored bilingual features)
 
 // Claude API service functions
 import { extractTextFromPDF as extractPDFText } from './pdfService.js';
@@ -38,6 +38,39 @@ export const extractTextFromPDF = async (file, setProcessingStep) => {
   }
 };
 
+// --- THIS IS THE RESTORED, FULLY-FEATURED BILINGUAL HELPER FUNCTION ---
+const buildBilingualInstructions = ({
+  includeBilingualSupport,
+  nativeLanguage,
+  translateSummary,
+  translateInstructions,
+  listCognates
+}) => {
+  if (!includeBilingualSupport || !nativeLanguage) return '';
+
+  let instructions = `\n\n  **BILINGUAL SUPPORT REQUIREMENTS (Language: ${nativeLanguage}):**\n`;
+
+  instructions += `- For each term in the 'Key Vocabulary' section, provide its translation in ${nativeLanguage}. The translation MUST be formatted in parentheses and italics, without the language name. Example: **mansion**: a large house (*mansión*)\n`;
+  
+  if (translateSummary) {
+    instructions += `- At the very top of the 'studentWorksheet' before the title, provide a 1-2 sentence summary of the topic in ${nativeLanguage}.\n`;
+  }
+  
+  if (translateInstructions) {
+    instructions += `- For **every** 'Directions:' line on the student worksheet (including for Pre-Reading, Comprehension, and Extension activities), you MUST insert an HTML line break tag (<br>) immediately after the English text, and then provide the translation in ${nativeLanguage} formatted in italics. Example: Directions: Do this.<br>*Instrucciones: Haz esto.*\n`;
+  }
+  
+  if (listCognates) {
+    instructions += `- In the 'teacherGuide' under 'ELL SUPPORTS INCLUDED', create a 'Cognates to Highlight' list of English/${nativeLanguage} cognates found in the text.\n`;
+  }
+
+  return instructions;
+};
+
+const getProficiencyAdaptations = (proficiencyLevel) => {
+  return `Adapt the content to be appropriate for the ${proficiencyLevel} WIDA proficiency level, using research-based ELL best practices.`;
+};
+
 // --- HELPER FUNCTIONS TO BUILD THE THREE SEPARATE PROMPTS ---
 
 const createStudentWorksheetPrompt = (details) => {
@@ -57,10 +90,11 @@ const createStudentWorksheetPrompt = (details) => {
   \`\`\`
 
   **TASK:**
-  Generate a complete student worksheet. The output for this part must be a single block of text formatted in GitHub Flavored Markdown.
+  Generate a complete student worksheet formatted in simple GitHub Flavored Markdown.
   - Structure the worksheet with sections like Title, Background Knowledge, Key Vocabulary, Pre-Reading Activity, Reading Text, and Comprehension Activities.
-  - Create interactive and varied activities with clear scaffolds.
+  - Simplify the text, create interactive activities, and use scaffolds like sentence frames.
   - For any chart-like activities, use a series of bolded headings and bulleted lists.
+  - Use **bold** for key terms from the vocabulary list within the reading text.
   ${bilingualInstructions}
   ${proficiencyAdaptations}
   
@@ -68,7 +102,7 @@ const createStudentWorksheetPrompt = (details) => {
 };
 
 const createTeacherGuidePrompt = (details, studentWorksheet) => {
-  const { proficiencyLevel, bilingualInstructions } = details;
+  const { bilingualInstructions } = details;
   return `You are an expert ELL curriculum adapter. Your task is to generate ONLY a teacher's guide for the provided student worksheet.
 
   **STUDENT WORKSHEET CONTENT:**
@@ -77,9 +111,9 @@ const createTeacherGuidePrompt = (details, studentWorksheet) => {
   \`\`\`
 
   **TASK:**
-  Generate a complete teacher's guide. The output must be a single block of plain text.
+  Generate a complete teacher's guide as a single block of plain text.
   - Create a complete Answer Key for ALL activities on the student worksheet.
-  - Create a "Lesson Preparation & Pacing" section with materials and timing.
+  - Create a "Lesson Preparation & Pacing" section.
   - List the Content and ELL Language Objectives.
   - List the ELL Supports Included.
   ${bilingualInstructions}
@@ -99,26 +133,9 @@ const createDynamicDescriptorsPrompt = (details) => {
   **LEARNING OBJECTIVES:** ${learningObjectives}
 
   **TASK:**
-  Your response MUST be ONLY a valid JSON object with a "title" and a "descriptors" array. Do not include any other text or explanations.
+  Your response MUST be ONLY a valid JSON object with a "title" and a "descriptors" array.
   Example: {"title": "Lesson-Specific 'Can Do' Descriptors", "descriptors": ["First descriptor.", "Second descriptor."]}
   `;
-};
-
-const buildBilingualInstructions = ({
-  includeBilingualSupport, nativeLanguage, translateInstructions,
-}) => {
-  if (!includeBilingualSupport || !nativeLanguage) return '';
-  let instructions = `\n\n  **BILINGUAL SUPPORT:**\n`;
-  instructions += `- Provide translations for key vocabulary in ${nativeLanguage} in parentheses and italics. Example: (*mansión*)\n`;
-  if (translateInstructions) {
-    instructions += `- Provide translations for activity directions in ${nativeLanguage} using a <br> tag and italics.\n`;
-  }
-  return instructions;
-};
-
-const getProficiencyAdaptations = (proficiencyLevel) => {
-  // This function is simplified for the prompt builders but can be expanded
-  return `Adapt the content to be appropriate for the ${proficiencyLevel} WIDA proficiency level.`;
 };
 
 
@@ -126,43 +143,40 @@ const getProficiencyAdaptations = (proficiencyLevel) => {
  * Adapt material using Claude API with a multi-call strategy
  */
 export const adaptMaterialWithClaude = async (params) => {
-  // Pass all params in a single object for easier management
-  const { proficiencyLevel, includeBilingualSupport, nativeLanguage, translateInstructions } = params;
+  // --- THIS SECTION IS CORRECTED TO USE ALL THE BILINGUAL PROPS ---
+  const { proficiencyLevel, includeBilingualSupport, nativeLanguage, translateSummary, translateInstructions, listCognates } = params;
 
-  // Prepare shared instructions
   const proficiencyAdaptations = getProficiencyAdaptations(proficiencyLevel);
   const bilingualInstructions = buildBilingualInstructions({
     includeBilingualSupport,
     nativeLanguage,
+    translateSummary,
     translateInstructions,
+    listCognates
   });
   
   const promptDetails = { ...params, proficiencyAdaptations, bilingualInstructions };
   
-  // --- THE NEW MULTI-CALL LOGIC ---
   try {
-    // --- STEP 1: Get the Student Worksheet first (this is the appetizer) ---
     console.log("Requesting Student Worksheet...");
     const worksheetPrompt = createStudentWorksheetPrompt(promptDetails);
     const worksheetResult = await callClaudeAPI([{ role: 'user', content: worksheetPrompt }]);
     const studentWorksheet = worksheetResult.content[0].text;
     console.log("Student Worksheet received.");
 
-    // --- STEP 2: Now, get the Teacher's Guide and Descriptors IN PARALLEL (the main course and dessert) ---
     console.log("Requesting Teacher's Guide and Descriptors in parallel...");
-    const guidePrompt = createTeacherGuidePrompt(promptDetails, studentWorksheet); // Pass the worksheet to create the answer key
+    const guidePrompt = createTeacherGuidePrompt(promptDetails, studentWorksheet);
     const descriptorsPrompt = createDynamicDescriptorsPrompt(promptDetails);
 
     const [guideResult, descriptorsResult] = await Promise.all([
       callClaudeAPI([{ role: 'user', content: guidePrompt }]),
-      callClaudeAPI([{ role: 'user', content: descriptorsPrompt }], 500) // Lower max_tokens for this small JSON response
+      callClaudeAPI([{ role: 'user', content: descriptorsPrompt }], 500)
     ]);
     
     const teacherGuide = guideResult.content[0].text;
     const dynamicWidaDescriptors = JSON.parse(descriptorsResult.content[0].text);
     console.log("Teacher's Guide and Descriptors received.");
 
-    // --- STEP 3: Assemble the final, guaranteed-valid object ---
     return {
       studentWorksheet,
       teacherGuide,
