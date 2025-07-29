@@ -1,4 +1,4 @@
-// FileName: src/services/claudeService.js (Definitive version with <br> tag for instructions)
+// FileName: src/services/claudeService.js (Final version with reliable Lesson-Specific Descriptors)
 
 // Claude API service functions
 import { extractTextFromPDF as extractPDFText } from './pdfService.js';
@@ -118,42 +118,31 @@ export const adaptMaterialWithClaude = async ({
   \`\`\`
 
   **ADAPTATION REQUIREMENTS:**
-
   1.  **Worksheet Structure:** Create a student worksheet with the following sections in this exact order: Title, Background Knowledge, Key Vocabulary, Pre-Reading Activity, Reading Text, Comprehension Activities, and an optional Extension activity.
-
   2.  **Background Knowledge:** Create a short, simple section with 2-3 bullet points of essential background information a student needs before reading.
-
   3.  **Key Vocabulary:** Select 3-5 of the most important vocabulary words from the original text. Provide simple, student-friendly definitions.
-
-  4.  **Pre-Reading Activity:** Create a short, interactive activity to engage the student before they read. This could be a vocabulary matching exercise, a "What do you see in this picture?" question, or a quick-sentence completion.
-
+  4.  **Pre-Reading Activity:** Create a short, interactive activity to engage the student before they read.
   5.  **Reading Text:**
       - Simplify the original text to be appropriate for the target WIDA level.
       - Break long paragraphs into smaller, more manageable chunks.
       - If the text contains a list of items or observations, format them as a bulleted list.
       - **Crucially, find the words from your 'Key Vocabulary' section within this simplified text and make them bold using Markdown (**word**).**
-
-  6.  **Comprehension Activities & Charts:** Create a variety of tasks. For any activity that requires a chart or table (like a T-chart or multi-column chart), you MUST format it for the student worksheet as a **series of bolded headings, each followed by a bulleted list for the student to fill in.** DO NOT use Markdown table syntax for the student worksheet, as it is unreliable.
-
-  7.  **Teacher Guide Content:** In a separate document, you will create a teacher guide. This guide must include:
-      - **A COMPLETE ANSWER KEY:** Provide answers for ALL activities on the student worksheet, including pre-reading tasks. For subjective questions, provide sample answers.
-      - **LESSON PREPARATION & PACING:** List necessary materials and suggest a time frame for the lesson.
-      - **OBJECTIVES, SUPPORTS, and ADAPTATIONS:** Write the Content Objectives, ELL Language Objectives, a list of ELL Supports Included, and Assessment Adaptations.
-      - **Teacher's Note for Charts:** In the "ELL SUPPORTS INCLUDED" section of the teacher guide, if you have replaced a table/chart with a "series of lists" on the student worksheet, add a bullet point under a "Teacher's Note" subheading suggesting that they can create a formal table themselves. Provide the recommended column headings for that table.
-
-  8.  **Lesson-Specific Descriptors:** Generate 3-5 observable, lesson-specific "Can Do" descriptors as previously instructed.
+  6.  **Comprehension Activities & Charts:** For any activity that requires a chart or table, you MUST format it for the student worksheet as a **series of bolded headings, each followed by a bulleted list.**
+  7.  **Teacher Guide Content:** Create a teacher guide that includes: A COMPLETE ANSWER KEY, LESSON PREPARATION & PACING, OBJECTIVES, SUPPORTS, and ADAPTATIONS.
   
   ${bilingualInstructions}
 
   **SPECIFIC ADAPTATIONS FOR ${proficiencyLevel.toUpperCase()} LEVEL:**
   ${proficiencyAdaptations}
 
-  **REQUIRED OUTPUT FORMAT:**
-  Your entire response must be a single, valid JSON object, formatted on a single line with no line breaks outside of the string values. It must have three top-level keys: "studentWorksheet", "teacherGuide", and "dynamicWidaDescriptors".
+  CRUCIAL FINAL INSTRUCTION: Your response MUST begin with the character '{' and end with the character '}'. The entire output must be only the raw JSON.
 
-  - **"studentWorksheet" value**: A single string containing the complete student worksheet, formatted using simple GitHub Flavored Markdown (# for title, ## for headings, ** for bold, * for bullets).
-  - **"teacherGuide" value**: A single string containing all teacher-facing material, starting with the ANSWER KEY, followed by LESSON PREPARATION & PACING, and then the objectives and support lists. This should be plain text with newlines represented as \\n.
-  - **"dynamicWidaDescriptors" value**: The JSON object for the lesson-specific descriptors.
+  **REQUIRED OUTPUT FORMAT:**
+  Your entire response must be a single, valid JSON object with three top-level keys: "studentWorksheet", "teacherGuide", and "dynamicWidaDescriptors".
+
+  - "studentWorksheet" value: A single string containing the complete student worksheet, formatted using simple GitHub Flavored Markdown.
+  - "teacherGuide" value: A single string containing all the pedagogical notes for the teacher, structured in the specific order previously instructed. This should be plain text.
+  - **"dynamicWidaDescriptors" value**: This MUST be a JSON object with a "title" and a "descriptors" array. The "descriptors" array MUST contain 3-5 observable, lesson-specific "Can Do" statements that are directly tied to the activities in the student worksheet.
   `;
 
   const data = await callClaudeAPI([
