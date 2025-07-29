@@ -1,4 +1,4 @@
-// FileName: src/services/claudeService.js (Definitive version, forbids summarization)
+// FileName: src/services/claudeService.js (Updated with image prompt generation)
 
 // Claude API service functions
 import { extractTextFromPDF as extractPDFText } from './pdfService.js';
@@ -154,23 +154,28 @@ const createStudentWorksheetPrompt = (details) => {
   Provide ONLY the raw Markdown for the student worksheet, and nothing else.`;
 };
 
-const createTeacherGuidePrompt = (details, studentWorksheet) => {
-  const { bilingualInstructions, subjectAwareInstructions } = details;
-  return `You are an expert ELL curriculum adapter. Your task is to generate ONLY a teacher's guide for the provided student worksheet.
+const createTeacherGuidePrompt = (details) => {
+  const { materialType, subject, gradeLevel, proficiencyLevel, learningObjectives, contentToAdapt, bilingualInstructions, subjectAwareInstructions, iepInstructions } = details;
+  return `You are an expert ELL curriculum adapter. Based on the original material below, your task is to generate ONLY a teacher's guide.
 
-  **STUDENT WORKSHEET CONTENT:**
-  \`\`\`
-  ${studentWorksheet}
-  \`\`\`
+  **ORIGINAL MATERIAL DETAILS:**
+  - Material Type: ${materialType}
+  - Subject: ${subject}
+  - Grade Level: ${gradeLevel || 'not specified'}
+  - WIDA Level: ${proficiencyLevel}
+  - Learning Objectives: ${learningObjectives}
+  - Original Text: \`\`\`${contentToAdapt}\`\`\`
 
   ${subjectAwareInstructions}
+  ${iepInstructions}
 
   **TASK:**
-  Generate a complete teacher's guide as a single block of GitHub Flavored Markdown.
-  - Create a complete Answer Key for ALL activities on the student worksheet.
-  - Create a "Lesson Preparation & Pacing" section, highlighting materials with <mark> tags.
-  - List the Content and ELL Language Objectives.
-  - List the ELL Supports Included.
+  Generate a complete teacher's guide in GitHub Flavored Markdown.
+  - Your primary task is to create a complete Answer Key for the student activities that would be generated from this original material.
+  - After the Answer Key, create a "Lesson Preparation & Pacing" section. In this section, when you mention a visual material the teacher needs to prepare (like a picture, chart, or diagram), you MUST wrap it in an HTML <mark> tag. Inside this tag, you MUST include a 'data-image-prompt' attribute containing a concise, clear prompt for an AI image generator.
+    - Example: <mark data-image-prompt="Photo of the White House in 1842, black and white, historical photo.">a picture of the 1840s White House</mark>
+  - Then, list the Content and ELL Language Objectives.
+  - Then, list the ELL Supports Included.
   ${bilingualInstructions}
 
   Provide ONLY the raw Markdown for the teacher's guide, and nothing else.`;
@@ -212,24 +217,22 @@ export const adaptMaterialWithClaude = async (params) => {
   const promptDetails = { ...params, subjectAwareInstructions, proficiencyAdaptations, bilingualInstructions, iepInstructions };
   
   try {
-    console.log("Requesting Student Worksheet...");
+    console.log("Requesting all three parts in parallel...");
+    
     const worksheetPrompt = createStudentWorksheetPrompt(promptDetails);
-    const worksheetResult = await callClaudeAPI([{ role: 'user', content: worksheetPrompt }]);
-    const studentWorksheet = worksheetResult.content[0].text;
-    console.log("Student Worksheet received.");
-
-    console.log("Requesting Teacher's Guide and Descriptors in parallel...");
-    const guidePrompt = createTeacherGuidePrompt(promptDetails, studentWorksheet);
+    const guidePrompt = createTeacherGuidePrompt(promptDetails);
     const descriptorsPrompt = createDynamicDescriptorsPrompt(promptDetails);
 
-    const [guideResult, descriptorsResult] = await Promise.all([
+    const [worksheetResult, guideResult, descriptorsResult] = await Promise.all([
+      callClaudeAPI([{ role: 'user', content: worksheetPrompt }]),
       callClaudeAPI([{ role: 'user', content: guidePrompt }]),
       callClaudeAPI([{ role: 'user', content: descriptorsPrompt }], 500)
     ]);
     
+    const studentWorksheet = worksheetResult.content[0].text;
     const teacherGuide = guideResult.content[0].text;
     const dynamicWidaDescriptors = JSON.parse(descriptorsResult.content[0].text);
-    console.log("Teacher's Guide and Descriptors received.");
+    console.log("All three parts received and processed.");
 
     return {
       studentWorksheet,
