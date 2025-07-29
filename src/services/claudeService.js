@@ -1,4 +1,4 @@
-// FileName: src/services/claudeService.js (Final version with IEP Accommodations)
+// FileName: src/services/claudeService.js (Updated with image prompt generation)
 
 // Claude API service functions
 import { extractTextFromPDF as extractPDFText } from './pdfService.js';
@@ -100,7 +100,6 @@ const getSubjectAwareInstructions = (subject, proficiencyLevel) => {
   return ''; // Default case, no special instructions
 };
 
-// --- NEW HELPER FUNCTION FOR IEP ACCOMMODATIONS ---
 const getIepAccommodationInstructions = ({
   worksheetLength,
   addStudentChecklist,
@@ -148,12 +147,14 @@ const createStudentWorksheetPrompt = (details) => {
   - Simplify the text and create interactive activities based on the subject-specific rules above.
   - For any chart-like activities, use a series of bolded headings and bulleted lists.
   - Use **bold** for key terms from the vocabulary list within the reading text.
+  - **CRUCIAL:** You MUST write out all practice problems. Do NOT summarize or use phrases like "[Continue in same format]". You must generate the complete, usable worksheet.
   ${bilingualInstructions}
   ${proficiencyAdaptations}
   
   Provide ONLY the raw Markdown for the student worksheet, and nothing else.`;
 };
 
+// --- THIS IS THE MODIFIED PROMPT HELPER ---
 const createTeacherGuidePrompt = (details, studentWorksheet) => {
   const { bilingualInstructions, subjectAwareInstructions } = details;
   return `You are an expert ELL curriculum adapter. Your task is to generate ONLY a teacher's guide for the provided student worksheet.
@@ -168,7 +169,9 @@ const createTeacherGuidePrompt = (details, studentWorksheet) => {
   **TASK:**
   Generate a complete teacher's guide as a single block of GitHub Flavored Markdown.
   - Create a complete Answer Key for ALL activities on the student worksheet.
-  - Create a "Lesson Preparation & Pacing" section, highlighting materials with <mark> tags.
+  - Create a "Lesson Preparation & Pacing" section. In this section, when you mention a visual material the teacher needs to prepare (like a picture, chart, or diagram), you MUST wrap it in an HTML <mark> tag. Inside this tag, you MUST include a 'data-image-prompt' attribute containing a concise, clear prompt for an AI image generator.
+    - Example 1: <mark data-image-prompt="A simple black and white line drawing of a frog's digestive system for labeling.">a diagram of a frog's anatomy</mark>
+    - Example 2: <mark data-image-prompt="Photo of the White House in 1842, black and white, historical photo.">a picture of the 1840s White House</mark>
   - List the Content and ELL Language Objectives.
   - List the ELL Supports Included.
   ${bilingualInstructions}
@@ -193,6 +196,7 @@ const createDynamicDescriptorsPrompt = (details) => {
   `;
 };
 
+
 /**
  * Adapt material using Claude API with a multi-call strategy
  */
@@ -204,7 +208,6 @@ export const adaptMaterialWithClaude = async (params) => {
   const bilingualInstructions = buildBilingualInstructions({
     includeBilingualSupport, nativeLanguage, translateSummary, translateInstructions, listCognates
   });
-  // --- NEW: Generate the IEP accommodation instructions ---
   const iepInstructions = getIepAccommodationInstructions({
     worksheetLength, addStudentChecklist, useMultipleChoice
   });
