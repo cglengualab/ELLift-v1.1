@@ -1,4 +1,4 @@
-// FileName: src/services/claudeService.js (Final version with robust delimiter parsing)
+// FileName: src/services/claudeService.js (Simplified and more robust prompt)
 
 // Claude API service functions
 import { extractTextFromPDF as extractPDFText } from './pdfService.js';
@@ -7,7 +7,6 @@ const API_BASE_URL = process.env.NODE_ENV === 'development'
   ? 'http://localhost:3000' 
   : window.location.origin;
 
-// ... (callClaudeAPI, extractTextFromPDF, getProficiencyAdaptations, and buildBilingualInstructions functions are unchanged) ...
 const callClaudeAPI = async (messages, maxTokens = 4000) => {
   const formattedMessages = messages.map(msg => {
     if (typeof msg.content === 'string') {
@@ -41,41 +40,27 @@ export const extractTextFromPDF = async (file, setProcessingStep) => {
 
 const getProficiencyAdaptations = (proficiencyLevel) => {
   const adaptations = {
-    entering: '- Use very simple sentence structures and present tense\n- Provide extensive visual supports and vocabulary definitions\n- Include picture cues and gesture descriptions\n- Use sentence starters and word banks\n- Focus on key vocabulary with native language cognates when possible',
-    emerging: '- Use simple sentence structures with basic connecting words\n- Provide vocabulary support with examples and visual aids\n- Include graphic organizers and sentence frames\n- Use yes/no and choice questions alongside open-ended ones\n- Provide opportunities for partner work and discussion',
-    developing: '- Use clear sentence structures with some complex sentences\n- Provide moderate vocabulary support with context clues\n- Include sentence frames and transition words\n- Balance receptive and productive language tasks\n- Encourage extended responses with scaffolding',
-    expanding: '- Use varied sentence structures with academic language\n- Provide context for technical vocabulary\n- Include opportunities for academic discourse\n- Encourage critical thinking with language support\n- Use complex texts with strategic supports',
-    bridging: '- Maintain grade-level academic language with strategic supports\n- Provide context for complex concepts and abstract ideas\n- Include opportunities for academic argument and analysis\n- Use sophisticated vocabulary with explanations\n- Prepare students for mainstream academic expectations'
+    entering: '- Use very simple sentence structures and present tense...',
+    emerging: '- Use simple sentence structures with basic connecting words...',
+    developing: '- Use clear sentence structures with some complex sentences...',
+    expanding: '- Use varied sentence structures with academic language...',
+    bridging: '- Maintain grade-level academic language with strategic supports...'
   };
-  
   return adaptations[proficiencyLevel] || adaptations.developing;
 };
 
 const buildBilingualInstructions = ({
   includeBilingualSupport,
   nativeLanguage,
-  translateSummary,
   translateInstructions,
-  listCognates
 }) => {
   if (!includeBilingualSupport || !nativeLanguage) return '';
 
   let instructions = `\n\n  **BILINGUAL SUPPORT REQUIREMENTS (Language: ${nativeLanguage}):**\n`;
-
-  instructions += `- For each term in the 'Key Vocabulary' section, provide its translation in ${nativeLanguage}. The translation MUST be formatted in parentheses and italics, without the language name. Example: **mansion**: a large house (*mansión*)\n`;
-  
-  if (translateSummary) {
-    instructions += `- At the very top of the 'studentWorksheet' before the title, provide a 1-2 sentence summary of the topic in ${nativeLanguage}.\n`;
-  }
-  
+  instructions += `- Provide translations for key vocabulary in ${nativeLanguage} in parentheses and italics. Example: (*mansión*)\n`;
   if (translateInstructions) {
-    instructions += `- For **every** 'Directions:' line on the student worksheet (including for Pre-Reading, Comprehension, and Extension activities), you MUST insert an HTML line break tag (<br>) immediately after the English text, and then provide the translation in ${nativeLanguage} formatted in italics. Example: Directions: Do this.<br>*Instrucciones: Haz esto.*\n`;
+    instructions += `- Provide translations for activity directions in ${nativeLanguage} using a <br> tag and italics.\n`;
   }
-  
-  if (listCognates) {
-    instructions += `- In the 'teacherGuide' under 'ELL SUPPORTS INCLUDED', create a 'Cognates to Highlight' list of English/${nativeLanguage} cognates found in the text.\n`;
-  }
-
   return instructions;
 };
 
@@ -92,57 +77,54 @@ export const adaptMaterialWithClaude = async ({
   learningObjectives,
   includeBilingualSupport,
   nativeLanguage,
-  translateSummary,
+  translateSummary, // Note: these are now passed but not used in the simplified prompt
   translateInstructions,
   listCognates
 }) => {
+  // Only using the core bilingual features for this simplified version
   const bilingualInstructions = buildBilingualInstructions({
     includeBilingualSupport,
     nativeLanguage,
-    translateSummary,
     translateInstructions,
-    listCognates
   });
   const proficiencyAdaptations = getProficiencyAdaptations(proficiencyLevel);
 
-  // --- THE PROMPT IS NOW MUCH SIMPLER ---
-  const prompt = `You are an expert in English Language Learning (ELL) pedagogy and curriculum adaptation. Your task is to generate three distinct pieces of text based on the original material provided.
+  // --- THIS IS THE NEW, SIMPLIFIED PROMPT ---
+  const prompt = `You are an expert ELL curriculum adapter. Adapt the following material based on the details provided.
 
-  **ORIGINAL MATERIAL DETAILS:**
+  **DETAILS:**
   - Material Type: ${materialType}
   - Subject: ${subject}
   - Grade Level: ${gradeLevel || 'not specified'}
-  - WIDA Proficiency Level: ${proficiencyLevel}
-  - Content Learning Objectives: ${learningObjectives}
-  - Original Text:
+  - WIDA Level: ${proficiencyLevel}
+  - Learning Objectives: ${learningObjectives}
+
+  **ORIGINAL MATERIAL:**
   \`\`\`
   ${contentToAdapt}
   \`\`\`
 
   **TASK:**
-  Generate three pieces of content in order: the Student Worksheet, the Teacher's Guide, and the Lesson-Specific Descriptors. You MUST separate each of the three pieces of content with the exact delimiter: |||---SPLIT---|||
+  Generate three distinct blocks of text, in order, separated by the exact delimiter: |||---SPLIT---|||
 
-  **PART 1: Student Worksheet**
-  Generate the complete student worksheet based on all the ADAPTATION REQUIREMENTS listed below. The output for this part must be a single block of text formatted in GitHub Flavored Markdown.
-
-  **PART 2: Teacher's Guide**
-  Generate the complete teacher's guide based on all the ADAPTATION REQUIREMENTS. The output for this part must be a single block of plain text.
-
-  **PART 3: Lesson-Specific "Can Do" Descriptors**
-  Generate a valid JSON object for the dynamic WIDA descriptors. This object must have a "title" and a "descriptors" array. The output for this part must be only the JSON object.
-
-  **ADAPTATION REQUIREMENTS (Apply these to the content you generate):**
-  1.  **Worksheet Structure:** ...
-  2.  **Background Knowledge:** ...
-  3.  **Key Vocabulary:** ...
-  4.  **Pre-Reading Activity:** ...
-  5.  **Reading Text:** ...
-  6.  **Comprehension Activities & Charts:** Use a series of bolded headings and bulleted lists for any chart-like activities.
-  7.  **Teacher Guide Content:** Must contain: A COMPLETE ANSWER KEY, LESSON PREPARATION & PACING, OBJECTIVES, SUPPORTS, and ADAPTATIONS.
-  
+  **PART 1: STUDENT WORKSHEET**
+  - Create a clean, student-facing worksheet.
+  - Simplify the text for the WIDA level.
+  - Create a "Key Vocabulary" list.
+  - Create "Comprehension Activities" with scaffolds like sentence frames or simple graphic organizers (use headings and bullet points, not markdown tables).
+  - Format this entire part using simple Markdown (# for title, ## for headings, ** for bold).
   ${bilingualInstructions}
 
-  **SPECIFIC ADAPTATIONS FOR ${proficiencyLevel.toUpperCase()} LEVEL:**
+  **PART 2: TEACHER'S GUIDE**
+  - Create a complete Answer Key for the worksheet.
+  - List the Content and ELL Language Objectives.
+  - List the ELL Supports you included.
+  - Format this entire part as plain text.
+
+  **PART 3: LESSON-SPECIFIC DESCRIPTORS**
+  - Generate a valid JSON object with a "title" and a "descriptors" array of 3-5 observable "Can Do" statements for this lesson.
+
+  **ADAPTATION GUIDELINES:**
   ${proficiencyAdaptations}
   `;
 
@@ -153,12 +135,8 @@ export const adaptMaterialWithClaude = async ({
     }
   ], 4000);
 
-  // --- THIS LOGIC IS NEW AND MORE ROBUST ---
   try {
-    // Get the entire raw text response from the AI
     const rawResponse = data.content[0].text;
-
-    // Split the response into three parts using our special delimiter
     const parts = rawResponse.split('|||---SPLIT---|||');
 
     if (parts.length < 3) {
@@ -166,11 +144,10 @@ export const adaptMaterialWithClaude = async ({
       throw new Error("The AI returned a response in an unexpected structure.");
     }
     
-    // Assemble our own, guaranteed-valid JSON object
     const structuredData = {
       studentWorksheet: parts[0].trim(),
       teacherGuide: parts[1].trim(),
-      dynamicWidaDescriptors: JSON.parse(parts[2].trim()) // We only parse the small, simple JSON part
+      dynamicWidaDescriptors: JSON.parse(parts[2].trim())
     };
 
     return structuredData;
