@@ -1,19 +1,62 @@
-// This function will send a prompt to our new image generation API route
-export const generateImage = async (prompt) => {
-  console.log("Sending prompt to our backend:", prompt);
+// FileName: src/services/imageService.js
 
-  const response = await fetch('/api/generateImage', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ prompt }),
-  });
+const API_BASE_URL = process.env.NODE_ENV === 'development' 
+  ? 'http://localhost:3000' 
+  : window.location.origin;
 
-  if (!response.ok) {
-    throw new Error('Failed to generate image');
+export const generateEducationalImage = async (prompt) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/image`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ prompt })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(errorData.error || `API request failed: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Image generation error:', error);
+    throw error;
   }
+};
 
-  const data = await response.json();
-  return data.imageUrl; // Return the URL of the generated image
+export const downloadImage = async (imageUrl, filename = 'generated-image.png') => {
+  try {
+    const response = await fetch(imageUrl);
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error('Download failed:', error);
+    throw new Error('Failed to download image');
+  }
+};
+
+export const copyImageToClipboard = async (imageUrl) => {
+  try {
+    const response = await fetch(imageUrl);
+    const blob = await response.blob();
+    
+    await navigator.clipboard.write([
+      new ClipboardItem({ [blob.type]: blob })
+    ]);
+    
+    return true;
+  } catch (error) {
+    console.error('Copy to clipboard failed:', error);
+    throw new Error('Failed to copy image to clipboard');
+  }
 };
