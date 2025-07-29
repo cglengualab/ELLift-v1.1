@@ -1,4 +1,4 @@
-// FileName: src/services/claudeService.js (Updated with image prompt generation)
+// FileName: src/services/claudeService.js (Final version with sequential API calls for stability)
 
 // Claude API service functions
 import { extractTextFromPDF as extractPDFText } from './pdfService.js';
@@ -154,7 +154,6 @@ const createStudentWorksheetPrompt = (details) => {
   Provide ONLY the raw Markdown for the student worksheet, and nothing else.`;
 };
 
-// --- THIS IS THE MODIFIED PROMPT HELPER ---
 const createTeacherGuidePrompt = (details, studentWorksheet) => {
   const { bilingualInstructions, subjectAwareInstructions } = details;
   return `You are an expert ELL curriculum adapter. Your task is to generate ONLY a teacher's guide for the provided student worksheet.
@@ -169,9 +168,7 @@ const createTeacherGuidePrompt = (details, studentWorksheet) => {
   **TASK:**
   Generate a complete teacher's guide as a single block of GitHub Flavored Markdown.
   - Create a complete Answer Key for ALL activities on the student worksheet.
-  - Create a "Lesson Preparation & Pacing" section. In this section, when you mention a visual material the teacher needs to prepare (like a picture, chart, or diagram), you MUST wrap it in an HTML <mark> tag. Inside this tag, you MUST include a 'data-image-prompt' attribute containing a concise, clear prompt for an AI image generator.
-    - Example 1: <mark data-image-prompt="A simple black and white line drawing of a frog's digestive system for labeling.">a diagram of a frog's anatomy</mark>
-    - Example 2: <mark data-image-prompt="Photo of the White House in 1842, black and white, historical photo.">a picture of the 1840s White House</mark>
+  - Create a "Lesson Preparation & Pacing" section, highlighting materials with <mark> tags.
   - List the Content and ELL Language Objectives.
   - List the ELL Supports Included.
   ${bilingualInstructions}
@@ -215,25 +212,29 @@ export const adaptMaterialWithClaude = async (params) => {
   const promptDetails = { ...params, subjectAwareInstructions, proficiencyAdaptations, bilingualInstructions, iepInstructions };
   
   try {
-    console.log("Requesting Student Worksheet...");
+    // --- THIS IS THE NEW, SEQUENTIAL (CASCADING) LOGIC ---
+    // STEP 1: Get the Student Worksheet
+    console.log("Step 1: Requesting Student Worksheet...");
     const worksheetPrompt = createStudentWorksheetPrompt(promptDetails);
     const worksheetResult = await callClaudeAPI([{ role: 'user', content: worksheetPrompt }]);
     const studentWorksheet = worksheetResult.content[0].text;
-    console.log("Student Worksheet received.");
+    console.log("Step 1: Student Worksheet received.");
 
-    console.log("Requesting Teacher's Guide and Descriptors in parallel...");
+    // STEP 2: Get the Teacher's Guide
+    console.log("Step 2: Requesting Teacher's Guide...");
     const guidePrompt = createTeacherGuidePrompt(promptDetails, studentWorksheet);
-    const descriptorsPrompt = createDynamicDescriptorsPrompt(promptDetails);
-
-    const [guideResult, descriptorsResult] = await Promise.all([
-      callClaudeAPI([{ role: 'user', content: guidePrompt }]),
-      callClaudeAPI([{ role: 'user', content: descriptorsPrompt }], 500)
-    ]);
-    
+    const guideResult = await callClaudeAPI([{ role: 'user', content: guidePrompt }]);
     const teacherGuide = guideResult.content[0].text;
-    const dynamicWidaDescriptors = JSON.parse(descriptorsResult.content[0].text);
-    console.log("Teacher's Guide and Descriptors received.");
+    console.log("Step 2: Teacher's Guide received.");
 
+    // STEP 3: Get the Descriptors
+    console.log("Step 3: Requesting Descriptors...");
+    const descriptorsPrompt = createDynamicDescriptorsPrompt(promptDetails);
+    const descriptorsResult = await callClaudeAPI([{ role: 'user', content: descriptorsPrompt }], 500);
+    const dynamicWidaDescriptors = JSON.parse(descriptorsResult.content[0].text);
+    console.log("Step 3: Descriptors received.");
+
+    // STEP 4: Assemble and return the final object
     return {
       studentWorksheet,
       teacherGuide,
