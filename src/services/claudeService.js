@@ -1,4 +1,4 @@
-// FileName: src/services/claudeService.js (Final version with correct sequential logic)
+// FileName: src/services/claudeService.js (Final version with delays for stability)
 
 // Claude API service functions
 import { extractTextFromPDF as extractPDFText } from './pdfService.js';
@@ -7,7 +7,9 @@ const API_BASE_URL = process.env.NODE_ENV === 'development'
   ? 'http://localhost:3000' 
   : window.location.origin;
 
-// ... (callClaudeAPI, extractTextFromPDF, and all prompt helper functions are unchanged) ...
+// --- NEW: A helper function to create a short pause ---
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 const callClaudeAPI = async (messages, maxTokens = 4000) => {
   const formattedMessages = messages.map(msg => {
     if (typeof msg.content === 'string') {
@@ -39,10 +41,89 @@ export const extractTextFromPDF = async (file, setProcessingStep) => {
   }
 };
 
-const buildBilingualInstructions = (params) => { /* ... unchanged ... */ };
-const getProficiencyAdaptations = (proficiencyLevel) => { /* ... unchanged ... */ };
-const getSubjectAwareInstructions = (subject, proficiencyLevel) => { /* ... unchanged ... */ };
-const getIepAccommodationInstructions = (params) => { /* ... unchanged ... */ };
+const buildBilingualInstructions = ({
+  includeBilingualSupport,
+  nativeLanguage,
+  translateSummary,
+  translateInstructions,
+  listCognates
+}) => {
+  if (!includeBilingualSupport || !nativeLanguage) return '';
+
+  let instructions = `\n\n  **BILINGUAL SUPPORT REQUIREMENTS (Language: ${nativeLanguage}):**\n`;
+
+  instructions += `- For each term in the 'Key Vocabulary' section, provide its translation in ${nativeLanguage}. The translation MUST be formatted in parentheses and italics, without the language name. Example: **mansion**: a large house (*mansión*)\n`;
+  
+  if (translateSummary) {
+    instructions += `- At the very top of the 'studentWorksheet' before the title, provide a 1-2 sentence summary of the topic in ${nativeLanguage}.\n`;
+  }
+  
+  if (translateInstructions) {
+    instructions += `- For **every** 'Directions:' line on the student worksheet (including for Pre-Reading, Comprehension, and Extension activities), you MUST insert an HTML line break tag (<br>) immediately after the English text, and then provide the translation in ${nativeLanguage} formatted in italics. Example: Directions: Do this.<br>*Instrucciones: Haz esto.*\n`;
+  }
+  
+  if (listCognates) {
+    instructions += `- In the 'teacherGuide' under 'ELL SUPPORTS INCLUDED', create a 'Cognates to Highlight' list of English/${nativeLanguage} cognates found in the text.\n`;
+  }
+
+  return instructions;
+};
+
+const getProficiencyAdaptations = (proficiencyLevel) => {
+  return `Adapt the content to be appropriate for the ${proficiencyLevel} WIDA proficiency level, using research-based ELL best practices.`;
+};
+
+const getSubjectAwareInstructions = (subject, proficiencyLevel) => {
+  const mathAndScience = ['Mathematics', 'Algebra', 'Geometry', 'Science', 'Chemistry', 'Physics', 'Biology'];
+  const elaAndSocial = ['English Language Arts', 'History', 'Social Studies'];
+
+  if (mathAndScience.includes(subject)) {
+    return `
+      **CRITICAL SUBJECT RULE: PRESERVE CORE PROBLEMS**
+      - For this ${subject} material, you MUST NOT change or alter the core numbers, equations, variables, or logic of the exercises.
+      - Your task is to add scaffolding and support **AROUND** the original problems (e.g., simplifying wordy instructions, pre-teaching vocabulary, providing visual aids) but the problems themselves must remain unchanged to ensure the teacher's answer key remains valid.
+    `;
+  }
+
+  if (elaAndSocial.includes(subject)) {
+    if (['bridging', 'reaching'].includes(proficiencyLevel)) {
+      return `
+        **CRITICAL SUBJECT RULE: PRESERVE AUTHOR'S VOICE**
+        - For this high-level ELA/Social Studies material, prioritize preserving the original author's tone and voice.
+        - Do not oversimplify. Focus on defining high-level academic or figurative language and clarifying only the most complex sentence structures. The student must engage with the text in a near-native form.
+      `;
+    }
+    return `
+      **CRITICAL SUBJECT RULE: SIMPLIFY AND REPHRASE**
+      - For this ${subject} material, your primary task is to simplify and rephrase complex reading passages to make them more accessible.
+      - Chunk the text into smaller paragraphs and adapt analytical questions with appropriate scaffolds.
+    `;
+  }
+
+  return ''; // Default case, no special instructions
+};
+
+const getIepAccommodationInstructions = ({
+  worksheetLength,
+  addStudentChecklist,
+  useMultipleChoice
+}) => {
+  let instructions = `\n\n  **IEP ACCOMMODATION REQUIREMENTS:**\n`;
+  
+  if (worksheetLength) {
+    instructions += `- **Worksheet Length:** Adjust the number of activities to fit a "${worksheetLength}" time frame. Short: 5-10 min, Medium: 15-25 min, Long: 30+ min.\n`;
+  }
+  
+  if (addStudentChecklist) {
+    instructions += `- **Student Checklist:** At the very top of the student worksheet, add a section called "My Checklist" with 3-5 simple, sequential steps for completing the worksheet. Example: 1. [ ] Read Key Vocabulary. 2. [ ] Read the text.\n`;
+  }
+
+  if (useMultipleChoice) {
+    instructions += `- **Multiple Choice:** Convert all open-ended comprehension questions into a multiple-choice format with 3-4 clear options.\n`;
+  }
+
+  return instructions;
+};
 
 const createStudentWorksheetPrompt = (details) => {
   const { materialType, subject, gradeLevel, proficiencyLevel, learningObjectives, contentToAdapt, bilingualInstructions, proficiencyAdaptations, subjectAwareInstructions, iepInstructions } = details;
@@ -76,7 +157,6 @@ const createStudentWorksheetPrompt = (details) => {
   Provide ONLY the raw Markdown for the student worksheet, and nothing else.`;
 };
 
-// --- THIS PROMPT IS NOW STRICTER ---
 const createTeacherGuidePrompt = (details, studentWorksheet) => {
   const { bilingualInstructions, subjectAwareInstructions } = details;
   return `You are an expert ELL curriculum adapter. Your task is to generate a teacher's guide for the student worksheet provided below.
@@ -135,7 +215,8 @@ export const adaptMaterialWithClaude = async (params) => {
   const promptDetails = { ...params, subjectAwareInstructions, proficiencyAdaptations, bilingualInstructions, iepInstructions };
   
   try {
-    // --- THIS IS THE FINAL, SEQUENTIAL (CASCADING) LOGIC ---
+    // --- THIS IS THE FINAL, SEQUENTIAL LOGIC WITH DELAYS ---
+    
     // STEP 1: Get the Student Worksheet
     console.log("Step 1: Requesting Student Worksheet...");
     const worksheetPrompt = createStudentWorksheetPrompt(promptDetails);
@@ -143,12 +224,16 @@ export const adaptMaterialWithClaude = async (params) => {
     const studentWorksheet = worksheetResult.content[0].text;
     console.log("Step 1: Student Worksheet received.");
 
-    // STEP 2: Get the Teacher's Guide (using the final worksheet)
+    await delay(1500); // Wait for 1.5 seconds before the next request
+
+    // STEP 2: Get the Teacher's Guide
     console.log("Step 2: Requesting Teacher's Guide...");
     const guidePrompt = createTeacherGuidePrompt(promptDetails, studentWorksheet);
     const guideResult = await callClaudeAPI([{ role: 'user', content: guidePrompt }]);
     const teacherGuide = guideResult.content[0].text;
     console.log("Step 2: Teacher's Guide received.");
+    
+    await delay(1000); // Wait for 1 second before the next request
 
     // STEP 3: Get the Descriptors
     console.log("Step 3: Requesting Descriptors...");
