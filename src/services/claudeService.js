@@ -1,4 +1,4 @@
-// FileName: src/services/claudeService.js (Enhanced version with improvements and image prompts)
+// FileName: src/services/claudeService.js (Enhanced version with improvements and safe image prompts)
 
 // Claude API service functions
 import { extractTextFromPDF as extractPDFText } from './pdfService.js';
@@ -151,7 +151,51 @@ const extractContext = (text, keyword) => {
   return text.substring(start, end).trim();
 };
 
-// Function to generate image prompts using Claude
+// Function to sanitize image prompts for safety
+const sanitizeImagePrompt = (prompt) => {
+  // Ensure the prompt starts with safe educational language
+  if (!prompt.toLowerCase().startsWith('educational illustration:') && 
+      !prompt.toLowerCase().startsWith('learning diagram:')) {
+    prompt = 'Educational illustration: ' + prompt;
+  }
+  
+  // Add educational context if missing
+  if (!prompt.toLowerCase().includes('classroom') && 
+      !prompt.toLowerCase().includes('educational') && 
+      !prompt.toLowerCase().includes('textbook')) {
+    prompt += ' Textbook style, appropriate for classroom use.';
+  }
+  
+  // Remove any potentially problematic terms and replace with educational equivalents
+  const safeTerms = {
+    'weapon': 'tool',
+    'fight': 'compete',
+    'battle': 'historical event',
+    'war': 'historical conflict',
+    'kill': 'eliminate',
+    'death': 'lifecycle end',
+    'blood': 'red liquid',
+    'violence': 'conflict',
+    'attack': 'approach',
+    'destroy': 'break down',
+    'explosion': 'reaction',
+    'bomb': 'device',
+    'gun': 'tool',
+    'knife': 'cutting tool',
+    'poison': 'harmful substance',
+    'dangerous': 'requiring caution'
+  };
+  
+  let cleanPrompt = prompt;
+  Object.keys(safeTerms).forEach(term => {
+    const regex = new RegExp(`\\b${term}\\b`, 'gi');
+    cleanPrompt = cleanPrompt.replace(regex, safeTerms[term]);
+  });
+  
+  return cleanPrompt;
+};
+
+// Function to generate image prompts using Claude (SAFE VERSION)
 const generateImagePrompts = async (opportunities, subject, proficiencyLevel, materialType) => {
   if (opportunities.length === 0) return null;
   
@@ -169,17 +213,28 @@ ${opportunities.map((opp, index) =>
   `${index + 1}. "${opp.keyword}" - Context: "${opp.context}"`
 ).join('\n')}
 
-**Instructions:**
+**CRITICAL INSTRUCTIONS:**
+Create educational image prompts that are:
+- Appropriate for classroom use and educational purposes
+- Safe and suitable for all ages
+- Free from any potentially sensitive language
+- Focused on learning and academic content
+- Using clear, positive, educational terminology
+
 Create a JSON object with an array called "imagePrompts" containing objects with:
 - "title": A brief title for what the image shows
-- "prompt": A detailed, specific prompt optimized for AI image generation
+- "prompt": A detailed, educational prompt starting with "Educational illustration:" or "Learning diagram:" 
 - "usage": How teachers might use this image
 
-Make prompts educational, clear, and appropriate for ${proficiencyLevel} level students. Focus on:
-- Simple, clean educational style
-- High contrast and clarity for classroom use
-- Age-appropriate content
-- No text in images (teachers will add labels)
+**PROMPT FORMATTING RULES:**
+- Always start prompts with "Educational illustration:" or "Learning diagram:"
+- Use terms like "textbook style", "classroom appropriate", "academic illustration"
+- Focus on educational value and clarity
+- Avoid any language that might be misinterpreted
+- Keep prompts professional and curriculum-focused
+
+Example format:
+"Educational illustration: A textbook-style diagram showing the water cycle with clear labels for evaporation, condensation, and precipitation. Clean, simple design suitable for classroom learning."
 
 Respond ONLY with valid JSON. No other text.`;
 
@@ -191,7 +246,17 @@ Respond ONLY with valid JSON. No other text.`;
     const responseText = result.content[0].text;
     const cleanedResponse = responseText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
     
-    return JSON.parse(cleanedResponse);
+    const parsedResult = JSON.parse(cleanedResponse);
+    
+    // Additional safety filter - clean up any potentially problematic words
+    if (parsedResult.imagePrompts) {
+      parsedResult.imagePrompts = parsedResult.imagePrompts.map(prompt => ({
+        ...prompt,
+        prompt: sanitizeImagePrompt(prompt.prompt)
+      }));
+    }
+    
+    return parsedResult;
   } catch (error) {
     console.error('Error generating image prompts:', error);
     return null;
