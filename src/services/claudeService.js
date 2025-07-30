@@ -1,4 +1,4 @@
-// FileName: src/services/claudeService.js (Enhanced version with improvements and safe image prompts)
+// FileName: src/services/claudeService.js (Enhanced version with vocabulary integration fix)
 
 // Claude API service functions
 import { extractTextFromPDF as extractPDFText } from './pdfService.js';
@@ -418,6 +418,31 @@ const getIepAccommodationInstructions = ({
   return instructions;
 };
 
+// NEW: Function to validate vocabulary integration
+const validateVocabularyIntegration = (studentWorksheet) => {
+  const vocabularySection = studentWorksheet.match(/\*\*\*Key Vocabulary\*\*\*(.*?)\*\*\*/s);
+  if (!vocabularySection) return { isValid: true, message: 'No vocabulary section found' };
+  
+  const vocabularyWords = vocabularySection[1]
+    .match(/\*\*(.*?)\*\*/g)
+    ?.map(word => word.replace(/\*\*/g, '').toLowerCase()) || [];
+  
+  const textSection = studentWorksheet.substring(studentWorksheet.indexOf('***Reading Text'));
+  
+  const missingWords = vocabularyWords.filter(word => 
+    !textSection.toLowerCase().includes(word)
+  );
+  
+  return {
+    isValid: missingWords.length === 0,
+    missingWords,
+    totalVocabWords: vocabularyWords.length,
+    message: missingWords.length > 0 
+      ? `Missing vocabulary words in text: ${missingWords.join(', ')}` 
+      : 'All vocabulary words found in text'
+  };
+};
+
 const createStudentAndDescriptorsPrompt = (details) => {
   const { materialType, subject, gradeLevel, proficiencyLevel, learningObjectives, contentToAdapt, bilingualInstructions, proficiencyAdaptations, subjectAwareInstructions, iepInstructions } = details;
   return `You are an expert ELL curriculum adapter. Your task is to generate two distinct pieces of text, separated by the exact delimiter: ${CONFIG.DELIMITERS.SPLIT_MARKER}
@@ -425,6 +450,15 @@ const createStudentAndDescriptorsPrompt = (details) => {
   **PART 1: STUDENT WORKSHEET**
   Generate a complete student worksheet formatted in simple GitHub Flavored Markdown.
   - Structure: Title, Background Knowledge, Key Vocabulary, Pre-Reading Activity, Reading Text, Comprehension Activities.
+  
+  **CRITICAL VOCABULARY INTEGRATION RULE:**
+  - You MUST use the vocabulary words from your "Key Vocabulary" section within the adapted reading text itself
+  - Do NOT replace these vocabulary words with simpler synonyms in the text
+  - Keep the vocabulary words in the text and provide context clues, brief explanations, or parenthetical definitions when needed
+  - Example: "The President's mansion (very large house) was impressive" rather than changing "mansion" to "house"
+  - Every vocabulary word you list must appear at least once in the adapted text
+  - If the original text doesn't contain a vocabulary word, you must naturally incorporate it into the adapted version
+  
   - Apply all subject-aware rules, IEP accommodations, and bilingual supports as instructed.
   - **CRUCIAL:** You MUST write out all practice problems. Do NOT summarize or use phrases like "[Continue in same format]". You must generate the complete, usable worksheet.
 
@@ -503,6 +537,16 @@ export const adaptMaterialWithClaude = async (params, setProcessingStep) => {
     );
     
     const studentWorksheet = initialParts[0];
+    
+    // NEW: Validate vocabulary integration
+    const vocabValidation = validateVocabularyIntegration(studentWorksheet);
+    console.log('Vocabulary validation:', vocabValidation.message);
+    
+    if (!vocabValidation.isValid) {
+      console.warn('Vocabulary integration issue detected:', vocabValidation.missingWords);
+      // You could add retry logic here if needed
+    }
+    
     let dynamicWidaDescriptors;
     
     try {
@@ -530,7 +574,7 @@ export const adaptMaterialWithClaude = async (params, setProcessingStep) => {
     
     console.log("Step 2: Teacher's Guide received.");
 
-    // STEP 3: Generate Image Prompts (NEW!)
+    // STEP 3: Generate Image Prompts
     setProcessingStep?.('Generating image suggestions...');
     console.log("Step 3: Detecting image opportunities...");
     
@@ -559,7 +603,8 @@ export const adaptMaterialWithClaude = async (params, setProcessingStep) => {
       studentWorksheet,
       teacherGuide,
       dynamicWidaDescriptors,
-      imagePrompts, // NEW!
+      imagePrompts,
+      vocabularyValidation: vocabValidation // NEW: Include validation results
     };
 
   } catch (error) {
