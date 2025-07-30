@@ -10,8 +10,8 @@ const CONFIG = {
     RETRY_DELAY: 2000
   },
   TOKENS: {
-    DEFAULT_MAX: 4000,
-    EXTENDED_MAX: 6000
+    DEFAULT_MAX: 8000,     // INCREASED from 4000
+    EXTENDED_MAX: 12000    // INCREASED from 6000
   },
   DELIMITERS: {
     SPLIT_MARKER: '|||---SPLIT---|||'
@@ -99,6 +99,23 @@ const sanitizeInput = (text) => {
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
     .replace(/\s+/g, ' ')
     .trim();
+};
+
+// NEW ADDITION: Content complexity estimation
+const estimateContentComplexity = (content) => {
+  const problemCount = (content.match(/\b\d+\.\d+\b/g) || []).length; // Matches 1.1, 2.3, etc.
+  const questionCount = (content.match(/\d+\./g) || []).length; // Matches 1., 2., etc.
+  const totalProblems = problemCount + questionCount;
+  const wordCount = content.split(/\s+/).length;
+  const hasMultipleSections = content.includes('Section') || content.includes('Part') || content.includes('Chapter');
+  
+  return {
+    problemCount: totalProblems,
+    wordCount,
+    hasMultipleSections,
+    needsExtendedTokens: wordCount > 1000 || totalProblems > 10 || hasMultipleSections,
+    estimatedTokensNeeded: Math.max(wordCount * 2, totalProblems * 200) // Rough estimate
+  };
 };
 
 // Function to detect image opportunities in text
@@ -598,7 +615,7 @@ const validateVocabularyIntegration = (studentWorksheet) => {
 };
 
 const createStudentAndDescriptorsPrompt = (details) => {
-  const { materialType, subject, gradeLevel, proficiencyLevel, learningObjectives, contentToAdapt, bilingualInstructions, proficiencyAdaptations, subjectAwareInstructions, iepInstructions } = details;
+  const { materialType, subject, gradeLevel, proficiencyLevel, learningObjectives, contentToAdapt, bilingualInstructions, proficiencyAdaptations, subjectAwareInstructions, iepInstructions, complexity } = details;
   const level = proficiencyLevel.toLowerCase();
   
   let levelSpecificInstructions = '';
@@ -658,6 +675,10 @@ const createStudentAndDescriptorsPrompt = (details) => {
 
   return `You are an expert ELL curriculum adapter. Your task is to generate two distinct pieces of text, separated by the exact delimiter: ${CONFIG.DELIMITERS.SPLIT_MARKER}
 
+  **CONTENT ANALYSIS:**
+  Original content contains approximately ${complexity.problemCount} problems/questions and ${complexity.wordCount} words.
+  ${complexity.hasMultipleSections ? 'Multiple sections detected - ensure ALL sections are included.' : ''}
+
   **PART 1: STUDENT WORKSHEET**
   Generate a complete student worksheet formatted in simple GitHub Flavored Markdown.
   - Structure: Title, Background Knowledge, Key Vocabulary, Pre-Reading Activity, Reading Text, Practice Problems/Exercises.
@@ -677,177 +698,248 @@ const createStudentAndDescriptorsPrompt = (details) => {
   - Do NOT create substitute problems or omit any numbered exercises
   - Only simplify the language of instructions, not the mathematical content itself
 
-  **ABSOLUTE NO-SUMMARIZATION RULE:**
-  - You MUST write out EVERY SINGLE problem completely and individually
-  - NEVER use phrases like "[Content continues...]", "[Similar format...]", "[Continue with...]", "[Rest of problems...]", or any other summarization
-  - NEVER use ellipses (...) to indicate continuation  
-  - NEVER abbreviate or shorten the worksheet content
-  - Every problem from 1.1, 1.2, 1.3, 1.4, 1.5, 2.1, 2.2, 2.3, 2.4 must be written out in full
-  - The worksheet must be completely usable without any additional work from the teacher
-  - If you find yourself wanting to summarize, STOP and write out the full content instead
-  
-  ${levelSpecificInstructions}
+ **ABSOLUTE NO-SUMMARIZATION RULE:**
+ - You MUST write out EVERY SINGLE problem completely and individually
+ - NEVER use phrases like "[Content continues...]", "[Similar format...]", "[Continue with...]", "[Rest of problems...]", or any other summarization
+ - NEVER use ellipses (...) to indicate continuation  
+ - NEVER abbreviate or shorten the worksheet content
+ - Every problem from 1.1, 1.2, 1.3, 1.4, 1.5, 2.1, 2.2, 2.3, 2.4 must be written out in full
+ - The worksheet must be completely usable without any additional work from the teacher
+ - If you find yourself wanting to summarize, STOP and write out the full content instead
 
-  - Apply all subject-aware rules, IEP accommodations, and bilingual supports as instructed.
-  - **CRUCIAL:** This worksheet must be 100% print-and-go ready with zero teacher preparation needed.
+ **ABSOLUTE COMPLETENESS REQUIREMENT:**
+ - Write EVERY SINGLE problem number and question completely
+ - If there are ${complexity.problemCount} problems in the original, there must be ${complexity.problemCount} problems in your adaptation
+ - NEVER write "Continue with similar problems" or "Problems 5-10 follow the same pattern"
+ - Teachers need to print this worksheet and use it immediately without adding anything
+ - Each problem must be individually written out with full instructions
+ - FAILURE TO INCLUDE ALL PROBLEMS MAKES THE WORKSHEET UNUSABLE
 
-  **PART 2: LESSON-SPECIFIC DESCRIPTORS**
-  Generate a valid JSON object with a "title" and a "descriptors" array of 3-5 observable "Can Do" statements for this lesson.
+ **CHECKPOINT:** Before submitting your response, count:
+ - Original problems: ${complexity.problemCount}
+ - Your adapted problems: [count them]  
+ - These numbers MUST match exactly
+ 
+ ${levelSpecificInstructions}
 
-  **DETAILS FOR ADAPTATION:**
-  - Material Type: ${materialType}
-  - Subject: ${subject}
- - WIDA Level: ${proficiencyLevel}
- - Original Text: \`\`\`${contentToAdapt}\`\`\`
- ${subjectAwareInstructions}
- ${iepInstructions}
- ${bilingualInstructions}
- ${proficiencyAdaptations}
- `;
+ - Apply all subject-aware rules, IEP accommodations, and bilingual supports as instructed.
+ - **CRUCIAL:** This worksheet must be 100% print-and-go ready with zero teacher preparation needed.
+
+ **PART 2: LESSON-SPECIFIC DESCRIPTORS**
+ Generate a valid JSON object with a "title" and a "descriptors" array of 3-5 observable "Can Do" statements for this lesson.
+
+ **DETAILS FOR ADAPTATION:**
+ - Material Type: ${materialType}
+ - Subject: ${subject}
+- WIDA Level: ${proficiencyLevel}
+- Original Text: \`\`\`${contentToAdapt}\`\`\`
+${subjectAwareInstructions}
+${iepInstructions}
+${bilingualInstructions}
+${proficiencyAdaptations}
+`;
 };
 
 const createTeacherGuidePrompt = (details, studentWorksheet) => {
- const { bilingualInstructions, subjectAwareInstructions } = details;
- return `You are an expert ELL curriculum adapter. Your task is to generate a teacher's guide for the student worksheet provided below.
+const { bilingualInstructions, subjectAwareInstructions } = details;
+return `You are an expert ELL curriculum adapter. Your task is to generate a teacher's guide for the student worksheet provided below.
 
- **STUDENT WORKSHEET TO CREATE A GUIDE FOR:**
- \`\`\`
- ${studentWorksheet}
- \`\`\`
+**STUDENT WORKSHEET TO CREATE A GUIDE FOR:**
+\`\`\`
+${studentWorksheet}
+\`\`\`
 
- ${subjectAwareInstructions}
+${subjectAwareInstructions}
 
- **TASK:**
- Generate a complete teacher's guide in GitHub Flavored Markdown.
- - **Your primary task is to create a complete Answer Key for ALL activities from the worksheet.**
- - After the Answer Key, create a "Lesson Preparation & Pacing" section, highlighting materials with <mark> tags.
- - Then, list the Content and ELL Language Objectives.
- - Then, list the ELL Supports Included.
- - **IMPORTANT:** When mentioning visual aids like diagrams, charts, images, maps, timelines, or any visual elements, be specific about what they should show. Use phrases like "diagram showing...", "chart displaying...", "image of...", etc.
- - **CRUCIAL:** Do NOT repeat or copy the student worksheet content. Your purpose is to provide the answers and pedagogical notes FOR the worksheet.
- ${bilingualInstructions}
+**TASK:**
+Generate a complete teacher's guide in GitHub Flavored Markdown.
+- **Your primary task is to create a complete Answer Key for ALL activities from the worksheet.**
+- After the Answer Key, create a "Lesson Preparation & Pacing" section, highlighting materials with <mark> tags.
+- Then, list the Content and ELL Language Objectives.
+- Then, list the ELL Supports Included.
+- **IMPORTANT:** When mentioning visual aids like diagrams, charts, images, maps, timelines, or any visual elements, be specific about what they should show. Use phrases like "diagram showing...", "chart displaying...", "image of...", etc.
+- **CRUCIAL:** Do NOT repeat or copy the student worksheet content. Your purpose is to provide the answers and pedagogical notes FOR the worksheet.
+${bilingualInstructions}
 
- Provide ONLY the raw Markdown for the teacher's guide, and nothing else.`;
+Provide ONLY the raw Markdown for the teacher's guide, and nothing else.`;
+};
+
+// NEW ADDITION: Function to handle long materials with chunking strategy
+const handleLongMaterialAdaptation = async (params, setProcessingStep, complexity) => {
+ if (!complexity.needsExtendedTokens) {
+   // Use standard approach for shorter materials
+   return null;
+ }
+
+ // For very long materials (>15 problems or >2000 words), consider chunking
+ if (complexity.problemCount > 15 || complexity.wordCount > 2000) {
+   console.log('Very long material detected - considering chunked approach');
+   setProcessingStep?.('Processing long material - this may take extra time...');
+   
+   // Could implement chunking logic here if needed
+   // For now, just use extended tokens
+ }
+
+ return null; // Return null to use standard approach with extended tokens
 };
 
 /**
 * Adapt material using Claude API with a multi-call strategy
 */
 export const adaptMaterialWithClaude = async (params, setProcessingStep) => {
- try {
-   // Validate input parameters
-   validateAdaptationParams(params);
-   
-   const { subject, proficiencyLevel, materialType, includeBilingualSupport, nativeLanguage, translateSummary, translateInstructions, listCognates, worksheetLength, addStudentChecklist, useMultipleChoice } = params;
+try {
+  // Validate input parameters
+  validateAdaptationParams(params);
+  
+  const { subject, proficiencyLevel, materialType, includeBilingualSupport, nativeLanguage, translateSummary, translateInstructions, listCognates, worksheetLength, addStudentChecklist, useMultipleChoice } = params;
 
-   setProcessingStep?.('Preparing adaptation instructions...');
+  setProcessingStep?.('Analyzing content complexity...');
 
-   const subjectAwareInstructions = getSubjectAwareInstructions(subject, proficiencyLevel);
-   const proficiencyAdaptations = getProficiencyAdaptations(proficiencyLevel);
-   const bilingualInstructions = buildBilingualInstructions({
-     includeBilingualSupport, nativeLanguage, translateSummary, translateInstructions, listCognates
-   });
-   const iepInstructions = getIepAccommodationInstructions({
-     worksheetLength, addStudentChecklist, useMultipleChoice
-   });
-   
-   const promptDetails = { ...params, subjectAwareInstructions, proficiencyAdaptations, bilingualInstructions, iepInstructions };
-   
-   // STEP 1: Get the Student Worksheet and Descriptors together
-   setProcessingStep?.('Generating student worksheet and descriptors...');
-   console.log("Step 1: Requesting Student Worksheet & Descriptors...");
-   
-   const initialPrompt = createStudentAndDescriptorsPrompt(promptDetails);
-   const initialResult = await callClaudeAPIWithRetry([{ role: 'user', content: initialPrompt }]);
-   
-   const initialParts = validateSplitResponse(
-     initialResult.content[0].text.split(CONFIG.DELIMITERS.SPLIT_MARKER),
-     2
-   );
-   
-   const studentWorksheet = initialParts[0];
-   
-   // Validate vocabulary integration
-   const vocabValidation = validateVocabularyIntegration(studentWorksheet);
-   console.log('Vocabulary validation:', vocabValidation.message);
-   
-   if (!vocabValidation.isValid) {
-     console.warn('Vocabulary integration issue detected:', vocabValidation.missingWords);
-     // You could add retry logic here if needed
-   }
-   
-   let dynamicWidaDescriptors;
-   
-   try {
-     dynamicWidaDescriptors = JSON.parse(initialParts[1]);
-   } catch (parseError) {
-     console.warn('Failed to parse descriptors JSON, using fallback');
-     dynamicWidaDescriptors = {
-       title: `${subject} - ${proficiencyLevel} Level`,
-       descriptors: ["Students can engage with adapted content at their proficiency level"]
-     };
-   }
-   
-   console.log("Step 1: Received Student Worksheet & Descriptors.");
+  // NEW: Analyze content complexity
+  const complexity = estimateContentComplexity(params.contentToAdapt);
+  console.log('Content complexity analysis:', complexity);
 
-   // Wait between API calls
-   await delay(CONFIG.DELAYS.BETWEEN_CALLS);
+  // NEW: Determine appropriate token limit based on complexity
+  const maxTokens = complexity.needsExtendedTokens ? CONFIG.TOKENS.EXTENDED_MAX : CONFIG.TOKENS.DEFAULT_MAX;
+  console.log(`Using ${maxTokens} tokens for this adaptation`);
 
-   // STEP 2: Get the Teacher's Guide
-   setProcessingStep?.('Generating teacher guide...');
-   console.log("Step 2: Requesting Teacher's Guide...");
-   
-   const guidePrompt = createTeacherGuidePrompt(promptDetails, studentWorksheet);
-   const guideResult = await callClaudeAPIWithRetry([{ role: 'user', content: guidePrompt }]);
-   const teacherGuide = guideResult.content[0].text;
-   
-   console.log("Step 2: Teacher's Guide received.");
+  // NEW: Check if we need special handling for very long materials
+  const chunkingResult = await handleLongMaterialAdaptation(params, setProcessingStep, complexity);
+  if (chunkingResult) {
+    return chunkingResult; // Return early if chunking was used
+  }
 
-   // STEP 3: Generate Image Prompts
-   setProcessingStep?.('Generating image suggestions...');
-   console.log("Step 3: Detecting image opportunities...");
-   
-   const imageOpportunities = detectImageOpportunities(teacherGuide, subject);
-   let imagePrompts = null;
-   
-   if (imageOpportunities.length > 0) {
-     console.log(`Found ${imageOpportunities.length} image opportunities`);
-     await delay(CONFIG.DELAYS.BETWEEN_CALLS);
-     
-     imagePrompts = await generateImagePrompts(
-       imageOpportunities, 
-       subject, 
-       proficiencyLevel, 
-       materialType
-     );
-     console.log("Step 3: Image prompts generated.");
-   } else {
-     console.log("Step 3: No image opportunities detected.");
-   }
+  setProcessingStep?.('Preparing adaptation instructions...');
 
-   setProcessingStep?.('Finalizing materials...');
+  const subjectAwareInstructions = getSubjectAwareInstructions(subject, proficiencyLevel);
+  const proficiencyAdaptations = getProficiencyAdaptations(proficiencyLevel);
+  const bilingualInstructions = buildBilingualInstructions({
+    includeBilingualSupport, nativeLanguage, translateSummary, translateInstructions, listCognates
+  });
+  const iepInstructions = getIepAccommodationInstructions({
+    worksheetLength, addStudentChecklist, useMultipleChoice
+  });
+  
+  // NEW: Pass complexity information to prompt
+  const promptDetails = { ...params, subjectAwareInstructions, proficiencyAdaptations, bilingualInstructions, iepInstructions, complexity };
+  
+  // STEP 1: Get the Student Worksheet and Descriptors together
+  setProcessingStep?.('Generating student worksheet and descriptors...');
+  console.log("Step 1: Requesting Student Worksheet & Descriptors...");
+  console.log(`Expected problems in output: ${complexity.problemCount}`);
+  
+  const initialPrompt = createStudentAndDescriptorsPrompt(promptDetails);
+  // NEW: Use dynamic token limit
+  const initialResult = await callClaudeAPIWithRetry([{ role: 'user', content: initialPrompt }], maxTokens);
+  
+  const initialParts = validateSplitResponse(
+    initialResult.content[0].text.split(CONFIG.DELIMITERS.SPLIT_MARKER),
+    2
+  );
+  
+  const studentWorksheet = initialParts[0];
+  
+  // NEW: Validate that all problems were included
+  const outputComplexity = estimateContentComplexity(studentWorksheet);
+  console.log('Output complexity analysis:', outputComplexity);
+  if (outputComplexity.problemCount < complexity.problemCount * 0.8) { // Allow 20% variance for different counting
+    console.warn(`Potential content loss detected: Input had ~${complexity.problemCount} problems, output has ~${outputComplexity.problemCount}`);
+  }
+  
+  // Validate vocabulary integration
+  const vocabValidation = validateVocabularyIntegration(studentWorksheet);
+  console.log('Vocabulary validation:', vocabValidation.message);
+  
+  if (!vocabValidation.isValid) {
+    console.warn('Vocabulary integration issue detected:', vocabValidation.missingWords);
+    // You could add retry logic here if needed
+  }
+  
+  let dynamicWidaDescriptors;
+  
+  try {
+    dynamicWidaDescriptors = JSON.parse(initialParts[1]);
+  } catch (parseError) {
+    console.warn('Failed to parse descriptors JSON, using fallback');
+    dynamicWidaDescriptors = {
+      title: `${subject} - ${proficiencyLevel} Level`,
+      descriptors: ["Students can engage with adapted content at their proficiency level"]
+    };
+  }
+  
+  console.log("Step 1: Received Student Worksheet & Descriptors.");
 
-   // STEP 4: Assemble and return the final object
-   return {
-     studentWorksheet,
-     teacherGuide,
-     dynamicWidaDescriptors,
-     imagePrompts,
-     vocabularyValidation: vocabValidation
-   };
+  // Wait between API calls
+  await delay(CONFIG.DELAYS.BETWEEN_CALLS);
 
- } catch (error) {
-   console.error("A critical error occurred in the multi-call process.", error);
-   
-   // Provide more specific error messages
-   if (error instanceof ClaudeAPIError) {
-     throw error;
-   }
-   
-   throw new ClaudeAPIError(
-     `Failed to adapt material: ${error.message}`,
-     null,
-     error
-   );
- }
+  // STEP 2: Get the Teacher's Guide
+  setProcessingStep?.('Generating teacher guide...');
+  console.log("Step 2: Requesting Teacher's Guide...");
+  
+  const guidePrompt = createTeacherGuidePrompt(promptDetails, studentWorksheet);
+  // NEW: Use appropriate token limit for teacher guide
+  const guideTokens = Math.min(maxTokens, CONFIG.TOKENS.EXTENDED_MAX); // Teacher guides can be long
+  const guideResult = await callClaudeAPIWithRetry([{ role: 'user', content: guidePrompt }], guideTokens);
+  const teacherGuide = guideResult.content[0].text;
+  
+  console.log("Step 2: Teacher's Guide received.");
+
+  // STEP 3: Generate Image Prompts
+  setProcessingStep?.('Generating image suggestions...');
+  console.log("Step 3: Detecting image opportunities...");
+  
+  const imageOpportunities = detectImageOpportunities(teacherGuide, subject);
+  let imagePrompts = null;
+  
+  if (imageOpportunities.length > 0) {
+    console.log(`Found ${imageOpportunities.length} image opportunities`);
+    await delay(CONFIG.DELAYS.BETWEEN_CALLS);
+    
+    imagePrompts = await generateImagePrompts(
+      imageOpportunities, 
+      subject, 
+      proficiencyLevel, 
+      materialType
+    );
+    console.log("Step 3: Image prompts generated.");
+  } else {
+    console.log("Step 3: No image opportunities detected.");
+  }
+
+  setProcessingStep?.('Finalizing materials...');
+
+  // STEP 4: Assemble and return the final object
+  return {
+    studentWorksheet,
+    teacherGuide,
+    dynamicWidaDescriptors,
+    imagePrompts,
+    vocabularyValidation: vocabValidation,
+    // NEW: Include complexity analysis in output
+    contentAnalysis: {
+      inputComplexity: complexity,
+      outputComplexity,
+      tokensUsed: maxTokens,
+      completenessCheck: {
+        expectedProblems: complexity.problemCount,
+        detectedProblems: outputComplexity.problemCount,
+        ratio: outputComplexity.problemCount / Math.max(complexity.problemCount, 1)
+      }
+    }
+  };
+
+} catch (error) {
+  console.error("A critical error occurred in the multi-call process.", error);
+  
+  // Provide more specific error messages
+  if (error instanceof ClaudeAPIError) {
+    throw error;
+  }
+  
+  throw new ClaudeAPIError(
+    `Failed to adapt material: ${error.message}`,
+    null,
+    error
+  );
+}
 };
