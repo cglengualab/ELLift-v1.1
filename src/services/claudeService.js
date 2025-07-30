@@ -372,9 +372,18 @@ const getProficiencyAdaptations = (proficiencyLevel) => {
 const getSubjectAwareInstructions = (subject, proficiencyLevel) => {
   if (SUBJECT_GROUPS.MATH_SCIENCE.includes(subject)) {
     return `
-      **CRITICAL SUBJECT RULE: PRESERVE CORE PROBLEMS**
-      - For this ${subject} material, you MUST NOT change or alter the core numbers, equations, variables, or logic of the exercises.
-      - Your task is to add scaffolding and support **AROUND** the original problems (e.g., simplifying wordy instructions, pre-teaching vocabulary, providing visual aids) but the problems themselves must remain unchanged to ensure the teacher's answer key remains valid.
+      **CRITICAL SUBJECT RULE: PRESERVE ALL MATHEMATICAL CONTENT**
+      - For this ${subject} material, you MUST include EVERY SINGLE problem, exercise, and question from the original material
+      - Do NOT omit, combine, or summarize any numbered problems (e.g., if original has problems 1.1, 1.2, 1.3, etc., ALL must appear in your adaptation)
+      - Do NOT change or alter ANY numbers, equations, coordinates, variables, or mathematical logic
+      - Do NOT create new simplified problems to replace the originals
+      - Your ONLY task is to add ELL scaffolding AROUND the original problems by:
+        * Simplifying the instructional language (e.g., "Find the coordinates" instead of "Determine the coordinates")
+        * Adding vocabulary support for mathematical terms
+        * Breaking complex instructions into steps
+        * Providing visual cues or organizational structures
+      - Every mathematical exercise must remain exactly as given to ensure the teacher's answer key remains valid
+      - Example: Original "Determine the coordinates of the image P'" becomes "Find the coordinates of the image P'" but the problem setup stays identical
     `;
   }
 
@@ -449,7 +458,7 @@ const createStudentAndDescriptorsPrompt = (details) => {
 
   **PART 1: STUDENT WORKSHEET**
   Generate a complete student worksheet formatted in simple GitHub Flavored Markdown.
-  - Structure: Title, Background Knowledge, Key Vocabulary, Pre-Reading Activity, Reading Text, Comprehension Activities.
+  - Structure: Title, Background Knowledge, Key Vocabulary, Pre-Reading Activity, Reading Text, Practice Problems/Exercises.
   
   **CRITICAL VOCABULARY INTEGRATION RULE:**
   - You MUST use the vocabulary words from your "Key Vocabulary" section within the adapted reading text itself
@@ -460,6 +469,11 @@ const createStudentAndDescriptorsPrompt = (details) => {
   - Every vocabulary word you list must appear at least once in the adapted text
   - If the original text doesn't contain a vocabulary word, you must naturally incorporate it into the adapted version
   - Example: "The President's **mansion** was impressive" (NOT "The President's mansion (very large house) was impressive")
+
+  **CRITICAL CONTENT PRESERVATION RULE:**
+  - If this is math/science content, you MUST include ALL original problems, exercises, and questions with their exact numbers and mathematical content
+  - Do NOT create substitute problems or omit any numbered exercises
+  - Only simplify the language of instructions, not the mathematical content itself
   
   - Apply all subject-aware rules, IEP accommodations, and bilingual supports as instructed.
   - **CRUCIAL:** You MUST write out all practice problems. Do NOT summarize or use phrases like "[Continue in same format]". You must generate the complete, usable worksheet.
