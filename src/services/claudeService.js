@@ -1,4 +1,4 @@
-// FileName: src/services/claudeService.js (Enhanced version with improved WIDA level differentiation)
+// FileName: src/services/claudeService.js (Enhanced version with improved WIDA level differentiation and no-summarization rule)
 
 // Claude API service functions
 import { extractTextFromPDF as extractPDFText } from './pdfService.js';
@@ -676,11 +676,20 @@ const createStudentAndDescriptorsPrompt = (details) => {
   - If this is math/science content, you MUST include ALL original problems, exercises, and questions with their exact numbers and mathematical content
   - Do NOT create substitute problems or omit any numbered exercises
   - Only simplify the language of instructions, not the mathematical content itself
+
+  **ABSOLUTE NO-SUMMARIZATION RULE:**
+  - You MUST write out EVERY SINGLE problem completely and individually
+  - NEVER use phrases like "[Content continues...]", "[Similar format...]", "[Continue with...]", "[Rest of problems...]", or any other summarization
+  - NEVER use ellipses (...) to indicate continuation  
+  - NEVER abbreviate or shorten the worksheet content
+  - Every problem from 1.1, 1.2, 1.3, 1.4, 1.5, 2.1, 2.2, 2.3, 2.4 must be written out in full
+  - The worksheet must be completely usable without any additional work from the teacher
+  - If you find yourself wanting to summarize, STOP and write out the full content instead
   
   ${levelSpecificInstructions}
 
   - Apply all subject-aware rules, IEP accommodations, and bilingual supports as instructed.
-  - **CRUCIAL:** You MUST write out all practice problems. Do NOT summarize or use phrases like "[Continue in same format]". You must generate the complete, usable worksheet.
+  - **CRUCIAL:** This worksheet must be 100% print-and-go ready with zero teacher preparation needed.
 
   **PART 2: LESSON-SPECIFIC DESCRIPTORS**
   Generate a valid JSON object with a "title" and a "descriptors" array of 3-5 observable "Can Do" statements for this lesson.
@@ -688,20 +697,20 @@ const createStudentAndDescriptorsPrompt = (details) => {
   **DETAILS FOR ADAPTATION:**
   - Material Type: ${materialType}
   - Subject: ${subject}
-  - WIDA Level: ${proficiencyLevel}
-  - Original Text: \`\`\`${contentToAdapt}\`\`\`
-  ${subjectAwareInstructions}
-  ${iepInstructions}
-  ${bilingualInstructions}
-  ${proficiencyAdaptations}
-  `;
+ - WIDA Level: ${proficiencyLevel}
+ - Original Text: \`\`\`${contentToAdapt}\`\`\`
+ ${subjectAwareInstructions}
+ ${iepInstructions}
+ ${bilingualInstructions}
+ ${proficiencyAdaptations}
+ `;
 };
 
 const createTeacherGuidePrompt = (details, studentWorksheet) => {
-  const { bilingualInstructions, subjectAwareInstructions } = details;
-  return `You are an expert ELL curriculum adapter. Your task is to generate a teacher's guide for the student worksheet provided below.
+ const { bilingualInstructions, subjectAwareInstructions } = details;
+ return `You are an expert ELL curriculum adapter. Your task is to generate a teacher's guide for the student worksheet provided below.
 
-  **STUDENT WORKSHEET TO CREATE A GUIDE FOR:**
+ **STUDENT WORKSHEET TO CREATE A GUIDE FOR:**
  \`\`\`
  ${studentWorksheet}
  \`\`\`
