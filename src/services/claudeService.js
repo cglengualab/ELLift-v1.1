@@ -454,10 +454,12 @@ const createStudentAndDescriptorsPrompt = (details) => {
   **CRITICAL VOCABULARY INTEGRATION RULE:**
   - You MUST use the vocabulary words from your "Key Vocabulary" section within the adapted reading text itself
   - Do NOT replace these vocabulary words with simpler synonyms in the text
-  - Keep the vocabulary words in the text and provide context clues, brief explanations, or parenthetical definitions when needed
-  - Example: "The President's mansion (very large house) was impressive" rather than changing "mansion" to "house"
+  - **Bold** each vocabulary word when it appears in the text (e.g., **mansion**, **ceremony**, **premises**)
+  - Do NOT provide parenthetical definitions or explanations after vocabulary words in the text
+  - Students should refer back to the Key Vocabulary section for meanings
   - Every vocabulary word you list must appear at least once in the adapted text
   - If the original text doesn't contain a vocabulary word, you must naturally incorporate it into the adapted version
+  - Example: "The President's **mansion** was impressive" (NOT "The President's mansion (very large house) was impressive")
   
   - Apply all subject-aware rules, IEP accommodations, and bilingual supports as instructed.
   - **CRUCIAL:** You MUST write out all practice problems. Do NOT summarize or use phrases like "[Continue in same format]". You must generate the complete, usable worksheet.
