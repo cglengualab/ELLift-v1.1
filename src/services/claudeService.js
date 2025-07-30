@@ -366,7 +366,97 @@ const buildBilingualInstructions = ({
 };
 
 const getProficiencyAdaptations = (proficiencyLevel) => {
-  return `Adapt the content to be appropriate for the ${proficiencyLevel} WIDA proficiency level, using research-based ELL best practices.`;
+  const level = proficiencyLevel.toLowerCase();
+  
+  switch(level) {
+    case 'entering':
+    case 'level 1':
+      return `
+        **WIDA LEVEL 1 (ENTERING) ADAPTATIONS:**
+        - Use very simple, short sentences (5-8 words maximum)
+        - Include extensive visual supports and graphic organizers
+        - Provide word banks for key terms
+        - Use bullet points and numbered steps
+        - Include sentence frames: "The answer is ___" "I need to ___"
+        - Use present tense and simple vocabulary
+        - Break complex tasks into very small steps
+        - Provide multiple examples for each concept
+        - Use matching, pointing, and drawing activities
+      `;
+    
+    case 'emerging':
+    case 'level 2':
+      return `
+        **WIDA LEVEL 2 (EMERGING) ADAPTATIONS:**
+        - Use simple sentences with basic connecting words (and, but, so)
+        - Include visual supports and graphic organizers
+        - Provide word banks and sentence starters
+        - Use familiar vocabulary with some academic terms
+        - Include step-by-step instructions with clear sequence
+        - Use present and past tense appropriately
+        - Provide examples and non-examples
+        - Include yes/no and multiple choice questions
+      `;
+    
+    case 'developing':
+    case 'level 3':
+      return `
+        **WIDA LEVEL 3 (DEVELOPING) ADAPTATIONS:**
+        - Use expanded sentences with multiple clauses
+        - Include some academic vocabulary with support
+        - Provide sentence frames for complex responses
+        - Use various tenses appropriately
+        - Include compare/contrast and cause/effect structures
+        - Provide graphic organizers for complex concepts
+        - Include some abstract thinking tasks with scaffolds
+        - Mix open-ended and structured response formats
+      `;
+    
+    case 'expanding':
+    case 'level 4':
+      return `
+        **WIDA LEVEL 4 (EXPANDING) ADAPTATIONS:**
+        - Use complex sentences with academic language
+        - Include technical vocabulary with minimal support
+        - Provide opportunities for extended discourse
+        - Use multiple tenses and complex grammatical structures
+        - Include analysis and synthesis tasks
+        - Reduce visual supports, increase text-based learning
+        - Include reasoning and justification requirements
+        - Focus on academic language functions
+      `;
+    
+    case 'bridging':
+    case 'level 5':
+      return `
+        **WIDA LEVEL 5 (BRIDGING) ADAPTATIONS:**
+        - Use grade-level academic language with strategic supports
+        - Include specialized vocabulary and technical terms
+        - Provide opportunities for extended academic discourse
+        - Use sophisticated grammatical structures
+        - Include abstract and analytical thinking tasks
+        - Focus on academic language functions (hypothesize, analyze, synthesize)
+        - Provide minimal scaffolding while maintaining accessibility
+        - Approach near-native academic performance
+      `;
+    
+    case 'reaching':
+    case 'level 6':
+      return `
+        **WIDA LEVEL 6 (REACHING) ADAPTATIONS:**
+        - Use full grade-level academic language comparable to English-proficient peers
+        - Include specialized and technical vocabulary without additional support
+        - Provide complex academic discourse opportunities
+        - Use sophisticated grammatical structures and academic register
+        - Include high-level abstract and analytical thinking tasks
+        - Minimal to no scaffolding required
+        - Performance meets grade-level expectations for English-proficient students
+        - Focus on refinement rather than simplification
+      `;
+    
+    default:
+      return `Adapt the content to be appropriate for the ${proficiencyLevel} WIDA proficiency level, using research-based ELL best practices.`;
+  }
 };
 
 const getSubjectAwareInstructions = (subject, proficiencyLevel) => {
@@ -388,18 +478,61 @@ const getSubjectAwareInstructions = (subject, proficiencyLevel) => {
   }
 
   if (SUBJECT_GROUPS.ELA_SOCIAL.includes(subject)) {
-    if (['bridging', 'reaching'].includes(proficiencyLevel.toLowerCase())) {
+    const level = proficiencyLevel.toLowerCase();
+    if (['bridging', 'level 5'].includes(level)) {
       return `
         **CRITICAL SUBJECT RULE: PRESERVE AUTHOR'S VOICE**
         - For this high-level ELA/Social Studies material, prioritize preserving the original author's tone and voice.
         - Do not oversimplify. Focus on defining high-level academic or figurative language and clarifying only the most complex sentence structures. The student must engage with the text in a near-native form.
+        - Bold vocabulary words throughout all text and questions.
       `;
     }
-    return `
-      **CRITICAL SUBJECT RULE: SIMPLIFY AND REPHRASE**
-      - For this ${subject} material, your primary task is to simplify and rephrase complex reading passages to make them more accessible.
-      - Chunk the text into smaller paragraphs and adapt analytical questions with appropriate scaffolds.
-    `;
+    if (['reaching', 'level 6'].includes(level)) {
+      return `
+        **CRITICAL SUBJECT RULE: GRADE-LEVEL PERFORMANCE**
+        - Maintain full grade-level complexity and academic rigor
+        - Use sophisticated academic language and complex sentence structures
+        - Include high-level analytical and critical thinking tasks
+        - Minimal adaptation needed - focus on content mastery rather than language support
+        - Bold vocabulary words throughout all content
+      `;
+    }
+    if (['expanding', 'level 4'].includes(level)) {
+      return `
+        **CRITICAL SUBJECT RULE: MODERATE SIMPLIFICATION**
+        - Simplify complex sentence structures while maintaining academic tone
+        - Chunk text into manageable paragraphs with clear topic sentences
+        - Provide analytical questions with some scaffolding
+        - Bold vocabulary words throughout all content
+      `;
+    }
+    if (['developing', 'level 3'].includes(level)) {
+      return `
+        **CRITICAL SUBJECT RULE: SIMPLIFY AND SUPPORT**
+        - Simplify and rephrase complex reading passages to make them more accessible
+        - Chunk the text into smaller paragraphs with clear headings
+        - Adapt analytical questions with appropriate scaffolds and sentence frames
+        - Bold vocabulary words throughout all content
+      `;
+    }
+    if (['emerging', 'level 2'].includes(level)) {
+      return `
+        **CRITICAL SUBJECT RULE: SIGNIFICANT SIMPLIFICATION**
+        - Use simple sentence structures and familiar vocabulary
+        - Break text into very short paragraphs with visual supports
+        - Convert complex questions to multiple choice or fill-in-the-blank
+        - Bold vocabulary words throughout all content
+      `;
+    }
+    if (['entering', 'level 1'].includes(level)) {
+      return `
+        **CRITICAL SUBJECT RULE: MAXIMUM SIMPLIFICATION**
+        - Use very simple sentences (5-8 words) and basic vocabulary
+        - Include extensive visual supports and graphic organizers
+        - Convert most questions to matching, true/false, or picture-based activities
+        - Bold vocabulary words throughout all content
+      `;
+    }
   }
 
   return '';
@@ -461,14 +594,14 @@ const createStudentAndDescriptorsPrompt = (details) => {
   - Structure: Title, Background Knowledge, Key Vocabulary, Pre-Reading Activity, Reading Text, Practice Problems/Exercises.
   
   **CRITICAL VOCABULARY INTEGRATION RULE:**
-  - You MUST use the vocabulary words from your "Key Vocabulary" section within the adapted reading text itself
-  - Do NOT replace these vocabulary words with simpler synonyms in the text
-  - **Bold** each vocabulary word when it appears in the text (e.g., **mansion**, **ceremony**, **premises**)
-  - Do NOT provide parenthetical definitions or explanations after vocabulary words in the text
+  - You MUST use the vocabulary words from your "Key Vocabulary" section throughout the ENTIRE worksheet
+  - **Bold** each vocabulary word EVERY TIME it appears anywhere in the worksheet (reading text, problems, instructions, etc.)
+  - Examples: "Find the **coordinates** of the **image**" or "Use the **vector** to translate the point"
+  - Do NOT provide parenthetical definitions or explanations after vocabulary words
   - Students should refer back to the Key Vocabulary section for meanings
-  - Every vocabulary word you list must appear at least once in the adapted text
+  - Every vocabulary word you list must appear at least once in the adapted content
+  - In math problems, bold mathematical vocabulary terms consistently throughout all exercises
   - If the original text doesn't contain a vocabulary word, you must naturally incorporate it into the adapted version
-  - Example: "The President's **mansion** was impressive" (NOT "The President's mansion (very large house) was impressive")
 
   **CRITICAL CONTENT PRESERVATION RULE:**
   - If this is math/science content, you MUST include ALL original problems, exercises, and questions with their exact numbers and mathematical content
