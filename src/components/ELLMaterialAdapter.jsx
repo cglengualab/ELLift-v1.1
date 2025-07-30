@@ -150,6 +150,9 @@ const ELLMaterialAdapter = () => {
   const [dynamicDescriptors, setDynamicDescriptors] = useState(null);
   const [imagePrompts, setImagePrompts] = useState(null);
   
+  // TOGGLE FOR IMAGE FEATURES - Change this to true/false to show/hide
+  const [showImageFeatures, setShowImageFeatures] = useState(false); // Set to false to hide, true to show
+  
   // Refs for copying content
   const worksheetRef = useRef(null);
   const teacherGuideRef = useRef(null);
@@ -657,11 +660,12 @@ const ELLMaterialAdapter = () => {
               <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
                 <p className="text-amber-800 text-sm font-medium flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                  Missing required fields: {validationStatus.missingFields.join(', ')}
-                </p>
-              </div>
-            )}
-            </div>
+                  Missing required fields: {validationStatus.
+                    missingFields.join(', ')}
+               </p>
+             </div>
+           )}
+         </div>
          
          <ActionButtons 
            adaptMaterial={adaptMaterial}
@@ -758,8 +762,27 @@ const ELLMaterialAdapter = () => {
          </div>
        </div>
 
-       {/* Bottom Section: AI Image Tools - Side by Side */}
-       {hasResults && (
+       {/* Developer Toggle for Image Features */}
+       <div className="xl:col-span-3">
+         <div className="card bg-gray-50 border-gray-200 mb-4">
+           <div className="flex items-center justify-between p-4">
+             <span className="text-sm font-medium">🧪 Developer Mode: Image Features</span>
+             <button
+               onClick={() => setShowImageFeatures(!showImageFeatures)}
+               className={`px-3 py-1 rounded text-sm transition-colors ${
+                 showImageFeatures 
+                   ? 'bg-green-100 text-green-800 border border-green-300' 
+                   : 'bg-gray-100 text-gray-600 border border-gray-300'
+               }`}
+             >
+               {showImageFeatures ? 'Hide' : 'Show'} Image Features
+             </button>
+           </div>
+         </div>
+       </div>
+
+       {/* Bottom Section: AI Image Tools - Side by Side (HIDDEN/SHOWN based on toggle) */}
+       {hasResults && showImageFeatures && (
          <div className="xl:col-span-3">
            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
              
@@ -824,8 +847,8 @@ const ELLMaterialAdapter = () => {
          </div>
        )}
 
-       {/* Image Generator Section (when no results yet) */}
-       {!hasResults && (
+       {/* Image Generator Section (when no results yet) - HIDDEN/SHOWN based on toggle */}
+       {!hasResults && showImageFeatures && (
          <div className="xl:col-span-3">
            <ImageGenerator 
              subject={subject} 
