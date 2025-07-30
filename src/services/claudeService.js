@@ -1,4 +1,4 @@
-// FileName: src/services/claudeService.js (Enhanced version with intelligent chunking and no-summarization)
+// FileName: src/services/claudeService.js (Universal ELL Material Adapter)
 
 // Claude API service functions
 import { extractTextFromPDF as extractPDFText } from './pdfService.js';
@@ -10,9 +10,9 @@ const CONFIG = {
     RETRY_DELAY: 2000
   },
   TOKENS: {
-    DEFAULT_MAX: 8000,     // Keep higher for non-chunked content
-    EXTENDED_MAX: 12000,   // Keep higher for complex single pieces
-    CHUNK_MAX: 6000        // NEW: Specific limit for chunks
+    DEFAULT_MAX: 8000,
+    EXTENDED_MAX: 12000,
+    CHUNK_MAX: 6000
   },
   DELIMITERS: {
     SPLIT_MARKER: '|||---SPLIT---|||'
@@ -23,42 +23,27 @@ const CONFIG = {
   }
 };
 
-// Subject groupings
+// Universal subject groupings
 const SUBJECT_GROUPS = {
-  MATH_SCIENCE: ['Mathematics', 'Algebra', 'Geometry', 'Science', 'Chemistry', 'Physics', 'Biology'],
-  ELA_SOCIAL: ['English Language Arts', 'History', 'Social Studies']
+  MATH_SCIENCE: ['Mathematics', 'Algebra', 'Geometry', 'Science', 'Chemistry', 'Physics', 'Biology', 'Statistics', 'Calculus', 'Pre-Algebra'],
+  ELA_SOCIAL: ['English Language Arts', 'History', 'Social Studies', 'Literature', 'Writing', 'Reading', 'Geography', 'Government', 'Economics'],
+  LANGUAGE: ['Spanish', 'French', 'German', 'Italian', 'Chinese', 'Japanese', 'Latin'],
+  ARTS: ['Art', 'Music', 'Drama', 'Dance', 'Visual Arts', 'Performing Arts'],
+  OTHER: ['Health', 'Physical Education', 'Technology', 'Computer Science', 'Life Skills', 'Career Education']
 };
 
-// Keywords that indicate images would be helpful
+// Universal visual keywords
 const IMAGE_KEYWORDS = [
   'diagram', 'chart', 'graph', 'figure', 'illustration', 'photo', 'image', 
   'visual', 'picture', 'drawing', 'map', 'timeline', 'flowchart', 'table',
-  'geometric shape', 'triangle', 'circle', 'rectangle', 'square',
-  'cell structure', 'ecosystem', 'food chain', 'water cycle', 'solar system',
-  'coordinate plane', 'number line', 'fraction', 'pie chart', 'bar graph',
-  'character', 'setting', 'plot diagram', 'story map', 'vocabulary card',
-  'historical figure', 'government building', 'community', 'continent'
+  'graphic', 'sketch', 'plot', 'model', 'representation', 'display'
 ];
-
-// Subject-specific visual terms
-const SUBJECT_VISUAL_TERMS = {
-  'Mathematics': ['graph', 'coordinate plane', 'geometric shape', 'fraction model', 'number line', 'chart'],
-  'Algebra': ['coordinate plane', 'graph', 'equation', 'slope', 'linear function'],
-  'Geometry': ['triangle', 'circle', 'rectangle', 'polygon', '3D shape', 'angle'],
-  'Science': ['cell diagram', 'ecosystem', 'food chain', 'water cycle', 'solar system', 'lab equipment'],
-  'Biology': ['cell', 'organ', 'system', 'DNA', 'photosynthesis', 'respiratory system'],
-  'Chemistry': ['molecule', 'atom', 'periodic table', 'chemical reaction', 'lab equipment'],
-  'Physics': ['wave', 'circuit', 'magnet', 'simple machine', 'light spectrum'],
-  'English Language Arts': ['story map', 'character', 'setting', 'plot diagram', 'parts of speech'],
-  'Social Studies': ['map', 'timeline', 'government building', 'community', 'historical figure'],
-  'History': ['timeline', 'historical figure', 'monument', 'artifact', 'battle map']
-};
 
 const API_BASE_URL = process.env.NODE_ENV === 'development' 
   ? 'http://localhost:3000' 
   : window.location.origin;
 
-// Custom error class for better error handling
+// Custom error class
 class ClaudeAPIError extends Error {
   constructor(message, status = null, details = null) {
     super(message);
@@ -80,43 +65,530 @@ const validateAdaptationParams = (params) => {
   }
 };
 
-const validateSplitResponse = (parts, expectedParts = 2) => {
-  if (parts.length < expectedParts) {
-    throw new ClaudeAPIError(`Expected ${expectedParts} parts in response, got ${parts.length}`);
-  }
-  
-  if (parts.some(part => !part.trim())) {
-    throw new ClaudeAPIError('One or more response parts are empty');
-  }
-  
-  return parts.map(part => part.trim());
-};
-
 const sanitizeInput = (text) => {
   if (typeof text !== 'string') return text;
   
-  // Basic sanitization - remove potential script tags and excessive whitespace
   return text
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
     .replace(/\s+/g, ' ')
     .trim();
 };
 
-// Content complexity estimation
-const estimateContentComplexity = (content) => {
-  const problemCount = (content.match(/\b\d+\.\d+\b/g) || []).length; // Matches 1.1, 2.3, etc.
-  const questionCount = (content.match(/\d+\./g) || []).length; // Matches 1., 2., etc.
-  const totalProblems = problemCount + questionCount;
-  const wordCount = content.split(/\s+/).length;
-  const hasMultipleSections = content.includes('Section') || content.includes('Part') || content.includes('Chapter');
+// UNIVERSAL CONTENT ANALYSIS
+const analyzeContentStructure = (content) => {
+  const analysis = {
+    // Basic metrics
+    wordCount: content.split(/\s+/).length,
+    lineCount: content.split('\n').length,
+    
+    // Structural elements
+    numberedItems: (content.match(/^\s*\d+[\.\)]/gm) || []).length,
+    letterItems: (content.match(/^\s*[a-z][\.\)]/gim) || []).length,
+    bulletPoints: (content.match(/^\s*[-•*]/gm) || []).length,
+    
+    // Question types
+    fillInBlanks: (content.match(/_{3,}|\(\s*\)|\[\s*\]/g) || []).length,
+    multipleChoice: (content.match(/^\s*[A-D][\.\)]/gm) || []).length,
+    openEnded: (content.match(/\?/g) || []).length,
+    
+    // Content types
+    hasMath: /[\d\+\-\*\/\=\<\>\(\)\[\]]/g.test(content),
+    hasCoordinates: /\(\s*[\d\-]+\s*,\s*[\d\-]+\s*\)/g.test(content),
+    hasFormulas: /[a-zA-Z]\s*=|=\s*[a-zA-Z]|\^|\√|∫|∑/g.test(content),
+    
+    // Text analysis
+    paragraphs: content.split(/\n\s*\n/).filter(p => p.trim()).length,
+    sentences: (content.match(/[.!?]+/g) || []).length,
+    
+    // Special patterns
+    measurements: (content.match(/\d+\s*(cm|mm|m|km|in|ft|yd|mi|g|kg|lb|oz|ml|l|gal)/gi) || []).length,
+    percentages: (content.match(/\d+%/g) || []).length,
+    dates: (content.match(/\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4}|\d{4}|\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/gi) || []).length,
+    
+    // Sections and headers
+    sections: (content.match(/^\s*[A-Z][^.!?]*:?\s*$/gm) || []).length,
+    chapters: (content.match(/chapter|section|part|unit/gi) || []).length
+  };
+  
+  // Determine content type
+  analysis.contentType = determineContentType(analysis, content);
+  
+  // Calculate complexity
+  analysis.totalItems = analysis.numberedItems + analysis.letterItems + analysis.bulletPoints;
+  analysis.complexity = calculateComplexity(analysis);
+  
+  return analysis;
+};
+
+const determineContentType = (analysis, content) => {
+  const lowerContent = content.toLowerCase();
+  
+  if (analysis.hasMath || analysis.hasCoordinates || analysis.hasFormulas) {
+    return 'mathematics';
+  }
+  
+  if (lowerContent.includes('read') && lowerContent.includes('passage')) {
+    return 'reading_comprehension';
+  }
+  
+  if (analysis.multipleChoice > analysis.openEnded) {
+    return 'multiple_choice_quiz';
+  }
+  
+  if (analysis.fillInBlanks > 5) {
+    return 'fill_in_blank';
+  }
+  
+  if (analysis.paragraphs > analysis.totalItems) {
+    return 'text_analysis';
+  }
+  
+  if (analysis.totalItems > analysis.paragraphs) {
+    return 'problem_set';
+  }
+  
+  return 'mixed_content';
+};
+
+const calculateComplexity = (analysis) => {
+  const complexityScore = 
+    (analysis.wordCount / 100) +
+    (analysis.totalItems * 2) +
+    (analysis.openEnded * 1.5) +
+    (analysis.paragraphs * 0.5);
+    
+  return {
+    score: complexityScore,
+    level: complexityScore < 20 ? 'simple' : complexityScore < 50 ? 'moderate' : 'complex',
+    needsChunking: complexityScore > 60 || analysis.totalItems > 15 || analysis.wordCount > 2000,
+    needsExtendedTokens: complexityScore > 40 || analysis.wordCount > 1500
+  };
+};
+
+// UNIVERSAL PROFICIENCY ADAPTATIONS
+const getUniversalProficiencyAdaptations = (proficiencyLevel) => {
+  const level = proficiencyLevel.toLowerCase();
+  
+  const adaptations = {
+    'entering': {
+      sentences: '3-5 words maximum',
+      vocabulary: 'Basic everyday words only',
+      structure: 'Single simple sentences',
+      support: 'Extensive visual supports, word banks, matching activities',
+      assessment: 'Fill-in-blank, true/false, picture matching'
+    },
+    'emerging': {
+      sentences: '6-10 words with simple connecting words',
+      vocabulary: 'Familiar words with gradual academic introduction',
+      structure: 'Present and simple past tense',
+      support: 'Visual supports, sentence starters, guided examples',
+      assessment: 'Multiple choice, yes/no, short responses with frames'
+    },
+    'developing': {
+      sentences: 'Expanded sentences with multiple clauses',
+      vocabulary: 'Academic vocabulary with context support',
+      structure: 'Various tenses and transitions',
+      support: 'Graphic organizers, sentence frames, models',
+      assessment: 'Mixed formats with substantial scaffolding'
+    },
+    'expanding': {
+      sentences: 'Complex sentences with sophisticated language',
+      vocabulary: 'Technical vocabulary with minimal support',
+      structure: 'Multiple tenses and complex structures',
+      support: 'Text-based scaffolds, reasoning requirements',
+      assessment: 'Analysis tasks with some scaffolding'
+    },
+    'bridging': {
+      sentences: 'Grade-level academic language with strategic supports',
+      vocabulary: 'Specialized and technical terms',
+      structure: 'Sophisticated grammatical structures',
+      support: 'Minimal scaffolding, focus on refinement',
+      assessment: 'Extended responses with light support'
+    },
+    'reaching': {
+      sentences: 'Full grade-level complexity',
+      vocabulary: 'All specialized vocabulary without support',
+      structure: 'Sophisticated academic register',
+      support: 'No simplification needed',
+      assessment: 'Grade-level expectations, full rigor'
+    }
+  };
+  
+  const levelKey = ['level 1', 'level 2', 'level 3', 'level 4', 'level 5', 'level 6'].includes(level) 
+    ? ['entering', 'emerging', 'developing', 'expanding', 'bridging', 'reaching'][parseInt(level.split(' ')[1]) - 1]
+    : level;
+    
+  return adaptations[levelKey] || adaptations['developing'];
+};
+
+// UNIVERSAL SUBJECT-AWARE INSTRUCTIONS
+const getUniversalSubjectInstructions = (subject, contentAnalysis) => {
+  const subjectType = Object.keys(SUBJECT_GROUPS).find(key => 
+    SUBJECT_GROUPS[key].includes(subject)
+  ) || 'OTHER';
+  
+  const baseInstructions = {
+    MATH_SCIENCE: `
+      **CRITICAL PRESERVATION RULE:**
+      - Preserve ALL numbers, equations, formulas, measurements, and coordinates exactly
+      - Keep ALL problem numbers and exercise labels identical
+      - Maintain ALL answer choices in multiple choice questions
+      - Do NOT change mathematical logic or scientific facts
+      - Only simplify the LANGUAGE around the content, not the content itself
+    `,
+    ELA_SOCIAL: `
+      **CRITICAL PRESERVATION RULE:**
+      - Preserve ALL proper nouns, dates, and historical facts exactly
+      - Keep ALL quotations and citations identical
+      - Maintain ALL text passages for analysis (simplify only if level requires it)
+      - Preserve author's voice in reading passages when possible
+      - Keep ALL question types and formats
+    `,
+    LANGUAGE: `
+      **CRITICAL PRESERVATION RULE:**
+      - Preserve ALL target language vocabulary and phrases exactly
+      - Keep ALL grammar examples and conjugations identical
+      - Maintain ALL pronunciation guides and phonetic notations
+      - Preserve cultural context and authentic materials
+    `,
+    ARTS: `
+      **CRITICAL PRESERVATION RULE:**
+      - Preserve ALL technical terminology and artistic vocabulary
+      - Keep ALL specific techniques, methods, and processes described
+      - Maintain ALL historical references and artist names
+      - Preserve creative project requirements and specifications
+    `,
+    OTHER: `
+      **CRITICAL PRESERVATION RULE:**
+      - Preserve ALL factual information and specific details
+      - Keep ALL procedural steps and safety instructions identical
+      - Maintain ALL technical vocabulary and specialized terms
+      - Preserve ALL measurements, quantities, and specifications
+    `
+  };
+  
+  let instructions = baseInstructions[subjectType];
+  
+  // Add content-specific adaptations
+  if (contentAnalysis.contentType === 'mathematics' || contentAnalysis.hasMath) {
+    instructions += `
+      - Mathematical expressions, coordinates, and formulas must remain unchanged
+      - Problem setup and numerical values cannot be altered
+      - Answer keys must remain valid after adaptation
+    `;
+  }
+  
+  if (contentAnalysis.multipleChoice > 0) {
+    instructions += `
+      - ALL multiple choice options (A, B, C, D) must be preserved exactly
+      - Do not change the correct answer or alter option content
+      - Only simplify the language of instructions, not the choices themselves
+    `;
+  }
+  
+  return instructions;
+};
+
+// UNIVERSAL PROMPT CREATION
+const createUniversalPrompt = (details) => {
+  const { contentAnalysis, proficiencyLevel, subject, materialType } = details;
+  const adaptations = getUniversalProficiencyAdaptations(proficiencyLevel);
+  const subjectInstructions = getUniversalSubjectInstructions(subject, contentAnalysis);
+  
+  return `You are an expert ELL curriculum adapter. Your task is to generate two distinct pieces of text, separated by the exact delimiter: ${CONFIG.DELIMITERS.SPLIT_MARKER}
+
+**CONTENT ANALYSIS:**
+- Content Type: ${contentAnalysis.contentType}
+- Total Items: ${contentAnalysis.totalItems} (${contentAnalysis.numberedItems} numbered, ${contentAnalysis.letterItems} lettered, ${contentAnalysis.bulletPoints} bullets)
+- Questions: ${contentAnalysis.openEnded} open-ended, ${contentAnalysis.multipleChoice} multiple choice, ${contentAnalysis.fillInBlanks} fill-in-blank
+- Text Structure: ${contentAnalysis.paragraphs} paragraphs, ${contentAnalysis.sentences} sentences
+- Complexity: ${contentAnalysis.complexity.level}
+
+**PART 1: STUDENT WORKSHEET**
+Generate a complete student worksheet formatted in simple GitHub Flavored Markdown.
+
+**UNIVERSAL PRESERVATION RULES:**
+- Write out EVERY SINGLE item, question, problem, and exercise completely
+- Preserve ALL numbers, measurements, coordinates, dates, and factual information exactly
+- Keep ALL multiple choice options, fill-in-blanks, and answer formats identical
+- Maintain ALL proper nouns, technical terms, and specialized vocabulary
+- NEVER summarize, abbreviate, or use phrases like "[Content continues...]" or "..."
+- Each item must be 100% complete and usable without teacher additions
+
+${subjectInstructions}
+
+**LANGUAGE ADAPTATION FOR ${proficiencyLevel.toUpperCase()} LEVEL:**
+- Sentence Structure: ${adaptations.sentences}
+- Vocabulary: ${adaptations.vocabulary}
+- Grammar: ${adaptations.structure}
+- Support Provided: ${adaptations.support}
+- Assessment Format: ${adaptations.assessment}
+
+**VOCABULARY INTEGRATION:**
+- Identify and **bold** key academic vocabulary throughout the worksheet
+- Use vocabulary naturally in context
+- Bold should appear consistently across all content sections
+
+**WORKSHEET STRUCTURE:**
+Create appropriate sections based on content type:
+- Title reflecting the subject and topic
+- Background Knowledge (if applicable)
+- Key Vocabulary section with terms relevant to the content
+- Pre-Activity or Instructions section
+- Main Content (adapted from original with all items preserved)
+- Any extension or reflection activities present in original
+
+${details.bilingualInstructions || ''}
+${details.iepInstructions || ''}
+
+**PART 2: LESSON-SPECIFIC DESCRIPTORS**
+Generate a valid JSON object with:
+- "title": Brief title for this lesson
+- "descriptors": Array of 3-5 "Can Do" statements appropriate for ${proficiencyLevel} level in ${subject}
+
+**ORIGINAL CONTENT TO ADAPT:**
+\`\`\`
+${details.contentToAdapt}
+\`\`\`
+
+Remember: Your primary goal is to make content linguistically accessible while preserving ALL educational content exactly.`;
+};
+
+// UNIVERSAL CHUNKING SYSTEM
+const createUniversalChunkPrompt = (details) => {
+  const { chunkNumber, totalChunks, proficiencyLevel, contentAnalysis } = details;
+  const adaptations = getUniversalProficiencyAdaptations(proficiencyLevel);
+  
+  return `You are processing chunk ${chunkNumber} of ${totalChunks} for an ELL worksheet adaptation.
+
+**CHUNK PROCESSING RULES:**
+- This is PART of a larger worksheet - do NOT create headers or vocabulary sections
+- ONLY adapt the specific content given below
+- Write out EVERY item completely - no summarization
+- Maintain ALL numbers, facts, coordinates, measurements, dates exactly
+- Apply ${proficiencyLevel} level language adaptations to instructions only
+
+**CONTENT TYPE:** ${contentAnalysis.contentType}
+**ITEMS IN THIS CHUNK:** ${contentAnalysis.totalItems} total items expected
+
+**LANGUAGE ADAPTATIONS:**
+- Sentences: ${adaptations.sentences}
+- Vocabulary: ${adaptations.vocabulary}
+- Support: ${adaptations.support}
+
+**CONTENT TO ADAPT:**
+\`\`\`
+${details.contentToAdapt}
+\`\`\`
+
+Return ONLY the adapted content with exact numbering/labeling preserved.
+Bold key academic vocabulary terms throughout.`;
+};
+
+const splitContentIntelligently = (content, contentAnalysis) => {
+  const lines = content.split('\n');
+  const chunks = [];
+  let currentChunk = '';
+  let itemCount = 0;
+  const maxItemsPerChunk = Math.max(3, Math.min(8, Math.ceil(contentAnalysis.totalItems / 6)));
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    
+    // Check if this line starts a new item (numbered, lettered, or bullet)
+    const isNewItem = /^\s*(\d+[\.\)]|[a-zA-Z][\.\)]|[-•*])/.test(line);
+    
+    if (isNewItem && currentChunk.trim() && itemCount >= maxItemsPerChunk) {
+      // Save current chunk and start new one
+      chunks.push(currentChunk.trim());
+      currentChunk = line + '\n';
+      itemCount = 1;
+    } else {
+      currentChunk += line + '\n';
+      if (isNewItem) itemCount++;
+    }
+  }
+  
+  // Don't forget the last chunk
+  if (currentChunk.trim()) {
+    chunks.push(currentChunk.trim());
+  }
+  
+  return chunks.filter(chunk => chunk.length > 20); // Filter out very small chunks
+};
+
+const processUniversalChunk = async (chunkParams) => {
+  const chunkAnalysis = analyzeContentStructure(chunkParams.contentToAdapt);
+  const promptDetails = { ...chunkParams, contentAnalysis: chunkAnalysis };
+  
+  const chunkPrompt = createUniversalChunkPrompt(promptDetails);
+  
+  if (!validateRequestSize(chunkPrompt)) {
+    throw new ClaudeAPIError('Chunk too large even after intelligent splitting');
+  }
+  
+  const result = await callClaudeAPIWithRetry([{ role: 'user', content: chunkPrompt }], CONFIG.TOKENS.CHUNK_MAX);
   
   return {
-    problemCount: totalProblems,
-    wordCount,
-    hasMultipleSections,
-    needsExtendedTokens: wordCount > 1000 || totalProblems > 10 || hasMultipleSections,
-    needsChunking: wordCount > 1500 || totalProblems > 10, // NEW: chunking threshold
-    estimatedTokensNeeded: Math.max(wordCount * 2, totalProblems * 200)
+    content: result.content[0].text,
+    chunkNumber: chunkParams.chunkNumber,
+    itemCount: chunkAnalysis.totalItems
+  };
+};
+
+const processChunksSequentially = async (chunks, params, setProcessingStep) => {
+  const results = [];
+  
+  for (let i = 0; i < chunks.length; i++) {
+    setProcessingStep?.(`Processing chunk ${i + 1} of ${chunks.length}...`);
+    
+    const chunkParams = {
+      ...params,
+      contentToAdapt: chunks[i],
+      chunkNumber: i + 1,
+      totalChunks: chunks.length
+    };
+    
+    const chunkResult = await processUniversalChunk(chunkParams);
+    results.push(chunkResult);
+    
+    if (i < chunks.length - 1) {
+      await delay(CONFIG.DELAYS.BETWEEN_CALLS);
+    }
+  }
+  
+  return results;
+};
+
+const createUniversalWorksheet = (combinedContent, params, originalAnalysis) => {
+  const { subject, proficiencyLevel, includeBilingualSupport, nativeLanguage, addStudentChecklist, translateSummary } = params;
+  
+  let worksheet = '';
+  
+  // Bilingual summary if requested
+  if (translateSummary && includeBilingualSupport && nativeLanguage) {
+    const subjectTranslations = {
+      'Spanish': {
+        'Mathematics': 'Matemáticas',
+        'Science': 'Ciencias',
+        'History': 'Historia',
+        'English Language Arts': 'Artes del Lenguaje'
+      }
+    };
+    
+    const translatedSubject = subjectTranslations[nativeLanguage]?.[subject] || subject;
+    worksheet += `*En esta lección, trabajaremos con ${translatedSubject}.*\n\n`;
+  }
+  
+  // Title with bilingual support
+  const bilingualTitle = includeBilingualSupport && nativeLanguage === 'Spanish' 
+    ? ` (*${subject} Adaptado*)` 
+    : '';
+  worksheet += `# ${subject} Worksheet${bilingualTitle}\n\n`;
+  
+  // Checklist if requested
+  if (addStudentChecklist) {
+    worksheet += `## My Checklist\n`;
+    worksheet += `1. [ ] Read all instructions carefully\n`;
+    worksheet += `2. [ ] Review vocabulary words\n`;
+    worksheet += `3. [ ] Complete all ${originalAnalysis.totalItems} items\n`;
+    worksheet += `4. [ ] Check my work\n\n`;
+  }
+  
+  // Background Knowledge (adaptive based on content type)
+  worksheet += `## Background Knowledge\n`;
+  if (originalAnalysis.contentType === 'mathematics') {
+    worksheet += `* Work carefully with all numbers and calculations\n`;
+    worksheet += `* Show your work for each problem\n`;
+    worksheet += `* Check that your answers make sense\n\n`;
+  } else if (originalAnalysis.contentType === 'reading_comprehension') {
+    worksheet += `* Read all passages carefully\n`;
+    worksheet += `* Look for key details and main ideas\n`;
+    worksheet += `* Use context clues for unfamiliar words\n\n`;
+  } else {
+    worksheet += `* Read all instructions before starting\n`;
+    worksheet += `* Take your time with each item\n`;
+    worksheet += `* Ask for help if needed\n\n`;
+  }
+  
+  // Key Vocabulary (will be populated by AI based on content)
+  worksheet += `## Key Vocabulary\n`;
+  worksheet += `*Key terms will be **bolded** throughout the worksheet*\n\n`;
+  
+  // Main Content
+  worksheet += `## Activities\n\n`;
+  worksheet += combinedContent;
+  
+  return worksheet;
+};
+
+const handleUniversalChunking = async (params, setProcessingStep, contentAnalysis) => {
+  if (!contentAnalysis.complexity.needsChunking) {
+    return null;
+  }
+  
+  console.log(`Content requires chunking: ${contentAnalysis.complexity.level} complexity with ${contentAnalysis.totalItems} items`);
+  setProcessingStep?.('Analyzing content for optimal chunking...');
+  
+  const chunks = splitContentIntelligently(params.contentToAdapt, contentAnalysis);
+  console.log(`Split into ${chunks.length} chunks`);
+  
+  const processedChunks = await processChunksSequentially(chunks, params, setProcessingStep);
+  
+  setProcessingStep?.('Combining chunks into final worksheet...');
+  const combinedContent = processedChunks
+    .sort((a, b) => a.chunkNumber - b.chunkNumber)
+    .map(chunk => chunk.content)
+    .join('\n\n');
+  
+  const fullWorksheet = createUniversalWorksheet(combinedContent, params, contentAnalysis);
+  
+  // Create descriptors
+  const descriptors = {
+    title: `${params.subject} - ${params.proficiencyLevel} Level`,
+    descriptors: [
+      `Students can engage with ${params.subject.toLowerCase()} content at ${params.proficiencyLevel} level`,
+      `Students can complete ${contentAnalysis.totalItems} adapted activities`,
+      `Students can use academic vocabulary with appropriate support`,
+      `Students can demonstrate understanding through various formats`,
+      `Students can work independently with provided scaffolds`
+    ]
+  };
+  
+  // Simple teacher guide
+  const teacherGuide = `# Teacher's Guide: ${params.subject}
+
+## Answer Key
+*Complete answer key should be based on original material. All problem numbers and content remain identical to source material.*
+
+## Materials Needed
+- Student worksheet
+- Any manipulatives or tools mentioned in original material
+- Reference materials as appropriate
+
+## ELL Supports Included
+- Language simplified to ${params.proficiencyLevel} level
+- Key vocabulary bolded throughout
+- ${contentAnalysis.totalItems} items preserved with adaptive language
+- Content type: ${contentAnalysis.contentType}
+
+## Pacing Guide
+- Review vocabulary: 5-10 minutes
+- Complete activities: ${Math.max(20, contentAnalysis.totalItems * 2)} minutes
+- Review and discussion: 10 minutes`;
+  
+  return {
+    studentWorksheet: fullWorksheet,
+    teacherGuide,
+    dynamicWidaDescriptors: descriptors,
+    imagePrompts: null,
+    vocabularyValidation: { isValid: true, message: 'Universal chunking completed' },
+    contentAnalysis: {
+      chunkingUsed: true,
+      totalChunks: chunks.length,
+      processingMethod: 'universal_chunking',
+      originalAnalysis: contentAnalysis
+    }
   };
 };
 
@@ -132,85 +604,16 @@ const validateRequestSize = (prompt) => {
   return true;
 };
 
-// Function to detect image opportunities in text
-const detectImageOpportunities = (text, subject) => {
-  const opportunities = [];
-  const lowerText = text.toLowerCase();
-  
-  // Check for general image keywords
-  IMAGE_KEYWORDS.forEach(keyword => {
-    if (lowerText.includes(keyword.toLowerCase())) {
-      opportunities.push({
-        keyword,
-        context: extractContext(text, keyword),
-        type: 'general'
-      });
-    }
-  });
-  
-  // Check for subject-specific terms
-  const subjectTerms = SUBJECT_VISUAL_TERMS[subject] || [];
-  subjectTerms.forEach(term => {
-    if (lowerText.includes(term.toLowerCase())) {
-      opportunities.push({
-        keyword: term,
-        context: extractContext(text, term),
-        type: 'subject-specific'
-      });
-    }
-  });
-  
-  // Remove duplicates and limit to most relevant
-  const unique = opportunities.filter((item, index, self) => 
-    index === self.findIndex(t => t.keyword === item.keyword)
-  );
-  
-  return unique.slice(0, 5);
-};
-
-// Helper function to extract context around a keyword
-const extractContext = (text, keyword) => {
-  const lowerText = text.toLowerCase();
-  const lowerKeyword = keyword.toLowerCase();
-  const index = lowerText.indexOf(lowerKeyword);
-  
-  if (index === -1) return '';
-  
-  const start = Math.max(0, index - 50);
-  const end = Math.min(text.length, index + keyword.length + 50);
-  
-  return text.substring(start, end).trim();
-};
-
-// Function to sanitize image prompts for safety
-const sanitizeImagePrompt = (prompt) => {
-  if (!prompt.toLowerCase().startsWith('educational illustration:') && 
-      !prompt.toLowerCase().startsWith('learning diagram:')) {
-    prompt = 'Educational illustration: ' + prompt;
+const validateSplitResponse = (parts, expectedParts = 2) => {
+  if (parts.length < expectedParts) {
+    throw new ClaudeAPIError(`Expected ${expectedParts} parts in response, got ${parts.length}`);
   }
   
-  if (!prompt.toLowerCase().includes('classroom') && 
-      !prompt.toLowerCase().includes('educational') && 
-      !prompt.toLowerCase().includes('textbook')) {
-    prompt += ' Textbook style, appropriate for classroom use.';
+  if (parts.some(part => !part.trim())) {
+    throw new ClaudeAPIError('One or more response parts are empty');
   }
   
-  const safeTerms = {
-    'weapon': 'tool', 'fight': 'compete', 'battle': 'historical event',
-    'war': 'historical conflict', 'kill': 'eliminate', 'death': 'lifecycle end',
-    'blood': 'red liquid', 'violence': 'conflict', 'attack': 'approach',
-    'destroy': 'break down', 'explosion': 'reaction', 'bomb': 'device',
-    'gun': 'tool', 'knife': 'cutting tool', 'poison': 'harmful substance',
-    'dangerous': 'requiring caution'
-  };
-  
-  let cleanPrompt = prompt;
-  Object.keys(safeTerms).forEach(term => {
-    const regex = new RegExp(`\\b${term}\\b`, 'gi');
-    cleanPrompt = cleanPrompt.replace(regex, safeTerms[term]);
-  });
-  
-  return cleanPrompt;
+  return parts.map(part => part.trim());
 };
 
 // Enhanced API call with retry logic
@@ -277,21 +680,7 @@ const callClaudeAPIWithRetry = async (messages, maxTokens = CONFIG.TOKENS.DEFAUL
   }
 };
 
-// Original callClaudeAPI function for backward compatibility
-const callClaudeAPI = async (messages, maxTokens = CONFIG.TOKENS.DEFAULT_MAX) => {
-  return callClaudeAPIWithRetry(messages, maxTokens, 1);
-};
-
-export const extractTextFromPDF = async (file, setProcessingStep) => {
-  try {
-    setProcessingStep?.('Extracting text from PDF...');
-    return await extractPDFText(file, setProcessingStep);
-  } catch (error) {
-    console.error('PDF extraction error:', error);
-    throw new ClaudeAPIError('Failed to extract text from PDF', null, error);
-  }
-};
-
+// Helper functions for bilingual and IEP support (unchanged)
 const buildBilingualInstructions = ({
   includeBilingualSupport,
   nativeLanguage,
@@ -303,206 +692,21 @@ const buildBilingualInstructions = ({
 
   let instructions = `\n\n  **BILINGUAL SUPPORT REQUIREMENTS (Language: ${nativeLanguage}):**\n`;
 
-  instructions += `- For each term in the 'Key Vocabulary' section, provide its translation in ${nativeLanguage}. The translation MUST be formatted in parentheses and italics, without the language name. Example: **mansion**: a large house (*mansión*)\n`;
+  instructions += `- For each term in the 'Key Vocabulary' section, provide its translation in ${nativeLanguage}. Format: **term**: definition (*translation*)\n`;
   
   if (translateSummary) {
-    instructions += `- At the very top of the 'studentWorksheet' before the title, provide a 1-2 sentence summary of the topic in ${nativeLanguage}.\n`;
+    instructions += `- At the very top of the worksheet, provide a 1-2 sentence summary in ${nativeLanguage}.\n`;
   }
   
   if (translateInstructions) {
-    instructions += `- For **every** 'Directions:' line on the student worksheet (including for Pre-Reading, Comprehension, and Extension activities), you MUST insert an HTML line break tag (<br>) immediately after the English text, and then provide the translation in ${nativeLanguage} formatted in italics. Example: Directions: Do this.<br>*Instrucciones: Haz esto.*\n`;
+    instructions += `- For every 'Directions:' line, add <br>*Translation in ${nativeLanguage}* immediately after.\n`;
   }
   
   if (listCognates) {
-    instructions += `- In the 'teacherGuide' under 'ELL SUPPORTS INCLUDED', create a 'Cognates to Highlight' list of English/${nativeLanguage} cognates found in the text.\n`;
+    instructions += `- In the teacher guide, create a 'Cognates to Highlight' section with English/${nativeLanguage} word pairs.\n`;
   }
 
   return instructions;
-};
-
-const getProficiencyAdaptations = (proficiencyLevel) => {
-  const level = proficiencyLevel.toLowerCase();
-  
-  switch(level) {
-    case 'entering':
-    case 'level 1':
-      return `
-        **WIDA LEVEL 1 (ENTERING) ADAPTATIONS:**
-        - Use VERY simple sentences (3-5 words maximum)
-        - Break every instruction into tiny steps
-        - Use present tense only with basic verbs (move, find, draw)
-        - Include extensive visual supports and picture cues
-        - Provide word banks and visual vocabulary cards
-        - Use fill-in-the-blank and matching formats primarily
-        - Include sentence frames: "The point is ___" "I move ___"
-        - Avoid complex mathematical language - use everyday words
-        - Provide multiple examples with pictures
-        - Use bullet points for all instructions
-        - Include gestures and pointing activities where possible
-      `;
-    
-    case 'emerging':
-    case 'level 2':
-      return `
-        **WIDA LEVEL 2 (EMERGING) ADAPTATIONS:**
-        - Use simple sentences (6-10 words) with basic connecting words
-        - Include visual supports with every new concept
-        - Provide word banks and sentence starters for all responses
-        - Use familiar vocabulary with academic terms introduced gradually
-        - Include step-by-step numbered instructions
-        - Use present and simple past tense appropriately
-        - Provide examples and guided practice before independent work
-        - Include yes/no and multiple choice questions frequently
-        - Use graphic organizers for complex concepts
-        - Encourage responses with sentence frames
-      `;
-    
-    case 'developing':
-    case 'level 3':
-      return `
-        **WIDA LEVEL 3 (DEVELOPING) ADAPTATIONS:**
-        - Use expanded sentences with multiple clauses and transitions
-        - Include academic vocabulary with context clues and support
-        - Provide sentence frames for complex mathematical explanations
-        - Use various tenses and more sophisticated structures
-        - Include compare/contrast and cause/effect language patterns
-        - Provide graphic organizers for multi-step problems
-        - Include some abstract thinking tasks with substantial scaffolds
-        - Mix structured and semi-open response formats
-        - Encourage use of mathematical reasoning language
-        - Provide models and examples for extended responses
-      `;
-    
-    case 'expanding':
-    case 'level 4':
-      return `
-        **WIDA LEVEL 4 (EXPANDING) ADAPTATIONS:**
-        - Use complex sentences with sophisticated academic language
-        - Include technical vocabulary with minimal contextual support
-        - Provide opportunities for extended mathematical discourse
-        - Use multiple tenses and complex grammatical structures naturally
-        - Include analysis, synthesis, and evaluation tasks
-        - Reduce visual supports while maintaining text-based scaffolds
-        - Include reasoning and justification requirements in responses
-        - Focus on academic language functions (hypothesize, conclude, analyze)
-        - Encourage mathematical argumentation and proof-like reasoning
-        - Provide minimal sentence frames, focus on independent expression
-      `;
-    
-    case 'bridging':
-    case 'level 5':
-      return `
-        **WIDA LEVEL 5 (BRIDGING) ADAPTATIONS:**
-        - Use grade-level academic language with strategic, minimal supports
-        - Include specialized vocabulary and technical mathematical terms
-        - Provide opportunities for extended academic mathematical discourse
-        - Use sophisticated grammatical structures and formal register
-        - Include abstract and analytical thinking tasks with light scaffolding
-        - Focus on advanced academic language functions (synthesize, evaluate, critique)
-        - Provide minimal scaffolding while ensuring accessibility
-        - Approach near-native academic performance expectations
-        - Include tasks requiring mathematical communication and reasoning
-        - Focus on refinement of mathematical language rather than simplification
-      `;
-    
-    case 'reaching':
-    case 'level 6':
-      return `
-        **WIDA LEVEL 6 (REACHING) ADAPTATIONS:**
-        - Use full grade-level academic language identical to English-proficient peers
-        - Include all specialized and technical vocabulary without additional support
-        - Provide complex academic discourse opportunities requiring sustained reasoning
-        - Use sophisticated grammatical structures and formal mathematical register
-        - Include high-level abstract and analytical thinking tasks without scaffolding
-        - Require extended mathematical justification and proof-writing
-        - Focus on mathematical argumentation, critique, and peer review
-        - Performance should meet or exceed grade-level expectations
-        - Include metacognitive tasks requiring reflection on mathematical processes
-        - NO simplification needed - full academic rigor maintained
-      `;
-    
-    default:
-      return `Adapt the content to be appropriate for the ${proficiencyLevel} WIDA proficiency level, using research-based ELL best practices.`;
-  }
-};
-
-const getSubjectAwareInstructions = (subject, proficiencyLevel) => {
-  if (SUBJECT_GROUPS.MATH_SCIENCE.includes(subject)) {
-    return `
-      **CRITICAL SUBJECT RULE: PRESERVE ALL MATHEMATICAL CONTENT**
-      - For this ${subject} material, you MUST include EVERY SINGLE problem, exercise, and question from the original material
-      - Do NOT omit, combine, or summarize any numbered problems (e.g., if original has problems 1.1, 1.2, 1.3, etc., ALL must appear in your adaptation)
-      - Do NOT change or alter ANY numbers, equations, coordinates, variables, or mathematical logic
-      - Do NOT create new simplified problems to replace the originals
-      - Your ONLY task is to add ELL scaffolding AROUND the original problems by:
-        * Simplifying the instructional language (e.g., "Find the coordinates" instead of "Determine the coordinates")
-        * Adding vocabulary support for mathematical terms
-        * Breaking complex instructions into steps
-        * Providing visual cues or organizational structures
-      - Every mathematical exercise must remain exactly as given to ensure the teacher's answer key remains valid
-      - Example: Original "Determine the coordinates of the image P'" becomes "Find the coordinates of the image P'" but the problem setup stays identical
-    `;
-  }
-
-  if (SUBJECT_GROUPS.ELA_SOCIAL.includes(subject)) {
-    const level = proficiencyLevel.toLowerCase();
-    if (['bridging', 'level 5'].includes(level)) {
-      return `
-        **CRITICAL SUBJECT RULE: PRESERVE AUTHOR'S VOICE**
-        - For this high-level ELA/Social Studies material, prioritize preserving the original author's tone and voice.
-        - Do not oversimplify. Focus on defining high-level academic or figurative language and clarifying only the most complex sentence structures. The student must engage with the text in a near-native form.
-        - Bold vocabulary words throughout all text and questions.
-      `;
-    }
-    if (['reaching', 'level 6'].includes(level)) {
-      return `
-        **CRITICAL SUBJECT RULE: GRADE-LEVEL PERFORMANCE**
-        - Maintain full grade-level complexity and academic rigor
-        - Use sophisticated academic language and complex sentence structures
-        - Include high-level analytical and critical thinking tasks
-        - Minimal adaptation needed - focus on content mastery rather than language support
-        - Bold vocabulary words throughout all content
-      `;
-    }
-    if (['expanding', 'level 4'].includes(level)) {
-      return `
-        **CRITICAL SUBJECT RULE: MODERATE SIMPLIFICATION**
-        - Simplify complex sentence structures while maintaining academic tone
-        - Chunk text into manageable paragraphs with clear topic sentences
-        - Provide analytical questions with some scaffolding
-        - Bold vocabulary words throughout all content
-      `;
-    }
-    if (['developing', 'level 3'].includes(level)) {
-      return `
-        **CRITICAL SUBJECT RULE: SIMPLIFY AND SUPPORT**
-        - Simplify and rephrase complex reading passages to make them more accessible
-        - Chunk the text into smaller paragraphs with clear headings
-        - Adapt analytical questions with appropriate scaffolds and sentence frames
-        - Bold vocabulary words throughout all content
-      `;
-    }
-    if (['emerging', 'level 2'].includes(level)) {
-      return `
-        **CRITICAL SUBJECT RULE: SIGNIFICANT SIMPLIFICATION**
-        - Use simple sentence structures and familiar vocabulary
-        - Break text into very short paragraphs with visual supports
-        - Convert complex questions to multiple choice or fill-in-the-blank
-        - Bold vocabulary words throughout all content
-      `;
-    }
-    if (['entering', 'level 1'].includes(level)) {
-      return `
-        **CRITICAL SUBJECT RULE: MAXIMUM SIMPLIFICATION**
-        - Use very simple sentences (3-5 words) and basic vocabulary
-        - Include extensive visual supports and graphic organizers
-        - Convert most questions to matching, true/false, or picture-based activities
-        - Bold vocabulary words throughout all content
-      `;
-    }
-  }
-
-  return '';
 };
 
 const getIepAccommodationInstructions = ({
@@ -513,638 +717,135 @@ const getIepAccommodationInstructions = ({
   let instructions = `\n\n  **IEP ACCOMMODATION REQUIREMENTS:**\n`;
   
   if (worksheetLength) {
-    instructions += `- **Worksheet Length:** Adjust the number of activities to fit a "${worksheetLength}" time frame. Short: 5-10 min, Medium: 15-25 min, Long: 30+ min.\n`;
+    instructions += `- **Worksheet Length:** Adjust activities for "${worksheetLength}" timeframe\n`;
   }
   
   if (addStudentChecklist) {
-    instructions += `- **Student Checklist:** At the very top of the student worksheet, add a section called "My Checklist" with 3-5 simple, sequential steps for completing the worksheet. Example: 1. [ ] Read Key Vocabulary. 2. [ ] Read the text.\n`;
+    instructions += `- **Student Checklist:** Add "My Checklist" section at top with 3-5 steps\n`;
   }
 
   if (useMultipleChoice) {
-    instructions += `- **Multiple Choice:** Convert all open-ended comprehension questions into a multiple-choice format with 3-4 clear options.\n`;
+    instructions += `- **Multiple Choice:** Convert open-ended questions to multiple choice format where appropriate\n`;
   }
 
   return instructions;
 };
 
-// Function to validate vocabulary integration
-const validateVocabularyIntegration = (studentWorksheet) => {
-  const vocabularySection = studentWorksheet.match(/\*\*\*Key Vocabulary\*\*\*(.*?)\*\*\*/s);
-  if (!vocabularySection) return { isValid: true, message: 'No vocabulary section found' };
-  
-  const vocabularyWords = vocabularySection[1]
-    .match(/\*\*(.*?)\*\*/g)
-    ?.map(word => word.replace(/\*\*/g, '').toLowerCase()) || [];
-  
-  const textSection = studentWorksheet.substring(studentWorksheet.indexOf('***Reading Text'));
-  
-  const missingWords = vocabularyWords.filter(word => 
-    !textSection.toLowerCase().includes(word)
-  );
-  
-  return {
-    isValid: missingWords.length === 0,
-    missingWords,
-    totalVocabWords: vocabularyWords.length,
-    message: missingWords.length > 0 
-      ? `Missing vocabulary words in text: ${missingWords.join(', ')}` 
-      : 'All vocabulary words found in text'
-  };
-};
-
-// CHUNKING SYSTEM - NEW FUNCTIONS
-
-// Create prompt specifically for chunks
-const createChunkPrompt = (details) => {
-  const { chunkNumber, totalChunks, proficiencyLevel, subject } = details;
-  
-  // Get level-specific adaptations for chunks
-  let levelInstructions = '';
-  const level = proficiencyLevel.toLowerCase();
-  
-  if (['entering', 'level 1'].includes(level)) {
-    levelInstructions = `
-    - Use VERY simple words (3-5 words per sentence)
-    - Break each problem into tiny steps with bullets
-    - Use symbols: ➡️ right, ⬅️ left, ⬆️ up, ⬇️ down
-    - Format as: "Step 1: Start at P(2,5)" "Step 2: Move right 6" "Step 3: New point is (8,5)"
-    - Include visual cues and fill-in blanks with (___,___)
-    `;
-  } else if (['emerging', 'level 2'].includes(level)) {
-    levelInstructions = `
-    - Use simple sentences (6-10 words)
-    - Provide sentence starters: "First, I..." "Next, I..." "The answer is..."
-    - Include guided examples before each problem type
-    - Use choice formats when helpful
-    `;
-  } else if (['developing', 'level 3'].includes(level)) {
-    levelInstructions = `
-    - Use complete sentences with connecting words: "When you translate..., then..."
-    - Include sentence frames: "The vector ⟨a,b⟩ moves the point ___"
-    - Provide step-by-step reasoning guides
-    - Include compare/contrast language where appropriate
-    `;
-  } else if (['expanding', 'level 4'].includes(level)) {
-    levelInstructions = `
-    - Use complex sentences with academic vocabulary
-    - Include analysis language: "Determine..." "Calculate..." "Explain why..."
-    - Require mathematical justification in responses
-    - Focus on academic mathematical discourse
-    `;
-  } else if (['bridging', 'level 5'].includes(level)) {
-    levelInstructions = `
-    - Use sophisticated academic language with minimal simplification
-    - Include synthesis tasks: "Compare the results..." "What pattern do you notice..."
-    - Require extended mathematical explanations
-    - Focus on mathematical reasoning and communication
-    `;
-  } else if (['reaching', 'level 6'].includes(level)) {
-    levelInstructions = `
-    - Use FULL grade-level academic language - NO simplification
-    - Maintain original mathematical language and complexity
-    - Include all technical vocabulary without modification
-    - Require complete mathematical reasoning and formal communication
-    `;
-  }
-
-  return `You are processing chunk ${chunkNumber} of ${totalChunks} for an ELL worksheet adaptation.
-
-  **CRITICAL CHUNK RULES:**
-  - This is PART of a larger worksheet - do NOT create headers, vocabulary sections, or instructions
-  - ONLY adapt the specific problems given below
-  - Write out EVERY problem completely - no summarization or abbreviation
-  - Maintain all numbers, coordinates, and mathematical expressions exactly as given
-  - Apply ${proficiencyLevel} level language adaptations to instructions only
-  - Do NOT change mathematical content, only simplify the language around it
-
-  **MATHEMATICAL PRESERVATION:**
-  - Keep ALL coordinates, vectors, and numbers identical: P(2,5), ⟨6,0⟩, etc.
-  - Keep ALL problem parts: if there are parts A, B, C, include ALL
-  - Keep ALL measurements: 120 miles, 60 miles, etc.
-
-  **LEVEL-SPECIFIC LANGUAGE ADAPTATIONS:**
-  ${levelInstructions}
-
-  **PROBLEMS TO ADAPT:**
-  \`\`\`
-  ${details.contentToAdapt}
-  \`\`\`
-
-  Return ONLY the adapted problems with their exact numbers. No other content.
-  Bold mathematical vocabulary terms like **coordinates**, **vector**, **translate**, **image**.`;
-};
-
-// Process a single chunk
-const processSingleChunk = async (chunkParams) => {
-  const promptDetails = {
-    ...chunkParams,
-    complexity: estimateContentComplexity(chunkParams.contentToAdapt)
-  };
-
-  const chunkPrompt = createChunkPrompt(promptDetails);
-  
-  // Validate request size
-  if (!validateRequestSize(chunkPrompt)) {
-    throw new ClaudeAPIError('Chunk request too large even after splitting');
-  }
-  
-  const result = await callClaudeAPIWithRetry([{ role: 'user', content: chunkPrompt }], CONFIG.TOKENS.CHUNK_MAX);
-  
-  return {
-    content: result.content[0].text,
-    chunkNumber: chunkParams.chunkNumber
-  };
-};
-
-// Process chunks one by one
-const processChunksSequentially = async (chunks, params, setProcessingStep) => {
-  const results = [];
-  
-  for (let i = 0; i < chunks.length; i++) {
-    setProcessingStep?.(`Processing chunk ${i + 1} of ${chunks.length}...`);
-    
-    const chunkParams = {
-      ...params,
-      contentToAdapt: chunks[i],
-      isChunk: true,
-      chunkNumber: i + 1,
-      totalChunks: chunks.length
-    };
-    
-    const chunkResult = await processSingleChunk(chunkParams);
-    results.push(chunkResult);
-    
-    // Wait between chunks
-    if (i < chunks.length - 1) {
-      await delay(CONFIG.DELAYS.BETWEEN_CALLS);
-    }
-  }
-  
-  return results;
-};
-
-// Helper to create full worksheet from chunks
-const createFullWorksheetFromChunks = async (combinedProblems, params) => {
-  const { proficiencyLevel, subject, nativeLanguage, includeBilingualSupport, addStudentChecklist, translateSummary } = params;
-  
-  let worksheet = '';
-  
-  // Add bilingual summary if requested
-  if (translateSummary && includeBilingualSupport && nativeLanguage === 'Spanish') {
-    worksheet += '*En esta lección, aprenderemos cómo mover puntos y figuras en un plano usando vectores y coordenadas.*\n\n';
-  }
-  
-  // Title
-  const bilingualTitle = includeBilingualSupport && nativeLanguage === 'Spanish' 
-    ? ' (*Traslaciones en Geometría*)' 
-    : '';
-  worksheet += `# Translations in Geometry${bilingualTitle}\n\n`;
-  
-  // Student checklist if requested
-  if (addStudentChecklist) {
-    worksheet += `## My Checklist\n`;
-    worksheet += `1. [ ] Read vocabulary words\n`;
-    worksheet += `2. [ ] Look at examples\n`;
-    worksheet += `3. [ ] Solve problems step by step\n\n`;
-  }
-  
-  // Background Knowledge
-  worksheet += `## Background Knowledge\n`;
-  worksheet += `* Points have (x,y) **coordinates**\n`;
-  worksheet += `* Moving points changes their **coordinates**\n`;
-  worksheet += `* Arrows show direction of movement\n\n`;
-  
-  // Key Vocabulary
-  worksheet += `## Key Vocabulary\n`;
-  const vocabTranslations = includeBilingualSupport && nativeLanguage === 'Spanish';
-  worksheet += `* **translate**: to move a shape or point${vocabTranslations ? ' (*trasladar*)' : ''}\n`;
-  worksheet += `* **vector**: an arrow showing distance and direction${vocabTranslations ? ' (*vector*)' : ''}\n`;
- worksheet += `* **coordinates**: numbers showing position (x,y)${vocabTranslations ? ' (*coordenadas*)' : ''}\n`;
- worksheet += `* **image**: the new point after moving${vocabTranslations ? ' (*imagen*)' : ''}\n`;
- worksheet += `* **plane**: flat surface with points${vocabTranslations ? ' (*plano*)' : ''}\n\n`;
- 
- // Pre-Reading Activity
- worksheet += `## Pre-Reading Activity\n`;
- const directions = `Directions: Match each word to its picture.`;
- const translatedDirections = includeBilingualSupport && nativeLanguage === 'Spanish' 
-   ? `${directions}<br>*Instrucciones: Une cada palabra con su imagen.*` 
-   : directions;
- worksheet += `${translatedDirections}\n\n`;
- worksheet += `**vector** ➡️   **coordinates** (2,3)   **plane** □\n\n`;
- 
- // Practice Problems
- worksheet += `## Practice Problems\n\n`;
- worksheet += combinedProblems;
- 
- return worksheet;
-};
-
-// Create teacher guide from chunked content
-const createTeacherGuideFromChunked = async (fullWorksheet, params) => {
- const { subject, proficiencyLevel, nativeLanguage, includeBilingualSupport, listCognates } = params;
- 
- // Create a simplified teacher guide prompt
- const guidePrompt = `Create a teacher's guide for this ELL ${subject} worksheet adapted for ${proficiencyLevel} level students.
+// Teacher guide creation
+const createUniversalTeacherGuide = async (studentWorksheet, params, contentAnalysis) => {
+  const guidePrompt = `Create a teacher's guide for this adapted ELL worksheet.
 
 **STUDENT WORKSHEET:**
 \`\`\`
-${fullWorksheet}
+${studentWorksheet}
 \`\`\`
 
-**TASK:**
-Generate a complete teacher's guide in GitHub Flavored Markdown with:
+**CONTENT ANALYSIS:**
+- Subject: ${params.subject}
+- Level: ${params.proficiencyLevel}
+- Content Type: ${contentAnalysis.contentType}
+- Items: ${contentAnalysis.totalItems}
 
-1. **Answer Key** - Provide answers for ALL practice problems
-2. **Lesson Preparation & Pacing** - List materials needed (use <mark> tags)  
-3. **Content Objectives** - What students will learn
-4. **ELL Language Objectives** - Language skills students will develop
-5. **ELL Supports Included** - List the adaptations provided
+**REQUIRED SECTIONS:**
+1. **Answer Key** - Provide guidance for all activities
+2. **Materials Needed** - List required resources (use <mark> tags)
+3. **Lesson Objectives** - Content and language objectives
+4. **ELL Supports** - List adaptations provided
+5. **Pacing Guide** - Suggested timing
 
-${includeBilingualSupport && listCognates ? `6. **Cognates to Highlight** - List English/${nativeLanguage} word pairs that share roots` : ''}
+Focus on practical teaching guidance. Do NOT repeat worksheet content.`;
 
-Focus on providing practical teaching guidance. Do NOT repeat the worksheet content.`;
-
- try {
-   const result = await callClaudeAPIWithRetry([{ role: 'user', content: guidePrompt }], CONFIG.TOKENS.DEFAULT_MAX);
-   return result.content[0].text;
- } catch (error) {
-   console.warn('Failed to generate teacher guide for chunked content, using fallback');
-   return createFallbackTeacherGuide(params);
+  try {
+    const result = await callClaudeAPIWithRetry([{ role: 'user', content: guidePrompt }], CONFIG.TOKENS.DEFAULT_MAX);
+    return result.content[0].text;
+  } catch (error) {
+    console.warn('Failed to generate teacher guide, using fallback');
+   return createFallbackTeacherGuide(params, contentAnalysis);
  }
 };
 
-// Fallback teacher guide
-const createFallbackTeacherGuide = (params) => {
+const createFallbackTeacherGuide = (params, contentAnalysis) => {
  const { subject, proficiencyLevel } = params;
+ const adaptations = getUniversalProficiencyAdaptations(proficiencyLevel);
  
  return `# Teacher's Guide: ${subject} - ${proficiencyLevel} Level
 
 ## Answer Key
-*Answers will vary based on specific problems. Please refer to your original answer key and apply the same solutions to the adapted problems.*
+*Refer to your original answer key. All problem numbers, questions, and content structure remain identical to the source material.*
 
-## Lesson Preparation & Pacing
-**Materials Needed:**
-- <mark>Coordinate grid paper</mark>
-- <mark>Ruler or straightedge</mark>
-- <mark>Colored pencils for marking translations</mark>
+## Materials Needed
 - <mark>Student worksheet</mark>
-
-**Pacing:** 45-50 minutes
-- Introduction: 10 minutes
-- Vocabulary review: 10 minutes  
-- Guided practice: 15 minutes
-- Independent work: 15 minutes
+- <mark>Any materials from original lesson plan</mark>
+${contentAnalysis.hasMath ? '- <mark>Calculator (if permitted)</mark>\n- <mark>Graph paper or coordinate grids</mark>' : ''}
+${contentAnalysis.contentType === 'reading_comprehension' ? '- <mark>Highlighters for text marking</mark>' : ''}
+- <mark>Reference materials as appropriate</mark>
 
 ## Content Objectives
 Students will be able to:
-- Apply translation vectors to coordinate points
-- Identify the image of a point after translation
-- Calculate coordinates after multiple translations
+- Demonstrate understanding of ${subject.toLowerCase()} concepts
+- Complete ${contentAnalysis.totalItems} activities successfully
+- Apply knowledge through various question formats
 
-## ELL Language Objectives
+## Language Objectives (${proficiencyLevel} Level)
 Students will be able to:
-- Use mathematical vocabulary related to transformations
-- Follow multi-step directions in ${proficiencyLevel} appropriate language
-- Communicate mathematical reasoning using sentence frames
+- Use academic vocabulary with appropriate support
+- Follow instructions written at ${proficiencyLevel} language level
+- Communicate understanding using: ${adaptations.assessment}
 
 ## ELL Supports Included
-- Simplified vocabulary and sentence structures
-- Visual supports and symbols
-- Step-by-step problem breakdown
-- Bilingual vocabulary support
-- Mathematical terminology consistently bolded`;
+- **Language Level:** ${adaptations.sentences}
+- **Vocabulary Support:** ${adaptations.vocabulary}
+- **Instructional Support:** ${adaptations.support}
+- **Content Type:** ${contentAnalysis.contentType} with ${contentAnalysis.totalItems} items
+- **Assessment Formats:** ${adaptations.assessment}
+
+## Pacing Guide
+- **Vocabulary Review:** 5-10 minutes
+- **Main Activities:** ${Math.max(20, contentAnalysis.totalItems * 2)} minutes
+- **Review/Discussion:** 10-15 minutes
+- **Total Time:** ${Math.max(35, contentAnalysis.totalItems * 2 + 20)} minutes
+
+## Additional Notes
+- All factual content and numerical values preserved from original
+- Sentence structures adapted to ${proficiencyLevel} level
+- Key vocabulary bolded throughout for emphasis
+- Original assessment validity maintained`;
 };
 
-// Combine all chunk results
-const combineChunkedResults = async (chunks, originalParams, setProcessingStep) => {
- console.log('Combining chunked results...');
- setProcessingStep?.('Combining all chunks into final worksheet...');
+// Vocabulary validation function
+const validateVocabularyIntegration = (studentWorksheet) => {
+ const vocabularySection = studentWorksheet.match(/## Key Vocabulary(.*?)##/s);
+ if (!vocabularySection) return { isValid: true, message: 'No vocabulary section found' };
  
- // Sort chunks by number to ensure correct order
- const sortedChunks = chunks.sort((a, b) => a.chunkNumber - b.chunkNumber);
+ const boldWords = (studentWorksheet.match(/\*\*(.*?)\*\*/g) || [])
+   .map(word => word.replace(/\*\*/g, '').toLowerCase());
  
- // Combine all problem content
- const combinedProblems = sortedChunks.map(chunk => chunk.content).join('\n\n');
- 
- // Create full worksheet structure
- const fullWorksheet = await createFullWorksheetFromChunks(combinedProblems, originalParams);
- 
- // Generate descriptors
- const descriptors = {
-   title: `${originalParams.subject} - ${originalParams.proficiencyLevel} Level`,
-   descriptors: [
-     "Students can work with coordinate geometry problems at their language level",
-     "Students can apply translation vectors to points using adapted language",
-     "Students can identify geometric transformations with appropriate scaffolds",
-     "Students can calculate coordinate changes with language support",
-     "Students can communicate mathematical reasoning using provided sentence frames"
-   ]
- };
- 
- // Create teacher guide
- setProcessingStep?.('Generating teacher guide...');
- await delay(CONFIG.DELAYS.BETWEEN_CALLS);
- const teacherGuide = await createTeacherGuideFromChunked(fullWorksheet, originalParams);
+ const uniqueBoldWords = [...new Set(boldWords)];
  
  return {
-   studentWorksheet: fullWorksheet,
-   teacherGuide,
-   dynamicWidaDescriptors: descriptors,
-   imagePrompts: null, // Skip image generation for chunked content to avoid additional API calls
-   vocabularyValidation: { isValid: true, message: 'Chunked processing completed successfully' },
-   contentAnalysis: {
-     chunkingUsed: true,
-     totalChunks: chunks.length,
-     processingMethod: 'intelligent_chunking',
-     originalProblemCount: estimateContentComplexity(originalParams.contentToAdapt).problemCount
-   }
+   isValid: boldWords.length > 0,
+   totalBoldedTerms: boldWords.length,
+   uniqueTerms: uniqueBoldWords.length,
+   message: boldWords.length > 0 
+     ? `${uniqueBoldWords.length} unique vocabulary terms bolded ${boldWords.length} times throughout worksheet`
+     : 'No vocabulary terms found bolded in worksheet'
  };
 };
 
-// Enhanced chunking function
-const handleLongMaterialAdaptation = async (params, setProcessingStep, complexity) => {
- // Only use chunking if content is actually large
- if (!complexity.needsChunking) {
-   return null; // Use standard approach
- }
-
- console.log('Content requires chunking - implementing intelligent splitting');
- setProcessingStep?.('Analyzing content for optimal chunking...');
-
- // Split content by problems while preserving structure
- const content = params.contentToAdapt;
- 
- // Find problem boundaries more intelligently
- const problemSections = [];
- const lines = content.split('\n');
- let currentSection = '';
- 
- for (let i = 0; i < lines.length; i++) {
-   const line = lines[i];
-   
-   // Check if this line starts a new problem (e.g., "1.1", "2.1", etc.)
-   if (/^\s*\d+\.\d+/.test(line) && currentSection.trim()) {
-     // Save the previous section
-     problemSections.push(currentSection.trim());
-     currentSection = line + '\n';
-   } else {
-     currentSection += line + '\n';
-   }
- }
- 
- // Don't forget the last section
- if (currentSection.trim()) {
-   problemSections.push(currentSection.trim());
- }
- 
- // Group problems into manageable chunks (3-4 problems per chunk)
- const chunks = [];
- const problemsPerChunk = Math.max(2, Math.min(4, Math.ceil(problemSections.length / 5))); // Limit to max 5 chunks
- 
- for (let i = 0; i < problemSections.length; i += problemsPerChunk) {
-   const chunk = problemSections.slice(i, i + problemsPerChunk).join('\n\n');
-   if (chunk.trim()) {
-     chunks.push(chunk);
-   }
- }
-
- console.log(`Split content into ${chunks.length} chunks with ~${problemsPerChunk} problems each`);
- console.log('Chunk sizes:', chunks.map(chunk => `${chunk.split('\n').length} lines`));
-
- // Process each chunk separately
- const processedChunks = await processChunksSequentially(chunks, params, setProcessingStep);
- 
- // Combine results
- return await combineChunkedResults(processedChunks, params, setProcessingStep);
-};
-
-// Standard prompt for non-chunked content (same as before but with enhanced detection)
-const createStudentAndDescriptorsPrompt = (details) => {
- const { materialType, subject, gradeLevel, proficiencyLevel, learningObjectives, contentToAdapt, bilingualInstructions, proficiencyAdaptations, subjectAwareInstructions, iepInstructions, complexity } = details;
- const level = proficiencyLevel.toLowerCase();
- 
- // Count specific problem parts in the original
- const problemParts = contentToAdapt.match(/[ABC]\s*⟨[^⟩]+⟩/g) || [];
- const detailedProblems = contentToAdapt.match(/\d+\.\d+[^]*?(?=\d+\.\d+|\d+\.\d+|$)/g) || [];
- 
- console.log(`Detected ${problemParts.length} vector parts and ${detailedProblems.length} detailed problems`);
- 
- let levelSpecificInstructions = '';
- 
- // More nuanced level instructions
- if (['entering', 'level 1'].includes(level)) {
-   levelSpecificInstructions = `
-   **LEVEL 1 SPECIFIC REQUIREMENTS:**
-   - Use VERY simple words (3-5 words per sentence)
-   - Break each problem into tiny steps with bullets
-   - Use symbols: ➡️ right, ⬅️ left, ⬆️ up, ⬇️ down
-   - Format as: "Step 1: Start at P(2,5)" "Step 2: Move right 6" "Step 3: New point is (8,5)"
-   - Include visual cues and fill-in blanks with (___,___)
-   - BUT keep ALL original numbers, coordinates, and vectors exactly as given
-   `;
- } else if (['emerging', 'level 2'].includes(level)) {
-   levelSpecificInstructions = `
-   **LEVEL 2 SPECIFIC REQUIREMENTS:**
-   - Use simple sentences (6-10 words)
-   - Provide sentence starters: "First, I..." "Next, I..." "The answer is..."
-   - Include guided examples before each problem type
-   - Keep all original mathematical content but add scaffolding language
-   - Use choice formats when helpful but preserve original problem structure
-   `;
- } else if (['developing', 'level 3'].includes(level)) {
-   levelSpecificInstructions = `
-   **LEVEL 3 SPECIFIC REQUIREMENTS:**
-   - Use complete sentences with connecting words: "When you translate..., then..."
-   - Include sentence frames: "The vector ⟨a,b⟩ moves the point ___"
-   - Provide step-by-step reasoning guides
-   - Maintain all original problem complexity but add language support
-   - Include compare/contrast language where appropriate
-   `;
- } else if (['expanding', 'level 4'].includes(level)) {
-   levelSpecificInstructions = `
-   **LEVEL 4 SPECIFIC REQUIREMENTS:**
-   - Use complex sentences with academic vocabulary
-   - Include analysis language: "Determine..." "Calculate..." "Explain why..."
-   - Require mathematical justification in responses
-   - Maintain full problem complexity with minimal language modifications
-   - Focus on academic mathematical discourse
-   `;
- } else if (['bridging', 'level 5'].includes(level)) {
-   levelSpecificInstructions = `
-   **LEVEL 5 SPECIFIC REQUIREMENTS:**
-   - Use sophisticated academic language with minimal simplification
-   - Include synthesis tasks: "Compare the results..." "What pattern do you notice..."
-   - Require extended mathematical explanations
-   - Maintain near grade-level language complexity
-   - Focus on mathematical reasoning and communication
-   `;
- } else if (['reaching', 'level 6'].includes(level)) {
-   levelSpecificInstructions = `
-   **LEVEL 6 SPECIFIC REQUIREMENTS:**
-   - Use FULL grade-level academic language - NO simplification
-   - Maintain original mathematical language and complexity
-   - Include all technical vocabulary without modification
-   - Require complete mathematical reasoning and formal communication
-   - This should be nearly identical to original except for organization and vocabulary bolding
-   `;
- }
-
- return `You are an expert ELL curriculum adapter. Your task is to generate two distinct pieces of text, separated by the exact delimiter: ${CONFIG.DELIMITERS.SPLIT_MARKER}
-
- **CRITICAL ANALYSIS OF ORIGINAL CONTENT:**
- - Detected ${complexity.problemCount} total problems/questions
- - Detected ${problemParts.length} vector parts (A, B, C components)
- - Original contains ${complexity.wordCount} words
- - Problems with multiple parts: ${problemParts.length > 0 ? 'YES - must include ALL parts' : 'NO'}
-
- **ABSOLUTE MATHEMATICAL PRESERVATION RULE:**
- - EVERY number, coordinate, vector, and mathematical expression MUST remain identical
- - Problem 1.1 has parts A ⟨6, 0⟩ B ⟨5, -1⟩ C ⟨-8, -7⟩ - ALL must appear
- - Problem 2.3 mentions "120 miles east and 60 miles south" - these EXACT numbers must appear
- - ANY problem with specific measurements, coordinates, or values MUST keep them unchanged
-
- **PART 1: STUDENT WORKSHEET**
- Generate a complete student worksheet formatted in simple GitHub Flavored Markdown.
- 
- **CRITICAL VOCABULARY INTEGRATION RULE:**
- - **Bold** mathematical vocabulary throughout: **translate**, **vector**, **coordinates**, **image**, **plane**
- - Use vocabulary naturally in context: "Find the **coordinates** of the **image**"
- - Do NOT add parenthetical definitions in the problems themselves
-
- **ABSOLUTE NO-SUMMARIZATION RULE - ENHANCED:**
- - Write out EVERY SINGLE problem completely with ALL parts
- - If original shows "A ⟨6, 0⟩ B ⟨5, -1⟩ C ⟨-8, -7⟩" then ALL THREE must appear
- - If original mentions "120 miles east and 60 miles south" these EXACT numbers must appear
- - NEVER write "[Content continues...]", "[Similar problems...]", or "[Continue with...]"
- - NEVER use "..." to indicate missing content
- - Each problem must be 100% complete with zero teacher additions needed
-
- **PROBLEM-BY-PROBLEM CHECKLIST:**
- Before finishing, verify each problem contains:
- - 1.1: Point P(2,5) with vectors A⟨6,0⟩, B⟨5,-1⟩, C⟨-8,-7⟩ ✓
- - 1.2: Complete problem statement with specific details ✓
- - 1.3: Pattern recognition with figures A, B, C ✓
- - 1.4: Construction site with vectors ⟨-6,3⟩, ⟨-3,3⟩, ⟨7,2⟩ ✓
- - 1.5: Polygons A through E and shape Q ✓
- - 2.1: Vector ⟨4,1⟩ and points A(a-1,b), B(2b+1,4+a) ✓
- - 2.2: Linear function with y-intercept details ✓
- - 2.3: College trip with 120, 60, 80, 40, 150 mile measurements ✓
- - 2.4: Triangle ABC with vertices A(-5,-2), B(-3,4), C(1,-2) ✓
-
- ${levelSpecificInstructions}
-
- - Apply subject-aware rules, IEP accommodations, and bilingual supports as instructed.
- - **CRUCIAL:** This worksheet must be 100% print-and-go ready.
-
- **PART 2: LESSON-SPECIFIC DESCRIPTORS**
- Generate a valid JSON object with a "title" and a "descriptors" array of 3-5 observable "Can Do" statements.
-
- **DETAILS FOR ADAPTATION:**
- - Material Type: ${materialType}
- - Subject: ${subject}
- - WIDA Level: ${proficiencyLevel}
- - Original Text: \`\`\`${contentToAdapt}\`\`\`
- ${subjectAwareInstructions}
- ${iepInstructions}
- ${bilingualInstructions}
- ${proficiencyAdaptations}
- `;
-};
-
-const createTeacherGuidePrompt = (details, studentWorksheet) => {
- const { bilingualInstructions, subjectAwareInstructions } = details;
- return `You are an expert ELL curriculum adapter. Your task is to generate a teacher's guide for the student worksheet provided below.
-
- **STUDENT WORKSHEET TO CREATE A GUIDE FOR:**
- \`\`\`
- ${studentWorksheet}
- \`\`\`
-
- ${subjectAwareInstructions}
-
- **TASK:**
- Generate a complete teacher's guide in GitHub Flavored Markdown.
- - **Your primary task is to create a complete Answer Key for ALL activities from the worksheet.**
- - After the Answer Key, create a "Lesson Preparation & Pacing" section, highlighting materials with <mark> tags.
- - Then, list the Content and ELL Language Objectives.
- - Then, list the ELL Supports Included.
- - **IMPORTANT:** When mentioning visual aids like diagrams, charts, images, maps, timelines, or any visual elements, be specific about what they should show. Use phrases like "diagram showing...", "chart displaying...", "image of...", etc.
- - **CRUCIAL:** Do NOT repeat or copy the student worksheet content. Your purpose is to provide the answers and pedagogical notes FOR the worksheet.
- ${bilingualInstructions}
-
- Provide ONLY the raw Markdown for the teacher's guide, and nothing else.`;
-};
-
-// Function to generate image prompts using Claude (SAFE VERSION)
-const generateImagePrompts = async (opportunities, subject, proficiencyLevel, materialType) => {
- if (opportunities.length === 0) return null;
- 
- const promptText = `You are an expert at creating image prompts for educational AI image generators like DALL-E. 
-
-Based on the following detected visual needs from a teacher's guide, create specific, detailed prompts that teachers can copy and paste into an AI image generator.
-
-**Context:**
-- Subject: ${subject}
-- Student Level: ${proficiencyLevel} WIDA proficiency
-- Material Type: ${materialType}
-
-**Visual needs detected:**
-${opportunities.map((opp, index) => 
- `${index + 1}. "${opp.keyword}" - Context: "${opp.context}"`
-).join('\n')}
-
-**CRITICAL INSTRUCTIONS:**
-Create educational image prompts that are:
-- Appropriate for classroom use and educational purposes
-- Safe and suitable for all ages
-- Free from any potentially sensitive language
-- Focused on learning and academic content
-- Using clear, positive, educational terminology
-
-Create a JSON object with an array called "imagePrompts" containing objects with:
-- "title": A brief title for what the image shows
-- "prompt": A detailed, educational prompt starting with "Educational illustration:" or "Learning diagram:" 
-- "usage": How teachers might use this image
-
-**PROMPT FORMATTING RULES:**
-- Always start prompts with "Educational illustration:" or "Learning diagram:"
-- Use terms like "textbook style", "classroom appropriate", "academic illustration"
-- Focus on educational value and clarity
-- Avoid any language that might be misinterpreted
-- Keep prompts professional and curriculum-focused
-
-Example format:
-"Educational illustration: A textbook-style diagram showing the water cycle with clear labels for evaporation, condensation, and precipitation. Clean, simple design suitable for classroom learning."
-
-Respond ONLY with valid JSON. No other text.`;
-
+// PDF extraction function
+export const extractTextFromPDF = async (file, setProcessingStep) => {
  try {
-   const result = await callClaudeAPIWithRetry([
-     { role: 'user', content: promptText }
-   ], CONFIG.TOKENS.DEFAULT_MAX, 1);
-   
-   const responseText = result.content[0].text;
-   const cleanedResponse = responseText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-   
-   const parsedResult = JSON.parse(cleanedResponse);
-   
-   // Additional safety filter - clean up any potentially problematic words
-   if (parsedResult.imagePrompts) {
-     parsedResult.imagePrompts = parsedResult.imagePrompts.map(prompt => ({
-       ...prompt,
-       prompt: sanitizeImagePrompt(prompt.prompt)
-     }));
-   }
-   
-   return parsedResult;
+   setProcessingStep?.('Extracting text from PDF...');
+   return await extractPDFText(file, setProcessingStep);
  } catch (error) {
-   console.error('Error generating image prompts:', error);
-   return null;
+   console.error('PDF extraction error:', error);
+   throw new ClaudeAPIError('Failed to extract text from PDF', null, error);
  }
 };
 
 /**
-* Main adaptation function with intelligent chunking
+* MAIN UNIVERSAL ADAPTATION FUNCTION
+* Works with ANY subject, ANY material type, ANY complexity level
 */
 export const adaptMaterialWithClaude = async (params, setProcessingStep) => {
  try {
@@ -1153,28 +854,32 @@ export const adaptMaterialWithClaude = async (params, setProcessingStep) => {
    
    const { subject, proficiencyLevel, materialType, includeBilingualSupport, nativeLanguage, translateSummary, translateInstructions, listCognates, worksheetLength, addStudentChecklist, useMultipleChoice } = params;
 
-   setProcessingStep?.('Analyzing content complexity...');
+   setProcessingStep?.('Analyzing content structure...');
 
-   // Analyze content complexity
-   const complexity = estimateContentComplexity(params.contentToAdapt);
-   console.log('Content complexity analysis:', complexity);
+   // UNIVERSAL CONTENT ANALYSIS - works for any material
+   const contentAnalysis = analyzeContentStructure(params.contentToAdapt);
+   console.log('Universal content analysis:', {
+     contentType: contentAnalysis.contentType,
+     complexity: contentAnalysis.complexity.level,
+     items: contentAnalysis.totalItems,
+     wordCount: contentAnalysis.wordCount
+   });
 
-   // Check if we need chunking
-   const chunkingResult = await handleLongMaterialAdaptation(params, setProcessingStep, complexity);
+   // Check if chunking is needed
+   const chunkingResult = await handleUniversalChunking(params, setProcessingStep, contentAnalysis);
    if (chunkingResult) {
-     console.log('Chunking completed successfully');
+     console.log('Universal chunking completed successfully');
      return chunkingResult;
    }
 
-   // Standard processing for smaller content
-   console.log('Using standard processing approach');
-   const maxTokens = complexity.needsExtendedTokens ? CONFIG.TOKENS.EXTENDED_MAX : CONFIG.TOKENS.DEFAULT_MAX;
+   // Standard processing for manageable content
+   console.log('Using standard universal processing');
+   const maxTokens = contentAnalysis.complexity.needsExtendedTokens ? CONFIG.TOKENS.EXTENDED_MAX : CONFIG.TOKENS.DEFAULT_MAX;
    console.log(`Using ${maxTokens} tokens for this adaptation`);
 
-   setProcessingStep?.('Preparing adaptation instructions...');
+   setProcessingStep?.('Preparing universal adaptation instructions...');
 
-   const subjectAwareInstructions = getSubjectAwareInstructions(subject, proficiencyLevel);
-   const proficiencyAdaptations = getProficiencyAdaptations(proficiencyLevel);
+   // Build instruction components
    const bilingualInstructions = buildBilingualInstructions({
      includeBilingualSupport, nativeLanguage, translateSummary, translateInstructions, listCognates
    });
@@ -1182,119 +887,105 @@ export const adaptMaterialWithClaude = async (params, setProcessingStep) => {
      worksheetLength, addStudentChecklist, useMultipleChoice
    });
    
-   const promptDetails = { ...params, subjectAwareInstructions, proficiencyAdaptations, bilingualInstructions, iepInstructions, complexity };
+   const promptDetails = { 
+     ...params, 
+     contentAnalysis, 
+     bilingualInstructions, 
+     iepInstructions 
+   };
    
-   // STEP 1: Get the Student Worksheet and Descriptors together
-   setProcessingStep?.('Generating student worksheet and descriptors...');
-   console.log("Step 1: Requesting Student Worksheet & Descriptors...");
-   console.log(`Expected problems in output: ${complexity.problemCount}`);
+   // STEP 1: Generate Student Worksheet and Descriptors
+   setProcessingStep?.('Generating adapted worksheet...');
+   console.log(`Processing ${contentAnalysis.contentType} with ${contentAnalysis.totalItems} items`);
    
-   const initialPrompt = createStudentAndDescriptorsPrompt(promptDetails);
+   const mainPrompt = createUniversalPrompt(promptDetails);
    
-   // Validate request size before sending
-   if (!validateRequestSize(initialPrompt)) {
-     throw new ClaudeAPIError('Request too large for API. Please use shorter content or enable chunking.');
+   // Validate request size
+   if (!validateRequestSize(mainPrompt)) {
+     throw new ClaudeAPIError('Content too large for single request. Chunking is recommended.');
    }
    
-   const initialResult = await callClaudeAPIWithRetry([{ role: 'user', content: initialPrompt }], maxTokens);
+   const mainResult = await callClaudeAPIWithRetry([{ role: 'user', content: mainPrompt }], maxTokens);
    
-   const initialParts = validateSplitResponse(
-     initialResult.content[0].text.split(CONFIG.DELIMITERS.SPLIT_MARKER),
+   const mainParts = validateSplitResponse(
+     mainResult.content[0].text.split(CONFIG.DELIMITERS.SPLIT_MARKER),
      2
    );
    
-   const studentWorksheet = initialParts[0];
+   const studentWorksheet = mainParts[0];
    
-   // Validate that all problems were included
-   const outputComplexity = estimateContentComplexity(studentWorksheet);
-   console.log('Output complexity analysis:', outputComplexity);
-   if (outputComplexity.problemCount < complexity.problemCount * 0.8) {
-     console.warn(`Potential content loss detected: Input had ~${complexity.problemCount} problems, output has ~${outputComplexity.problemCount}`);
+   // Validate output completeness
+   const outputAnalysis = analyzeContentStructure(studentWorksheet);
+   console.log('Output analysis:', {
+     inputItems: contentAnalysis.totalItems,
+     outputItems: outputAnalysis.totalItems,
+     preservation: Math.round((outputAnalysis.totalItems / Math.max(contentAnalysis.totalItems, 1)) * 100) + '%'
+   });
+   
+   if (outputAnalysis.totalItems < contentAnalysis.totalItems * 0.7) {
+     console.warn(`Potential content loss: Expected ~${contentAnalysis.totalItems} items, got ${outputAnalysis.totalItems}`);
    }
    
-   // Validate vocabulary integration
-   const vocabValidation = validateVocabularyIntegration(studentWorksheet);
-   console.log('Vocabulary validation:', vocabValidation.message);
-   
-   if (!vocabValidation.isValid) {
-     console.warn('Vocabulary integration issue detected:', vocabValidation.missingWords);
-   }
-   
+   // Parse descriptors
    let dynamicWidaDescriptors;
-   
    try {
-     dynamicWidaDescriptors = JSON.parse(initialParts[1]);
+     dynamicWidaDescriptors = JSON.parse(mainParts[1]);
    } catch (parseError) {
-     console.warn('Failed to parse descriptors JSON, using fallback');
+     console.warn('Failed to parse descriptors, using fallback');
      dynamicWidaDescriptors = {
        title: `${subject} - ${proficiencyLevel} Level`,
-       descriptors: ["Students can engage with adapted content at their proficiency level"]
+       descriptors: [
+         `Students can engage with ${subject.toLowerCase()} content at their language level`,
+         `Students can complete adapted activities with appropriate support`,
+         `Students can use academic vocabulary with scaffolding`,
+         `Students can demonstrate understanding through various formats`
+       ]
      };
    }
    
-   console.log("Step 1: Received Student Worksheet & Descriptors.");
+   console.log("Step 1: Student worksheet and descriptors completed");
 
    // Wait between API calls
    await delay(CONFIG.DELAYS.BETWEEN_CALLS);
 
-   // STEP 2: Get the Teacher's Guide
+   // STEP 2: Generate Teacher Guide
    setProcessingStep?.('Generating teacher guide...');
-   console.log("Step 2: Requesting Teacher's Guide...");
+   console.log("Step 2: Creating teacher guide");
    
-   const guidePrompt = createTeacherGuidePrompt(promptDetails, studentWorksheet);
-   const guideTokens = Math.min(maxTokens, CONFIG.TOKENS.EXTENDED_MAX);
-   const guideResult = await callClaudeAPIWithRetry([{ role: 'user', content: guidePrompt }], guideTokens);
-   const teacherGuide = guideResult.content[0].text;
-   
-   console.log("Step 2: Teacher's Guide received.");
+   const teacherGuide = await createUniversalTeacherGuide(studentWorksheet, params, contentAnalysis);
+   console.log("Step 2: Teacher guide completed");
 
-   // STEP 3: Generate Image Prompts
-   setProcessingStep?.('Generating image suggestions...');
-   console.log("Step 3: Detecting image opportunities...");
-   
-   const imageOpportunities = detectImageOpportunities(teacherGuide, subject);
-   let imagePrompts = null;
-   
-   if (imageOpportunities.length > 0) {
-     console.log(`Found ${imageOpportunities.length} image opportunities`);
-     await delay(CONFIG.DELAYS.BETWEEN_CALLS);
-     
-     imagePrompts = await generateImagePrompts(
-       imageOpportunities, 
-       subject, 
-       proficiencyLevel, 
-       materialType
-     );
-     console.log("Step 3: Image prompts generated.");
-   } else {
-     console.log("Step 3: No image opportunities detected.");
-   }
+   // STEP 3: Validate vocabulary integration
+   setProcessingStep?.('Validating adaptation quality...');
+   const vocabValidation = validateVocabularyIntegration(studentWorksheet);
+   console.log('Vocabulary validation:', vocabValidation.message);
 
    setProcessingStep?.('Finalizing materials...');
 
-   // STEP 4: Assemble and return the final object
+   // Return complete results
    return {
      studentWorksheet,
      teacherGuide,
      dynamicWidaDescriptors,
-     imagePrompts,
+     imagePrompts: null, // Skip image generation for faster processing
      vocabularyValidation: vocabValidation,
      contentAnalysis: {
-       inputComplexity: complexity,
-       outputComplexity,
+       inputAnalysis: contentAnalysis,
+       outputAnalysis,
        tokensUsed: maxTokens,
        completenessCheck: {
-         expectedProblems: complexity.problemCount,
-         detectedProblems: outputComplexity.problemCount,
-         ratio: outputComplexity.problemCount / Math.max(complexity.problemCount, 1)
+         expectedItems: contentAnalysis.totalItems,
+         detectedItems: outputAnalysis.totalItems,
+         preservationRate: Math.round((outputAnalysis.totalItems / Math.max(contentAnalysis.totalItems, 1)) * 100),
+         contentType: contentAnalysis.contentType
        },
        chunkingUsed: false,
-       processingMethod: 'standard'
+       processingMethod: 'universal_standard'
      }
    };
 
  } catch (error) {
-   console.error("A critical error occurred in the adaptation process.", error);
+   console.error("Universal adaptation process failed:", error);
    
    if (error instanceof ClaudeAPIError) {
      throw error;
