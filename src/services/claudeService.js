@@ -1,4 +1,4 @@
-// FileName: src/services/claudeService.js (Enhanced version with vocabulary integration fix)
+// FileName: src/services/claudeService.js (Enhanced version with improved WIDA level differentiation)
 
 // Claude API service functions
 import { extractTextFromPDF as extractPDFText } from './pdfService.js';
@@ -373,85 +373,97 @@ const getProficiencyAdaptations = (proficiencyLevel) => {
     case 'level 1':
       return `
         **WIDA LEVEL 1 (ENTERING) ADAPTATIONS:**
-        - Use very simple, short sentences (5-8 words maximum)
-        - Include extensive visual supports and graphic organizers
-        - Provide word banks for key terms
-        - Use bullet points and numbered steps
-        - Include sentence frames: "The answer is ___" "I need to ___"
-        - Use present tense and simple vocabulary
-        - Break complex tasks into very small steps
-        - Provide multiple examples for each concept
-        - Use matching, pointing, and drawing activities
+        - Use VERY simple sentences (3-5 words maximum)
+        - Break every instruction into tiny steps
+        - Use present tense only with basic verbs (move, find, draw)
+        - Include extensive visual supports and picture cues
+        - Provide word banks and visual vocabulary cards
+        - Use fill-in-the-blank and matching formats primarily
+        - Include sentence frames: "The point is ___" "I move ___"
+        - Avoid complex mathematical language - use everyday words
+        - Provide multiple examples with pictures
+        - Use bullet points for all instructions
+        - Include gestures and pointing activities where possible
       `;
     
     case 'emerging':
     case 'level 2':
       return `
         **WIDA LEVEL 2 (EMERGING) ADAPTATIONS:**
-        - Use simple sentences with basic connecting words (and, but, so)
-        - Include visual supports and graphic organizers
-        - Provide word banks and sentence starters
-        - Use familiar vocabulary with some academic terms
-        - Include step-by-step instructions with clear sequence
-        - Use present and past tense appropriately
-        - Provide examples and non-examples
-        - Include yes/no and multiple choice questions
+        - Use simple sentences (6-10 words) with basic connecting words
+        - Include visual supports with every new concept
+        - Provide word banks and sentence starters for all responses
+        - Use familiar vocabulary with academic terms introduced gradually
+        - Include step-by-step numbered instructions
+        - Use present and simple past tense appropriately
+        - Provide examples and guided practice before independent work
+        - Include yes/no and multiple choice questions frequently
+        - Use graphic organizers for complex concepts
+        - Encourage responses with sentence frames
       `;
     
     case 'developing':
     case 'level 3':
       return `
         **WIDA LEVEL 3 (DEVELOPING) ADAPTATIONS:**
-        - Use expanded sentences with multiple clauses
-        - Include some academic vocabulary with support
-        - Provide sentence frames for complex responses
-        - Use various tenses appropriately
-        - Include compare/contrast and cause/effect structures
-        - Provide graphic organizers for complex concepts
-        - Include some abstract thinking tasks with scaffolds
-        - Mix open-ended and structured response formats
+        - Use expanded sentences with multiple clauses and transitions
+        - Include academic vocabulary with context clues and support
+        - Provide sentence frames for complex mathematical explanations
+        - Use various tenses and more sophisticated structures
+        - Include compare/contrast and cause/effect language patterns
+        - Provide graphic organizers for multi-step problems
+        - Include some abstract thinking tasks with substantial scaffolds
+        - Mix structured and semi-open response formats
+        - Encourage use of mathematical reasoning language
+        - Provide models and examples for extended responses
       `;
     
     case 'expanding':
     case 'level 4':
       return `
         **WIDA LEVEL 4 (EXPANDING) ADAPTATIONS:**
-        - Use complex sentences with academic language
-        - Include technical vocabulary with minimal support
-        - Provide opportunities for extended discourse
-        - Use multiple tenses and complex grammatical structures
-        - Include analysis and synthesis tasks
-        - Reduce visual supports, increase text-based learning
-        - Include reasoning and justification requirements
-        - Focus on academic language functions
+        - Use complex sentences with sophisticated academic language
+        - Include technical vocabulary with minimal contextual support
+        - Provide opportunities for extended mathematical discourse
+        - Use multiple tenses and complex grammatical structures naturally
+        - Include analysis, synthesis, and evaluation tasks
+        - Reduce visual supports while maintaining text-based scaffolds
+        - Include reasoning and justification requirements in responses
+        - Focus on academic language functions (hypothesize, conclude, analyze)
+        - Encourage mathematical argumentation and proof-like reasoning
+        - Provide minimal sentence frames, focus on independent expression
       `;
     
     case 'bridging':
     case 'level 5':
       return `
         **WIDA LEVEL 5 (BRIDGING) ADAPTATIONS:**
-        - Use grade-level academic language with strategic supports
-        - Include specialized vocabulary and technical terms
-        - Provide opportunities for extended academic discourse
-        - Use sophisticated grammatical structures
-        - Include abstract and analytical thinking tasks
-        - Focus on academic language functions (hypothesize, analyze, synthesize)
-        - Provide minimal scaffolding while maintaining accessibility
-        - Approach near-native academic performance
+        - Use grade-level academic language with strategic, minimal supports
+        - Include specialized vocabulary and technical mathematical terms
+        - Provide opportunities for extended academic mathematical discourse
+        - Use sophisticated grammatical structures and formal register
+        - Include abstract and analytical thinking tasks with light scaffolding
+        - Focus on advanced academic language functions (synthesize, evaluate, critique)
+        - Provide minimal scaffolding while ensuring accessibility
+        - Approach near-native academic performance expectations
+        - Include tasks requiring mathematical communication and reasoning
+        - Focus on refinement of mathematical language rather than simplification
       `;
     
     case 'reaching':
     case 'level 6':
       return `
         **WIDA LEVEL 6 (REACHING) ADAPTATIONS:**
-        - Use full grade-level academic language comparable to English-proficient peers
-        - Include specialized and technical vocabulary without additional support
-        - Provide complex academic discourse opportunities
-        - Use sophisticated grammatical structures and academic register
-        - Include high-level abstract and analytical thinking tasks
-        - Minimal to no scaffolding required
-        - Performance meets grade-level expectations for English-proficient students
-        - Focus on refinement rather than simplification
+        - Use full grade-level academic language identical to English-proficient peers
+        - Include all specialized and technical vocabulary without additional support
+        - Provide complex academic discourse opportunities requiring sustained reasoning
+        - Use sophisticated grammatical structures and formal mathematical register
+        - Include high-level abstract and analytical thinking tasks without scaffolding
+        - Require extended mathematical justification and proof-writing
+        - Focus on mathematical argumentation, critique, and peer review
+        - Performance should meet or exceed grade-level expectations
+        - Include metacognitive tasks requiring reflection on mathematical processes
+        - NO simplification needed - full academic rigor maintained
       `;
     
     default:
@@ -527,7 +539,7 @@ const getSubjectAwareInstructions = (subject, proficiencyLevel) => {
     if (['entering', 'level 1'].includes(level)) {
       return `
         **CRITICAL SUBJECT RULE: MAXIMUM SIMPLIFICATION**
-        - Use very simple sentences (5-8 words) and basic vocabulary
+        - Use very simple sentences (3-5 words) and basic vocabulary
         - Include extensive visual supports and graphic organizers
         - Convert most questions to matching, true/false, or picture-based activities
         - Bold vocabulary words throughout all content
@@ -560,7 +572,7 @@ const getIepAccommodationInstructions = ({
   return instructions;
 };
 
-// NEW: Function to validate vocabulary integration
+// Function to validate vocabulary integration
 const validateVocabularyIntegration = (studentWorksheet) => {
   const vocabularySection = studentWorksheet.match(/\*\*\*Key Vocabulary\*\*\*(.*?)\*\*\*/s);
   if (!vocabularySection) return { isValid: true, message: 'No vocabulary section found' };
@@ -587,6 +599,63 @@ const validateVocabularyIntegration = (studentWorksheet) => {
 
 const createStudentAndDescriptorsPrompt = (details) => {
   const { materialType, subject, gradeLevel, proficiencyLevel, learningObjectives, contentToAdapt, bilingualInstructions, proficiencyAdaptations, subjectAwareInstructions, iepInstructions } = details;
+  const level = proficiencyLevel.toLowerCase();
+  
+  let levelSpecificInstructions = '';
+  
+  // Add very specific instructions based on proficiency level
+  if (['entering', 'level 1'].includes(level)) {
+    levelSpecificInstructions = `
+    **LEVEL 1 SPECIFIC REQUIREMENTS:**
+    - Break ALL problem instructions into 2-3 word chunks
+    - Use arrows (→) to show movement and outcomes
+    - Format problems as: "Move point P(2,5)" then "Right 6 spaces ⟨6,0⟩" then "New point: ( ___, ___ )"
+    - Include picture symbols where possible: ➡️ for right, ⬆️ for up, etc.
+    - Use numbered steps: "Step 1: Find point. Step 2: Move point. Step 3: Write answer."
+    `;
+  } else if (['emerging', 'level 2'].includes(level)) {
+    levelSpecificInstructions = `
+    **LEVEL 2 SPECIFIC REQUIREMENTS:**
+    - Use simple sentence starters: "First, I..." "Next, I..." "The answer is..."
+    - Provide guided examples: "Example: Point (2,3) + vector ⟨1,2⟩ = Point (3,5)"
+    - Include visual organizers for multi-step problems
+    - Use choice format when possible: "The coordinates are: a) (2,5) b) (8,5) c) (-6,-2)"
+    `;
+  } else if (['developing', 'level 3'].includes(level)) {
+    levelSpecificInstructions = `
+    **LEVEL 3 SPECIFIC REQUIREMENTS:**
+    - Use connecting words: "When you translate..., then..." "After moving the point..."
+    - Include sentence frames: "The translation moves the figure ___" "I can find the coordinates by ___"
+    - Provide step-by-step reasoning guides
+    - Include compare/contrast language: "Compare the original coordinates to the image coordinates"
+    `;
+  } else if (['expanding', 'level 4'].includes(level)) {
+    levelSpecificInstructions = `
+    **LEVEL 4 SPECIFIC REQUIREMENTS:**
+    - Include analysis questions: "Explain why this transformation preserves..." "Analyze the relationship between..."
+    - Use academic transitions: "Furthermore," "In addition," "Consequently,"
+    - Require justification: "Justify your answer using coordinate geometry principles"
+    - Include evaluation tasks: "Determine which method is most efficient..."
+    `;
+  } else if (['bridging', 'level 5'].includes(level)) {
+    levelSpecificInstructions = `
+    **LEVEL 5 SPECIFIC REQUIREMENTS:**
+    - Include synthesis tasks: "Synthesize your findings to create a general rule..."
+    - Use sophisticated academic language: "Demonstrate," "Substantiate," "Corroborate"
+    - Require extended explanations: "Provide a comprehensive analysis of..."
+    - Include peer review components: "Critique your partner's solution..."
+    `;
+  } else if (['reaching', 'level 6'].includes(level)) {
+    levelSpecificInstructions = `
+    **LEVEL 6 SPECIFIC REQUIREMENTS:**
+    - Use full academic rigor with complex sentence structures
+    - Include abstract reasoning: "Generalize the principle underlying..."
+    - Require formal mathematical communication: "Construct a formal argument demonstrating..."
+    - Include metacognitive elements: "Reflect on your problem-solving process and evaluate..."
+    - NO language simplification - maintain grade-level complexity
+    `;
+  }
+
   return `You are an expert ELL curriculum adapter. Your task is to generate two distinct pieces of text, separated by the exact delimiter: ${CONFIG.DELIMITERS.SPLIT_MARKER}
 
   **PART 1: STUDENT WORKSHEET**
@@ -608,6 +677,8 @@ const createStudentAndDescriptorsPrompt = (details) => {
   - Do NOT create substitute problems or omit any numbered exercises
   - Only simplify the language of instructions, not the mathematical content itself
   
+  ${levelSpecificInstructions}
+
   - Apply all subject-aware rules, IEP accommodations, and bilingual supports as instructed.
   - **CRUCIAL:** You MUST write out all practice problems. Do NOT summarize or use phrases like "[Continue in same format]". You must generate the complete, usable worksheet.
 
@@ -631,143 +702,143 @@ const createTeacherGuidePrompt = (details, studentWorksheet) => {
   return `You are an expert ELL curriculum adapter. Your task is to generate a teacher's guide for the student worksheet provided below.
 
   **STUDENT WORKSHEET TO CREATE A GUIDE FOR:**
-  \`\`\`
-  ${studentWorksheet}
-  \`\`\`
+ \`\`\`
+ ${studentWorksheet}
+ \`\`\`
 
-  ${subjectAwareInstructions}
+ ${subjectAwareInstructions}
 
-  **TASK:**
-  Generate a complete teacher's guide in GitHub Flavored Markdown.
-  - **Your primary task is to create a complete Answer Key for ALL activities from the worksheet.**
-  - After the Answer Key, create a "Lesson Preparation & Pacing" section, highlighting materials with <mark> tags.
-  - Then, list the Content and ELL Language Objectives.
-  - Then, list the ELL Supports Included.
-  - **IMPORTANT:** When mentioning visual aids like diagrams, charts, images, maps, timelines, or any visual elements, be specific about what they should show. Use phrases like "diagram showing...", "chart displaying...", "image of...", etc.
-  - **CRUCIAL:** Do NOT repeat or copy the student worksheet content. Your purpose is to provide the answers and pedagogical notes FOR the worksheet.
-  ${bilingualInstructions}
+ **TASK:**
+ Generate a complete teacher's guide in GitHub Flavored Markdown.
+ - **Your primary task is to create a complete Answer Key for ALL activities from the worksheet.**
+ - After the Answer Key, create a "Lesson Preparation & Pacing" section, highlighting materials with <mark> tags.
+ - Then, list the Content and ELL Language Objectives.
+ - Then, list the ELL Supports Included.
+ - **IMPORTANT:** When mentioning visual aids like diagrams, charts, images, maps, timelines, or any visual elements, be specific about what they should show. Use phrases like "diagram showing...", "chart displaying...", "image of...", etc.
+ - **CRUCIAL:** Do NOT repeat or copy the student worksheet content. Your purpose is to provide the answers and pedagogical notes FOR the worksheet.
+ ${bilingualInstructions}
 
-  Provide ONLY the raw Markdown for the teacher's guide, and nothing else.`;
+ Provide ONLY the raw Markdown for the teacher's guide, and nothing else.`;
 };
 
 /**
- * Adapt material using Claude API with a multi-call strategy
- */
+* Adapt material using Claude API with a multi-call strategy
+*/
 export const adaptMaterialWithClaude = async (params, setProcessingStep) => {
-  try {
-    // Validate input parameters
-    validateAdaptationParams(params);
-    
-    const { subject, proficiencyLevel, materialType, includeBilingualSupport, nativeLanguage, translateSummary, translateInstructions, listCognates, worksheetLength, addStudentChecklist, useMultipleChoice } = params;
+ try {
+   // Validate input parameters
+   validateAdaptationParams(params);
+   
+   const { subject, proficiencyLevel, materialType, includeBilingualSupport, nativeLanguage, translateSummary, translateInstructions, listCognates, worksheetLength, addStudentChecklist, useMultipleChoice } = params;
 
-    setProcessingStep?.('Preparing adaptation instructions...');
+   setProcessingStep?.('Preparing adaptation instructions...');
 
-    const subjectAwareInstructions = getSubjectAwareInstructions(subject, proficiencyLevel);
-    const proficiencyAdaptations = getProficiencyAdaptations(proficiencyLevel);
-    const bilingualInstructions = buildBilingualInstructions({
-      includeBilingualSupport, nativeLanguage, translateSummary, translateInstructions, listCognates
-    });
-    const iepInstructions = getIepAccommodationInstructions({
-      worksheetLength, addStudentChecklist, useMultipleChoice
-    });
-    
-    const promptDetails = { ...params, subjectAwareInstructions, proficiencyAdaptations, bilingualInstructions, iepInstructions };
-    
-    // STEP 1: Get the Student Worksheet and Descriptors together
-    setProcessingStep?.('Generating student worksheet and descriptors...');
-    console.log("Step 1: Requesting Student Worksheet & Descriptors...");
-    
-    const initialPrompt = createStudentAndDescriptorsPrompt(promptDetails);
-    const initialResult = await callClaudeAPIWithRetry([{ role: 'user', content: initialPrompt }]);
-    
-    const initialParts = validateSplitResponse(
-      initialResult.content[0].text.split(CONFIG.DELIMITERS.SPLIT_MARKER),
-      2
-    );
-    
-    const studentWorksheet = initialParts[0];
-    
-    // NEW: Validate vocabulary integration
-    const vocabValidation = validateVocabularyIntegration(studentWorksheet);
-    console.log('Vocabulary validation:', vocabValidation.message);
-    
-    if (!vocabValidation.isValid) {
-      console.warn('Vocabulary integration issue detected:', vocabValidation.missingWords);
-      // You could add retry logic here if needed
-    }
-    
-    let dynamicWidaDescriptors;
-    
-    try {
-      dynamicWidaDescriptors = JSON.parse(initialParts[1]);
-    } catch (parseError) {
-      console.warn('Failed to parse descriptors JSON, using fallback');
-      dynamicWidaDescriptors = {
-        title: `${subject} - ${proficiencyLevel} Level`,
-        descriptors: ["Students can engage with adapted content at their proficiency level"]
-      };
-    }
-    
-    console.log("Step 1: Received Student Worksheet & Descriptors.");
+   const subjectAwareInstructions = getSubjectAwareInstructions(subject, proficiencyLevel);
+   const proficiencyAdaptations = getProficiencyAdaptations(proficiencyLevel);
+   const bilingualInstructions = buildBilingualInstructions({
+     includeBilingualSupport, nativeLanguage, translateSummary, translateInstructions, listCognates
+   });
+   const iepInstructions = getIepAccommodationInstructions({
+     worksheetLength, addStudentChecklist, useMultipleChoice
+   });
+   
+   const promptDetails = { ...params, subjectAwareInstructions, proficiencyAdaptations, bilingualInstructions, iepInstructions };
+   
+   // STEP 1: Get the Student Worksheet and Descriptors together
+   setProcessingStep?.('Generating student worksheet and descriptors...');
+   console.log("Step 1: Requesting Student Worksheet & Descriptors...");
+   
+   const initialPrompt = createStudentAndDescriptorsPrompt(promptDetails);
+   const initialResult = await callClaudeAPIWithRetry([{ role: 'user', content: initialPrompt }]);
+   
+   const initialParts = validateSplitResponse(
+     initialResult.content[0].text.split(CONFIG.DELIMITERS.SPLIT_MARKER),
+     2
+   );
+   
+   const studentWorksheet = initialParts[0];
+   
+   // Validate vocabulary integration
+   const vocabValidation = validateVocabularyIntegration(studentWorksheet);
+   console.log('Vocabulary validation:', vocabValidation.message);
+   
+   if (!vocabValidation.isValid) {
+     console.warn('Vocabulary integration issue detected:', vocabValidation.missingWords);
+     // You could add retry logic here if needed
+   }
+   
+   let dynamicWidaDescriptors;
+   
+   try {
+     dynamicWidaDescriptors = JSON.parse(initialParts[1]);
+   } catch (parseError) {
+     console.warn('Failed to parse descriptors JSON, using fallback');
+     dynamicWidaDescriptors = {
+       title: `${subject} - ${proficiencyLevel} Level`,
+       descriptors: ["Students can engage with adapted content at their proficiency level"]
+     };
+   }
+   
+   console.log("Step 1: Received Student Worksheet & Descriptors.");
 
-    // Wait between API calls
-    await delay(CONFIG.DELAYS.BETWEEN_CALLS);
+   // Wait between API calls
+   await delay(CONFIG.DELAYS.BETWEEN_CALLS);
 
-    // STEP 2: Get the Teacher's Guide
-    setProcessingStep?.('Generating teacher guide...');
-    console.log("Step 2: Requesting Teacher's Guide...");
-    
-    const guidePrompt = createTeacherGuidePrompt(promptDetails, studentWorksheet);
-    const guideResult = await callClaudeAPIWithRetry([{ role: 'user', content: guidePrompt }]);
-    const teacherGuide = guideResult.content[0].text;
-    
-    console.log("Step 2: Teacher's Guide received.");
+   // STEP 2: Get the Teacher's Guide
+   setProcessingStep?.('Generating teacher guide...');
+   console.log("Step 2: Requesting Teacher's Guide...");
+   
+   const guidePrompt = createTeacherGuidePrompt(promptDetails, studentWorksheet);
+   const guideResult = await callClaudeAPIWithRetry([{ role: 'user', content: guidePrompt }]);
+   const teacherGuide = guideResult.content[0].text;
+   
+   console.log("Step 2: Teacher's Guide received.");
 
-    // STEP 3: Generate Image Prompts
-    setProcessingStep?.('Generating image suggestions...');
-    console.log("Step 3: Detecting image opportunities...");
-    
-    const imageOpportunities = detectImageOpportunities(teacherGuide, subject);
-    let imagePrompts = null;
-    
-    if (imageOpportunities.length > 0) {
-      console.log(`Found ${imageOpportunities.length} image opportunities`);
-      await delay(CONFIG.DELAYS.BETWEEN_CALLS);
-      
-      imagePrompts = await generateImagePrompts(
-        imageOpportunities, 
-        subject, 
-        proficiencyLevel, 
-        materialType
-      );
-      console.log("Step 3: Image prompts generated.");
-    } else {
-      console.log("Step 3: No image opportunities detected.");
-    }
+   // STEP 3: Generate Image Prompts
+   setProcessingStep?.('Generating image suggestions...');
+   console.log("Step 3: Detecting image opportunities...");
+   
+   const imageOpportunities = detectImageOpportunities(teacherGuide, subject);
+   let imagePrompts = null;
+   
+   if (imageOpportunities.length > 0) {
+     console.log(`Found ${imageOpportunities.length} image opportunities`);
+     await delay(CONFIG.DELAYS.BETWEEN_CALLS);
+     
+     imagePrompts = await generateImagePrompts(
+       imageOpportunities, 
+       subject, 
+       proficiencyLevel, 
+       materialType
+     );
+     console.log("Step 3: Image prompts generated.");
+   } else {
+     console.log("Step 3: No image opportunities detected.");
+   }
 
-    setProcessingStep?.('Finalizing materials...');
+   setProcessingStep?.('Finalizing materials...');
 
-    // STEP 4: Assemble and return the final object
-    return {
-      studentWorksheet,
-      teacherGuide,
-      dynamicWidaDescriptors,
-      imagePrompts,
-      vocabularyValidation: vocabValidation // NEW: Include validation results
-    };
+   // STEP 4: Assemble and return the final object
+   return {
+     studentWorksheet,
+     teacherGuide,
+     dynamicWidaDescriptors,
+     imagePrompts,
+     vocabularyValidation: vocabValidation
+   };
 
-  } catch (error) {
-    console.error("A critical error occurred in the multi-call process.", error);
-    
-    // Provide more specific error messages
-    if (error instanceof ClaudeAPIError) {
-      throw error;
-    }
-    
-    throw new ClaudeAPIError(
-      `Failed to adapt material: ${error.message}`,
-      null,
-      error
-    );
-  }
+ } catch (error) {
+   console.error("A critical error occurred in the multi-call process.", error);
+   
+   // Provide more specific error messages
+   if (error instanceof ClaudeAPIError) {
+     throw error;
+   }
+   
+   throw new ClaudeAPIError(
+     `Failed to adapt material: ${error.message}`,
+     null,
+     error
+   );
+ }
 };
