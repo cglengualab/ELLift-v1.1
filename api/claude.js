@@ -1,6 +1,6 @@
-// api/claude.js - Updated with higher token limits
+// api/claude.js - COMPLETE FINAL VERSION
 
-const ANTHROPIC_VERSION = '2023-06-01'; // Explicit version constant
+const ANTHROPIC_VERSION = '2023-06-01';
 
 export default async function handler(req, res) {
   // Enable CORS
@@ -20,7 +20,7 @@ export default async function handler(req, res) {
 
   try {
     console.log('API function called');
-    const { messages, max_tokens = 8000 } = req.body; // Increased default
+    const { messages, max_tokens = 4096 } = req.body;
 
     if (!messages || !Array.isArray(messages)) {
       console.log('Invalid messages format');
@@ -39,7 +39,7 @@ export default async function handler(req, res) {
     console.log('Making request to Claude API with version:', ANTHROPIC_VERSION);
     console.log('Requesting max_tokens:', max_tokens);
 
-    // Prepare headers - add special header for higher token limits
+    // Prepare headers
     const headers = {
       'Content-Type': 'application/json',
       'x-api-key': apiKey,
@@ -58,7 +58,7 @@ export default async function handler(req, res) {
       headers: headers,
       body: JSON.stringify({
         model: 'claude-3-5-sonnet-20241022', // Back to Sonnet but with beta header
-        max_tokens: Math.min(max_tokens, 4096), // Respect the 4096 limit
+        max_tokens: Math.min(max_tokens, 8192), // Respect the limits with beta header
         messages
       })
     });
