@@ -46,10 +46,10 @@ export default async function handler(req, res) {
       'anthropic-version': ANTHROPIC_VERSION
     };
 
-    // Add special header for higher token limits if requesting more than 4096
-    if (max_tokens > 4096) {
+    // Add special header for higher token limits - ALWAYS for Sonnet
+    if (max_tokens > 4096 || true) { // Always add the beta header for Sonnet
       headers['anthropic-beta'] = 'max-tokens-3-5-sonnet-2024-07-15';
-      console.log('Added beta header for higher token limit');
+      console.log('Added beta header for Sonnet higher token limit');
     }
 
     // Make request to Claude API
@@ -57,8 +57,8 @@ export default async function handler(req, res) {
       method: 'POST',
       headers: headers,
       body: JSON.stringify({
-        model: 'claude-3-opus-20240229', // Switch to Opus for higher output
-        max_tokens,
+        model: 'claude-3-5-sonnet-20241022', // Back to Sonnet but with beta header
+        max_tokens: Math.min(max_tokens, 4096), // Respect the 4096 limit
         messages
       })
     });
