@@ -10,9 +10,9 @@ const CONFIG = {
     RETRY_DELAY: 2000
   },
   TOKENS: {
-    DEFAULT_MAX: 8000,  // Increased from 8000
-    EXTENDED_MAX: 8000, // Keep at max
-    CHUNK_MAX: 6000
+    DEFAULT_MAX: 4096,  // Respect Claude's actual limits
+    EXTENDED_MAX: 8192, // With beta header for Sonnet
+    CHUNK_MAX: 4096     // Keep within limits
   },
   DELIMITERS: {
     SPLIT_MARKER: '|||---SPLIT---|||'
