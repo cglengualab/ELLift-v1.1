@@ -1,4 +1,4 @@
-// api/claude.js - COMPLETE FINAL VERSION
+// api/claude.js - Updated for Claude Sonnet 4
 
 const ANTHROPIC_VERSION = '2023-06-01';
 
@@ -36,7 +36,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Claude API key not configured' });
     }
 
-    console.log('Making request to Claude API with version:', ANTHROPIC_VERSION);
+    console.log('Making request to Claude Sonnet 4 API with version:', ANTHROPIC_VERSION);
     console.log('Requesting max_tokens:', max_tokens);
 
     // Prepare headers
@@ -46,21 +46,20 @@ export default async function handler(req, res) {
       'anthropic-version': ANTHROPIC_VERSION
     };
 
-    // Add special header for higher token limits - ALWAYS for Sonnet
-    if (max_tokens > 4096 || true) { // Always add the beta header for Sonnet
-      headers['anthropic-beta'] = 'max-tokens-3-5-sonnet-2024-07-15';
-      console.log('Added beta header for Sonnet higher token limit');
-    }
+    // Claude Sonnet 4 supports up to 8192 output tokens natively
+    const requestBody = {
+      model: 'claude-sonnet-4-20250514', // Updated to Claude Sonnet 4
+      max_tokens: Math.min(max_tokens, 8192), // Sonnet 4 supports up to 8K output
+      messages
+    };
+
+    console.log('Request body model:', requestBody.model);
 
     // Make request to Claude API
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: headers,
-      body: JSON.stringify({
-        model: 'claude-3-5-sonnet-20241022', // Back to Sonnet but with beta header
-        max_tokens: Math.min(max_tokens, 8192), // Respect the limits with beta header
-        messages
-      })
+      body: JSON.stringify(requestBody)
     });
 
     console.log('Claude API response status:', response.status);
@@ -75,7 +74,7 @@ export default async function handler(req, res) {
     }
 
     const data = await response.json();
-    console.log('Claude API success - Response length:', data.content?.[0]?.text?.length || 0);
+    console.log('Claude Sonnet 4 API success - Response length:', data.content?.[0]?.text?.length || 0);
     return res.status(200).json(data);
 
   } catch (error) {
