@@ -78,7 +78,7 @@ const sanitizeInput = (text) => {
 const validatePrintReadiness = (studentWorksheet) => {
   const issues = [];
   
-  // Check for placeholder text
+  // Check for placeholder text - EXPANDED LIST
   const placeholders = [
     '[Original passage preserved exactly as written]',
     '[Content continues...]',
@@ -86,7 +86,14 @@ const validatePrintReadiness = (studentWorksheet) => {
     '[Add more questions here]',
     '[Insert passage here]',
     '[Passage text here]',
-    '[Complete the remaining items]'
+    '[Complete the remaining items]',
+    '[Original passage preserved exactly as written, from',
+    'from "Charles Dickens Visits America" through',
+    'waiting for audiences.]',
+    '[Insert full passage text here]',
+    '[Include complete passage]',
+    '[Full text goes here]',
+    '[Replace with actual passage]'
   ];
   
   placeholders.forEach(placeholder => {
@@ -127,7 +134,22 @@ const validatePrintReadiness = (studentWorksheet) => {
     }
   });
   
-  // Check for missing content indicators
+  // Check for missing reading passage content
+  const hasReadingSection = /reading passage|passage|story|text to read/i.test(studentWorksheet);
+  const hasReadingQuestions = /according to the passage|in the text|the author|the story/i.test(studentWorksheet);
+  
+  if (hasReadingSection || hasReadingQuestions) {
+    // Look for actual substantial text that could be a passage
+    const potentialPassages = studentWorksheet.split('\n')
+      .filter(line => line.trim().length > 100 && !line.includes('#') && !line.includes('*'))
+      .filter(line => !line.includes('Answer') && !line.includes('Question') && !line.includes('Direction'));
+    
+    if (potentialPassages.length === 0) {
+      issues.push('Reading comprehension worksheet missing the actual reading passage');
+    }
+  }
+  
+  // Check for content indicators that suggest missing material
   const contentLines = studentWorksheet.split('\n').filter(line => line.trim());
   const shortLines = contentLines.filter(line => line.trim().length < 10);
   if (shortLines.length > contentLines.length * 0.3) {
@@ -155,12 +177,17 @@ const fixCommonFormattingIssues = (content) => {
     .replace(/•/g, '-')
     .replace(/◦/g, '-')
     
-    // Remove placeholder brackets
+    // Remove placeholder brackets - EXPANDED LIST
     .replace(/\[Original passage preserved exactly as written\]/g, '')
     .replace(/\[Content continues...\]/g, '')
     .replace(/\[Insert passage here\]/g, '')
     .replace(/\[Passage text here\]/g, '')
     .replace(/\[Complete the remaining items\]/g, '')
+    .replace(/\[Original passage preserved exactly as written,.*?\]/g, '')
+    .replace(/\[Insert full passage text here\]/g, '')
+    .replace(/\[Include complete passage\]/g, '')
+    .replace(/\[Full text goes here\]/g, '')
+    .replace(/\[Replace with actual passage\]/g, '')
     
     // Clean up extra whitespace
     .replace(/\n{3,}/g, '\n\n')
@@ -475,6 +502,14 @@ Generate a complete student worksheet formatted in simple GitHub Flavored Markdo
 - ALL content must be complete and ready to print without teacher editing
 - Include the COMPLETE original passage/content - no summarizing or abbreviating
 
+**ABSOLUTE REQUIREMENT FOR READING PASSAGES:**
+If the original content contains a reading passage, poem, story, or any text that students need to read:
+- You MUST include the ENTIRE text word-for-word
+- NEVER use placeholders like "[Original passage preserved...]" or "[Insert passage here]"
+- NEVER summarize or abbreviate the passage
+- Students must be able to read the complete text to answer questions
+- If you cannot include the full passage, the worksheet is UNUSABLE
+
 **UNIVERSAL PRESERVATION RULES:**
 - Write out EVERY SINGLE item, question, problem, and exercise completely
 - Preserve ALL numbers, measurements, coordinates, dates, and factual information exactly
@@ -555,6 +590,9 @@ Before submitting your response:
 4. Confirm complete sentences and proper grammar
 5. Validate that worksheet can be printed and used immediately
 6. Ensure checklist reflects actual content structure
+7. **CRITICAL: If there's a reading passage, confirm you've included the ENTIRE text - students must be able to read it**
+
+**EMERGENCY INSTRUCTION:** If you find yourself wanting to write "[Original passage preserved...]" or any placeholder, STOP and include the actual text instead. A worksheet with placeholder text is completely unusable.
 
 Remember: Your primary goal is to make content linguistically accessible while preserving ALL educational content exactly and ensuring perfect print readiness.`;
 };
