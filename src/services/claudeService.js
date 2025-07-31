@@ -17,7 +17,45 @@
     const finalPrintValidation = validatePrintReadiness(studentWorksheet);
     console.log('Final print-readiness validation:', finalPrintValidation.message);
 
-    setProcessingStep?.('Finalizing materials...');// FileName: src/services/claudeService.js (Updated with Print-Ready Fixes)
+    setProcessingStep?.('Finalizing materials...');
+
+    // Return complete results
+    return {
+      studentWorksheet,
+      teacherGuide,
+      dynamicWidaDescriptors,
+      imagePrompts: null, // Skip image generation for faster processing
+      vocabularyValidation: vocabValidation,
+      printReadinessValidation: finalPrintValidation,
+      contentAnalysis: {
+        inputAnalysis: contentAnalysis,
+        outputAnalysis,
+        tokensUsed: maxTokens,
+        completenessCheck: {
+          expectedItems: contentAnalysis.totalItems,
+          detectedItems: outputAnalysis.totalItems,
+          preservationRate: Math.round((outputAnalysis.totalItems / Math.max(contentAnalysis.totalItems, 1)) * 100),
+          contentType: contentAnalysis.contentType
+        },
+        chunkingUsed: false,
+        processingMethod: 'universal_standard'
+      }
+    };
+
+  } catch (error) {
+    console.error("Universal adaptation process failed:", error);
+    
+    if (error instanceof ClaudeAPIError) {
+      throw error;
+    }
+    
+    throw new ClaudeAPIError(
+      `Failed to adapt material: ${error.message}`,
+      null,
+      error
+    );
+  }
+};// FileName: src/services/claudeService.js (Updated with Print-Ready Fixes)
 
 // Claude API service functions
 import { extractTextFromPDF as extractPDFText } from './pdfService.js';
@@ -29,8 +67,8 @@ const CONFIG = {
     RETRY_DELAY: 2000
   },
   TOKENS: {
-    DEFAULT_MAX: 8000,
-    EXTENDED_MAX: 12000,
+    DEFAULT_MAX: 8000,  // Increased from 8000
+    EXTENDED_MAX: 8000, // Keep at max
     CHUNK_MAX: 6000
   },
   DELIMITERS: {
@@ -896,8 +934,8 @@ const validateSplitResponse = (parts, expectedParts = 2) => {
   return parts.map(part => part.trim());
 };
 
-// Enhanced API call with retry logic
-const callClaudeAPIWithRetry = async (messages, maxTokens = CONFIG.TOKENS.DEFAULT_MAX, maxRetries = CONFIG.API.MAX_RETRIES) => {
+// Enhanced API call with model selection and two-step process
+const callClaudeAPIWithRetry = async (messages, maxTokens = CONFIG.TOKENS.DEFAULT_MAX, maxRetries = CONFIG.API.MAX_RETRIES, useOpenAI = false) => {
   const formattedMessages = messages.map(msg => {
     if (typeof msg.content === 'string') {
       return { role: msg.role, content: sanitizeInput(msg.content) };
@@ -910,12 +948,16 @@ const callClaudeAPIWithRetry = async (messages, maxTokens = CONFIG.TOKENS.DEFAUL
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), CONFIG.API.TIMEOUT);
       
-      const response = await fetch(`${API_BASE_URL}/api/claude`, {
+      // Choose API endpoint based on content length
+      const apiEndpoint = useOpenAI ? '/api/openai-claude-fallback' : '/api/claude';
+      
+      const response = await fetch(`${API_BASE_URL}${apiEndpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           messages: formattedMessages, 
-          max_tokens: maxTokens 
+          max_tokens: maxTokens,
+          use_openai: useOpenAI
         }),
         signal: controller.signal
       });
@@ -924,10 +966,11 @@ const callClaudeAPIWithRetry = async (messages, maxTokens = CONFIG.TOKENS.DEFAUL
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        console.error('Claude API Error Details:', {
+        console.error('API Error Details:', {
           status: response.status,
           statusText: response.statusText,
           error: errorData,
+          model: useOpenAI ? 'OpenAI GPT-4' : 'Claude',
           requestSize: JSON.stringify({ messages: formattedMessages, max_tokens: maxTokens }).length
         });
         
@@ -1143,7 +1186,9 @@ export const adaptMaterialWithClaude = async (params, setProcessingStep) => {
       contentType: contentAnalysis.contentType,
       complexity: contentAnalysis.complexity.level,
       items: contentAnalysis.totalItems,
-      wordCount: contentAnalysis.wordCount
+      wordCount: contentAnalysis.wordCount,
+      estimatedInputTokens: Math.round(params.contentToAdapt.length / 4),
+      estimatedPromptTokens: Math.round(mainPrompt?.length / 4 || 0)
     });
 
     // Check if chunking is needed
@@ -1175,9 +1220,17 @@ export const adaptMaterialWithClaude = async (params, setProcessingStep) => {
       iepInstructions 
     };
     
-    // STEP 1: Generate Student Worksheet and Descriptors WITH ANTI-PLACEHOLDER RETRY
-    setProcessingStep?.('Generating adapted worksheet...');
+    // STEP 1: Generate Student Worksheet and Descriptors WITH SMART MODEL SELECTION
+    setProcessingStep?.('Analyzing content and selecting optimal model...');
+    
+    // Determine if we need a high-output model
+    const estimatedOutputLength = params.contentToAdapt.length * 1.5; // Accommodation adds ~50% length
+    const needsHighOutput = estimatedOutputLength > 3000 || contentAnalysis.wordCount > 1000;
+    const useOpenAI = needsHighOutput && contentAnalysis.contentType === 'reading_comprehension';
+    
     console.log(`Processing ${contentAnalysis.contentType} with ${contentAnalysis.totalItems} items`);
+    console.log(`Estimated output length: ${Math.round(estimatedOutputLength)} chars`);
+    console.log(`Using model: ${useOpenAI ? 'OpenAI GPT-4o' : 'Claude Opus'} for ${needsHighOutput ? 'long' : 'standard'} content`);
     
     const mainPrompt = createUniversalPrompt(promptDetails);
     
@@ -1189,13 +1242,18 @@ export const adaptMaterialWithClaude = async (params, setProcessingStep) => {
     let studentWorksheet;
     let dynamicWidaDescriptors;
     let attempts = 0;
-    const maxRetries = 3;
+    const maxRetries = useOpenAI ? 2 : 3; // Fewer retries for OpenAI (more expensive)
     
     while (attempts < maxRetries) {
       attempts++;
-      setProcessingStep?.(`Generating worksheet (attempt ${attempts}/${maxRetries})...`);
+      setProcessingStep?.(`Generating worksheet with ${useOpenAI ? 'OpenAI GPT-4o' : 'Claude Opus'} (attempt ${attempts}/${maxRetries})...`);
       
-      const mainResult = await callClaudeAPIWithRetry([{ role: 'user', content: mainPrompt }], maxTokens);
+      const mainResult = await callClaudeAPIWithRetry(
+        [{ role: 'user', content: mainPrompt }], 
+        maxTokens, 
+        1, // Single retry per model attempt
+        useOpenAI
+      );
       
       const mainParts = validateSplitResponse(
         mainResult.content[0].text.split(CONFIG.DELIMITERS.SPLIT_MARKER),
@@ -1331,41 +1389,3 @@ export const adaptMaterialWithClaude = async (params, setProcessingStep) => {
     console.log('Final print-readiness validation:', finalPrintValidation.message);
 
     setProcessingStep?.('Finalizing materials...');
-
-    // Return complete results
-    return {
-      studentWorksheet,
-      teacherGuide,
-      dynamicWidaDescriptors,
-      imagePrompts: null, // Skip image generation for faster processing
-      vocabularyValidation: vocabValidation,
-      printReadinessValidation: finalPrintValidation,
-      contentAnalysis: {
-        inputAnalysis: contentAnalysis,
-        outputAnalysis,
-        tokensUsed: maxTokens,
-        completenessCheck: {
-          expectedItems: contentAnalysis.totalItems,
-          detectedItems: outputAnalysis.totalItems,
-          preservationRate: Math.round((outputAnalysis.totalItems / Math.max(contentAnalysis.totalItems, 1)) * 100),
-          contentType: contentAnalysis.contentType
-        },
-        chunkingUsed: false,
-        processingMethod: 'universal_standard'
-      }
-    };
-
-  } catch (error) {
-    console.error("Universal adaptation process failed:", error);
-    
-    if (error instanceof ClaudeAPIError) {
-      throw error;
-    }
-    
-    throw new ClaudeAPIError(
-      `Failed to adapt material: ${error.message}`,
-      null,
-      error
-    );
-  }
-};
