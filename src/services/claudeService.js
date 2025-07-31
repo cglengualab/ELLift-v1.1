@@ -1,4 +1,23 @@
-// FileName: src/services/claudeService.js (Updated with Print-Ready Fixes)
+// Wait between API calls
+    await delay(CONFIG.DELAYS.BETWEEN_CALLS);
+
+    // STEP 2: Generate Teacher Guide
+    setProcessingStep?.('Generating teacher guide...');
+    console.log("Step 2: Creating teacher guide");
+    
+    const teacherGuide = await createUniversalTeacherGuide(studentWorksheet, params, contentAnalysis);
+    console.log("Step 2: Teacher guide completed");
+
+    // STEP 3: Validate vocabulary integration
+    setProcessingStep?.('Validating adaptation quality...');
+    const vocabValidation = validateVocabularyIntegration(studentWorksheet);
+    console.log('Vocabulary validation:', vocabValidation.message);
+
+    // Final print-readiness check
+    const finalPrintValidation = validatePrintReadiness(studentWorksheet);
+    console.log('Final print-readiness validation:', finalPrintValidation.message);
+
+    setProcessingStep?.('Finalizing materials...');// FileName: src/services/claudeService.js (Updated with Print-Ready Fixes)
 
 // Claude API service functions
 import { extractTextFromPDF as extractPDFText } from './pdfService.js';
@@ -1156,7 +1175,7 @@ export const adaptMaterialWithClaude = async (params, setProcessingStep) => {
       iepInstructions 
     };
     
-    // STEP 1: Generate Student Worksheet and Descriptors
+    // STEP 1: Generate Student Worksheet and Descriptors WITH ANTI-PLACEHOLDER RETRY
     setProcessingStep?.('Generating adapted worksheet...');
     console.log(`Processing ${contentAnalysis.contentType} with ${contentAnalysis.totalItems} items`);
     
@@ -1167,14 +1186,78 @@ export const adaptMaterialWithClaude = async (params, setProcessingStep) => {
       throw new ClaudeAPIError('Content too large for single request. Chunking is recommended.');
     }
     
-    const mainResult = await callClaudeAPIWithRetry([{ role: 'user', content: mainPrompt }], maxTokens);
+    let studentWorksheet;
+    let dynamicWidaDescriptors;
+    let attempts = 0;
+    const maxRetries = 3;
     
-    const mainParts = validateSplitResponse(
-      mainResult.content[0].text.split(CONFIG.DELIMITERS.SPLIT_MARKER),
-      2
-    );
-    
-    let studentWorksheet = mainParts[0];
+    while (attempts < maxRetries) {
+      attempts++;
+      setProcessingStep?.(`Generating worksheet (attempt ${attempts}/${maxRetries})...`);
+      
+      const mainResult = await callClaudeAPIWithRetry([{ role: 'user', content: mainPrompt }], maxTokens);
+      
+      const mainParts = validateSplitResponse(
+        mainResult.content[0].text.split(CONFIG.DELIMITERS.SPLIT_MARKER),
+        2
+      );
+      
+      const candidateWorksheet = mainParts[0];
+      
+      // Check for placeholders immediately
+      const placeholderCheck = validatePrintReadiness(candidateWorksheet);
+      const hasPlaceholders = placeholderCheck.issues.some(issue => 
+        issue.includes('placeholder') || issue.includes('missing')
+      );
+      
+      if (!hasPlaceholders) {
+        // Success! No placeholders found
+        studentWorksheet = candidateWorksheet;
+        
+        // Parse descriptors
+        try {
+          dynamicWidaDescriptors = JSON.parse(mainParts[1]);
+        } catch (parseError) {
+          console.warn('Failed to parse descriptors, using fallback');
+          dynamicWidaDescriptors = {
+            title: `${subject} - ${proficiencyLevel} Level`,
+            descriptors: [
+              `Students can engage with ${subject.toLowerCase()} content at their language level`,
+              `Students can complete adapted activities with appropriate support`,
+              `Students can use academic vocabulary with scaffolding`,
+              `Students can demonstrate understanding through various formats`
+            ]
+          };
+        }
+        break;
+      } else {
+        console.warn(`Attempt ${attempts}: Placeholders detected:`, placeholderCheck.issues);
+        
+        if (attempts === maxRetries) {
+          // Last attempt - apply fixes and use it
+          console.warn('Max retries reached, applying automatic fixes');
+          studentWorksheet = fixCommonFormattingIssues(candidateWorksheet);
+          
+          try {
+            dynamicWidaDescriptors = JSON.parse(mainParts[1]);
+          } catch (parseError) {
+            dynamicWidaDescriptors = {
+              title: `${subject} - ${proficiencyLevel} Level`,
+              descriptors: [
+                `Students can engage with ${subject.toLowerCase()} content at their language level`,
+                `Students can complete adapted activities with appropriate support`,
+                `Students can use academic vocabulary with scaffolding`,
+                `Students can demonstrate understanding through various formats`
+              ]
+            };
+          }
+          break;
+        } else {
+          // Wait before retry
+          await delay(CONFIG.DELAYS.RETRY_DELAY);
+        }
+      }
+    }
     
     // PRINT-READY VALIDATION AND FIXES
     setProcessingStep?.('Validating print-readiness...');
