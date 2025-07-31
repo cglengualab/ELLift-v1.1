@@ -1,61 +1,4 @@
-// Wait between API calls
-    await delay(CONFIG.DELAYS.BETWEEN_CALLS);
-
-    // STEP 2: Generate Teacher Guide
-    setProcessingStep?.('Generating teacher guide...');
-    console.log("Step 2: Creating teacher guide");
-    
-    const teacherGuide = await createUniversalTeacherGuide(studentWorksheet, params, contentAnalysis);
-    console.log("Step 2: Teacher guide completed");
-
-    // STEP 3: Validate vocabulary integration
-    setProcessingStep?.('Validating adaptation quality...');
-    const vocabValidation = validateVocabularyIntegration(studentWorksheet);
-    console.log('Vocabulary validation:', vocabValidation.message);
-
-    // Final print-readiness check
-    const finalPrintValidation = validatePrintReadiness(studentWorksheet);
-    console.log('Final print-readiness validation:', finalPrintValidation.message);
-
-    setProcessingStep?.('Finalizing materials...');
-
-    // Return complete results
-    return {
-      studentWorksheet,
-      teacherGuide,
-      dynamicWidaDescriptors,
-      imagePrompts: null, // Skip image generation for faster processing
-      vocabularyValidation: vocabValidation,
-      printReadinessValidation: finalPrintValidation,
-      contentAnalysis: {
-        inputAnalysis: contentAnalysis,
-        outputAnalysis,
-        tokensUsed: maxTokens,
-        completenessCheck: {
-          expectedItems: contentAnalysis.totalItems,
-          detectedItems: outputAnalysis.totalItems,
-          preservationRate: Math.round((outputAnalysis.totalItems / Math.max(contentAnalysis.totalItems, 1)) * 100),
-          contentType: contentAnalysis.contentType
-        },
-        chunkingUsed: false,
-        processingMethod: 'universal_standard'
-      }
-    };
-
-  } catch (error) {
-    console.error("Universal adaptation process failed:", error);
-    
-    if (error instanceof ClaudeAPIError) {
-      throw error;
-    }
-    
-    throw new ClaudeAPIError(
-      `Failed to adapt material: ${error.message}`,
-      null,
-      error
-    );
-  }
-};// FileName: src/services/claudeService.js (Updated with Print-Ready Fixes)
+// FileName: src/services/claudeService.js (Updated with Print-Ready Fixes - CORRECTED)
 
 // Claude API service functions
 import { extractTextFromPDF as extractPDFText } from './pdfService.js';
@@ -530,7 +473,7 @@ const generateContentSpecificChecklist = (contentAnalysis, originalContent) => {
   return items;
 };
 
-// UPDATED UNIVERSAL PROMPT CREATION
+// UPDATED UNIVERSAL PROMPT CREATION - ANTI-PLACEHOLDER VERSION
 const createUniversalPrompt = (details) => {
   const { contentAnalysis, proficiencyLevel, subject, materialType } = details;
   const adaptations = getUniversalProficiencyAdaptations(proficiencyLevel);
@@ -548,33 +491,39 @@ const createUniversalPrompt = (details) => {
 **PART 1: STUDENT WORKSHEET**
 Generate a complete student worksheet formatted in simple GitHub Flavored Markdown.
 
+**ABSOLUTE PROHIBITION - NEVER DO THIS:**
+- NEVER write "[Original passage preserved exactly as written]"
+- NEVER write "[Content continues...]" 
+- NEVER write "[Insert passage here]"
+- NEVER write any text in square brackets [ ]
+- NEVER use "..." or ellipses to indicate missing content
+- NEVER abbreviate or summarize reading passages
+- NEVER create placeholders of any kind
+
+**WHAT YOU MUST DO INSTEAD:**
+- Include EVERY WORD of reading passages, stories, poems, or text
+- Write out EVERY question completely
+- Include ALL content that students need to see
+- If there's a passage to read, students must see the full text
+- If there are math problems, include every number and equation
+- Make the worksheet 100% complete and usable immediately
+
 **CRITICAL PRINT-READY FORMATTING RULES:**
 - Use ONLY standard keyboard characters that print reliably
 - For checklists: Use "[ ]" (brackets with space) instead of special checkbox symbols
 - For numbered items: Use proper sequential numbering (1. 2. 3. etc.) - NEVER repeat numbers
 - For lettered items: Use proper sequential lettering (a. b. c. etc.) - NEVER repeat letters
 - For bullet points: Use simple dashes (-) or asterisks (*)
-- NO placeholder text like "[Original passage preserved exactly as written]" or "[Content continues...]"
 - NO special Unicode characters (✓, ○, □, •, etc.)
 - ALL content must be complete and ready to print without teacher editing
-- Include the COMPLETE original passage/content - no summarizing or abbreviating
-
-**ABSOLUTE REQUIREMENT FOR READING PASSAGES:**
-If the original content contains a reading passage, poem, story, or any text that students need to read:
-- You MUST include the ENTIRE text word-for-word
-- NEVER use placeholders like "[Original passage preserved...]" or "[Insert passage here]"
-- NEVER summarize or abbreviate the passage
-- Students must be able to read the complete text to answer questions
-- If you cannot include the full passage, the worksheet is UNUSABLE
 
 **UNIVERSAL PRESERVATION RULES:**
 - Write out EVERY SINGLE item, question, problem, and exercise completely
 - Preserve ALL numbers, measurements, coordinates, dates, and factual information exactly
 - Keep ALL multiple choice options, fill-in-blanks, and answer formats identical
 - Maintain ALL proper nouns, technical terms, and specialized vocabulary
-- NEVER summarize, abbreviate, or use phrases like "[Content continues...]" or "..."
+- Include COMPLETE reading passages word-for-word
 - Each item must be 100% complete and usable without teacher additions
-- If there's a reading passage, include the ENTIRE passage word-for-word
 
 ${subjectInstructions}
 
@@ -639,275 +588,96 @@ Generate a valid JSON object with:
 ${details.contentToAdapt}
 \`\`\`
 
-**FINAL QUALITY CHECK:**
-Before submitting your response:
-1. Verify ALL content from original is included completely (no placeholders or summaries)
-2. Check sequential numbering (1, 2, 3... not 1, 1, 1...)
-3. Ensure print-ready formatting (no special characters)
-4. Confirm complete sentences and proper grammar
-5. Validate that worksheet can be printed and used immediately
-6. Ensure checklist reflects actual content structure
-7. **CRITICAL: If there's a reading passage, confirm you've included the ENTIRE text - students must be able to read it**
+**MANDATORY SELF-CHECK BEFORE RESPONDING:**
+Ask yourself these questions:
+1. Did I include the complete reading passage word-for-word?
+2. Did I avoid using ANY square brackets [ ] or placeholders?
+3. Can a student use this worksheet immediately without additions?
+4. Did I write out every question and activity completely?
+5. Is all numbering sequential (1, 2, 3... not 1, 1, 1...)?
 
-**EMERGENCY INSTRUCTION:** If you find yourself wanting to write "[Original passage preserved...]" or any placeholder, STOP and include the actual text instead. A worksheet with placeholder text is completely unusable.
+If you answer "NO" to any question, revise your response before submitting.
 
-Remember: Your primary goal is to make content linguistically accessible while preserving ALL educational content exactly and ensuring perfect print readiness.`;
+**FINAL EMERGENCY INSTRUCTION:**
+If you are tempted to write "[Original passage preserved...]" or any placeholder text, this means you have FAILED the task. Instead, copy the exact text from the original content and include it in your response. A worksheet with placeholder text is completely unusable and unacceptable.
+
+Remember: Your primary goal is to make content linguistically accessible while preserving ALL educational content exactly and ensuring perfect print readiness with ZERO placeholders.`;
 };
 
-// UNIVERSAL CHUNKING SYSTEM
-const createUniversalChunkPrompt = (details) => {
-  const { chunkNumber, totalChunks, proficiencyLevel, contentAnalysis } = details;
-  const adaptations = getUniversalProficiencyAdaptations(proficiencyLevel);
-  
-  return `You are processing chunk ${chunkNumber} of ${totalChunks} for an ELL worksheet adaptation.
-
-**CHUNK PROCESSING RULES:**
-- This is PART of a larger worksheet - do NOT create headers or vocabulary sections
-- ONLY adapt the specific content given below
-- Write out EVERY item completely - no summarization or placeholders
-- Maintain ALL numbers, facts, coordinates, measurements, dates exactly
-- Apply ${proficiencyLevel} level language adaptations to instructions only
-- Use proper sequential numbering starting from where this chunk begins
-
-**CONTENT TYPE:** ${contentAnalysis.contentType}
-**ITEMS IN THIS CHUNK:** ${contentAnalysis.totalItems} total items expected
-
-**LANGUAGE ADAPTATIONS:**
-- Sentences: ${adaptations.sentences}
-- Vocabulary: ${adaptations.vocabulary}
-- Support: ${adaptations.support}
-
-**PRINT-READY REQUIREMENTS:**
-- NO placeholder text or abbreviations
-- Complete all content fully
-- Use standard characters only
-- Proper sequential numbering
-
-**CONTENT TO ADAPT:**
-\`\`\`
-${details.contentToAdapt}
-\`\`\`
-
-Return ONLY the adapted content with exact numbering/labeling preserved.
-Bold key academic vocabulary terms throughout.`;
-};
-
-const splitContentIntelligently = (content, contentAnalysis) => {
-  const lines = content.split('\n');
-  const chunks = [];
-  let currentChunk = '';
-  let itemCount = 0;
-  const maxItemsPerChunk = Math.max(3, Math.min(8, Math.ceil(contentAnalysis.totalItems / 6)));
-  
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    
-    // Check if this line starts a new item (numbered, lettered, or bullet)
-    const isNewItem = /^\s*(\d+[\.\)]|[a-zA-Z][\.\)]|[-•*])/.test(line);
-    
-    if (isNewItem && currentChunk.trim() && itemCount >= maxItemsPerChunk) {
-      // Save current chunk and start new one
-      chunks.push(currentChunk.trim());
-      currentChunk = line + '\n';
-      itemCount = 1;
-    } else {
-      currentChunk += line + '\n';
-      if (isNewItem) itemCount++;
+// Enhanced API call with model selection and two-step process
+const callClaudeAPIWithRetry = (messages, maxTokens = CONFIG.TOKENS.DEFAULT_MAX, maxRetries = CONFIG.API.MAX_RETRIES, useOpenAI = false) => {
+  const formattedMessages = messages.map(msg => {
+    if (typeof msg.content === 'string') {
+      return { role: msg.role, content: sanitizeInput(msg.content) };
     }
-  }
+    return msg;
+  });
   
-  // Don't forget the last chunk
-  if (currentChunk.trim()) {
-    chunks.push(currentChunk.trim());
-  }
-  
-  return chunks.filter(chunk => chunk.length > 20); // Filter out very small chunks
-};
-
-const processUniversalChunk = async (chunkParams) => {
-  const chunkAnalysis = analyzeContentStructure(chunkParams.contentToAdapt);
-  const promptDetails = { ...chunkParams, contentAnalysis: chunkAnalysis };
-  
-  const chunkPrompt = createUniversalChunkPrompt(promptDetails);
-  
-  if (!validateRequestSize(chunkPrompt)) {
-    throw new ClaudeAPIError('Chunk too large even after intelligent splitting');
-  }
-  
-  const result = await callClaudeAPIWithRetry([{ role: 'user', content: chunkPrompt }], CONFIG.TOKENS.CHUNK_MAX);
-  
-  return {
-    content: result.content[0].text,
-    chunkNumber: chunkParams.chunkNumber,
-    itemCount: chunkAnalysis.totalItems
-  };
-};
-
-const processChunksSequentially = async (chunks, params, setProcessingStep) => {
-  const results = [];
-  
-  for (let i = 0; i < chunks.length; i++) {
-    setProcessingStep?.(`Processing chunk ${i + 1} of ${chunks.length}...`);
-    
-    const chunkParams = {
-      ...params,
-      contentToAdapt: chunks[i],
-      chunkNumber: i + 1,
-      totalChunks: chunks.length
-    };
-    
-    const chunkResult = await processUniversalChunk(chunkParams);
-    results.push(chunkResult);
-    
-    if (i < chunks.length - 1) {
-      await delay(CONFIG.DELAYS.BETWEEN_CALLS);
-    }
-  }
-  
-  return results;
-};
-
-const createUniversalWorksheet = (combinedContent, params, originalAnalysis) => {
-  const { subject, proficiencyLevel, includeBilingualSupport, nativeLanguage, addStudentChecklist, translateSummary } = params;
-  
-  let worksheet = '';
-  
-  // Bilingual summary if requested
-  if (translateSummary && includeBilingualSupport && nativeLanguage) {
-    const subjectTranslations = {
-      'Spanish': {
-        'Mathematics': 'Matemáticas',
-        'Science': 'Ciencias',
-        'History': 'Historia',
-        'English Language Arts': 'Artes del Lenguaje'
+  return new Promise(async (resolve, reject) => {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), CONFIG.API.TIMEOUT);
+        
+        // Choose API endpoint based on content length
+        const apiEndpoint = useOpenAI ? '/api/openai-claude-fallback' : '/api/claude';
+        
+        const response = await fetch(`${API_BASE_URL}${apiEndpoint}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            messages: formattedMessages, 
+            max_tokens: maxTokens,
+            use_openai: useOpenAI
+          }),
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+          console.error('API Error Details:', {
+            status: response.status,
+            statusText: response.statusText,
+            error: errorData,
+            model: useOpenAI ? 'OpenAI GPT-4' : 'Claude',
+            requestSize: JSON.stringify({ messages: formattedMessages, max_tokens: maxTokens }).length
+          });
+          
+          throw new ClaudeAPIError(
+            errorData.error || `API request failed: ${response.status} - ${response.statusText}`,
+            response.status,
+            errorData
+          );
+        }
+        
+        const data = await response.json();
+        resolve(data);
+        return;
+        
+      } catch (error) {
+        console.warn(`API call failed (attempt ${attempt}/${maxRetries}):`, error.message);
+        
+        if (error.name === 'AbortError') {
+          reject(new ClaudeAPIError('Request timeout', 408, error));
+          return;
+        }
+        
+        if (error.status === 401 || error.status === 403) {
+          reject(error);
+          return;
+        }
+        
+        if (attempt === maxRetries) {
+          reject(error);
+          return;
+        }
+        
+        await delay(CONFIG.DELAYS.RETRY_DELAY * attempt);
       }
-    };
-    
-    const translatedSubject = subjectTranslations[nativeLanguage]?.[subject] || subject;
-    worksheet += `*En esta lección, trabajaremos con ${translatedSubject}.*\n\n`;
-  }
-  
-  // Title with bilingual support
-  const bilingualTitle = includeBilingualSupport && nativeLanguage === 'Spanish' 
-    ? ` (*${subject} Adaptado*)` 
-    : '';
-  worksheet += `# ${subject} Worksheet${bilingualTitle}\n\n`;
-  
-  // Content-specific checklist if requested
-  if (addStudentChecklist) {
-    worksheet += `## My Checklist\n`;
-    const checklistItems = generateContentSpecificChecklist(originalAnalysis, params.contentToAdapt);
-    checklistItems.forEach((item, index) => {
-      worksheet += `${index + 1}. [ ] ${item}\n`;
-    });
-    worksheet += '\n';
-  }
-  
-  // Background Knowledge (adaptive based on content type)
-  worksheet += `## Background Knowledge\n`;
-  if (originalAnalysis.contentType === 'mathematics') {
-    worksheet += `* Work carefully with all numbers and calculations\n`;
-    worksheet += `* Show your work for each problem\n`;
-    worksheet += `* Check that your answers make sense\n\n`;
-  } else if (originalAnalysis.contentType === 'reading_comprehension') {
-    worksheet += `* Read all passages carefully\n`;
-    worksheet += `* Look for key details and main ideas\n`;
-    worksheet += `* Use context clues for unfamiliar words\n\n`;
-  } else {
-    worksheet += `* Read all instructions before starting\n`;
-    worksheet += `* Take your time with each item\n`;
-    worksheet += `* Ask for help if needed\n\n`;
-  }
-  
-  // Key Vocabulary (will be populated by AI based on content)
-  worksheet += `## Key Vocabulary\n`;
-  worksheet += `*Key terms will be **bolded** throughout the worksheet*\n\n`;
-  
-  // Main Content
-  worksheet += `## Activities\n\n`;
-  worksheet += combinedContent;
-  
-  return worksheet;
-};
-
-const handleUniversalChunking = async (params, setProcessingStep, contentAnalysis) => {
-  if (!contentAnalysis.complexity.needsChunking) {
-    return null;
-  }
-  
-  console.log(`Content requires chunking: ${contentAnalysis.complexity.level} complexity with ${contentAnalysis.totalItems} items`);
-  setProcessingStep?.('Analyzing content for optimal chunking...');
-  
-  const chunks = splitContentIntelligently(params.contentToAdapt, contentAnalysis);
-  console.log(`Split into ${chunks.length} chunks`);
-  
-  const processedChunks = await processChunksSequentially(chunks, params, setProcessingStep);
-  
-  setProcessingStep?.('Combining chunks into final worksheet...');
-  const combinedContent = processedChunks
-    .sort((a, b) => a.chunkNumber - b.chunkNumber)
-    .map(chunk => chunk.content)
-    .join('\n\n');
-  
-  const fullWorksheet = createUniversalWorksheet(combinedContent, params, contentAnalysis);
-  
-  // Apply print-ready fixes to the final worksheet
-  const printValidation = validatePrintReadiness(fullWorksheet);
-  let finalWorksheet = fullWorksheet;
-  
-  if (!printValidation.isValid) {
-    console.warn('Print-readiness issues detected in chunked content:', printValidation.issues);
-    finalWorksheet = fixCommonFormattingIssues(fullWorksheet);
-  }
-  
-  // Create descriptors
-  const descriptors = {
-    title: `${params.subject} - ${params.proficiencyLevel} Level`,
-    descriptors: [
-      `Students can engage with ${params.subject.toLowerCase()} content at ${params.proficiencyLevel} level`,
-      `Students can complete ${contentAnalysis.totalItems} adapted activities`,
-      `Students can use academic vocabulary with appropriate support`,
-      `Students can demonstrate understanding through various formats`,
-      `Students can work independently with provided scaffolds`
-    ]
-  };
-  
-  // Simple teacher guide
-  const teacherGuide = `# Teacher's Guide: ${params.subject}
-
-## Answer Key
-*Complete answer key should be based on original material. All problem numbers and content remain identical to source material.*
-
-## Materials Needed
-- Student worksheet
-- Any manipulatives or tools mentioned in original material
-- Reference materials as appropriate
-
-## ELL Supports Included
-- Language simplified to ${params.proficiencyLevel} level
-- Key vocabulary bolded throughout
-- ${contentAnalysis.totalItems} items preserved with adaptive language
-- Content type: ${contentAnalysis.contentType}
-
-## Pacing Guide
-- Review vocabulary: 5-10 minutes
-- Complete activities: ${Math.max(20, contentAnalysis.totalItems * 2)} minutes
-- Review and discussion: 10 minutes`;
-  
-  return {
-    studentWorksheet: finalWorksheet,
-    teacherGuide,
-    dynamicWidaDescriptors: descriptors,
-    imagePrompts: null,
-    vocabularyValidation: { isValid: true, message: 'Universal chunking completed' },
-    printReadinessValidation: validatePrintReadiness(finalWorksheet),
-    contentAnalysis: {
-      chunkingUsed: true,
-      totalChunks: chunks.length,
-      processingMethod: 'universal_chunking',
-      originalAnalysis: contentAnalysis
     }
-  };
+  });
 };
 
 // Validate request size
@@ -932,75 +702,6 @@ const validateSplitResponse = (parts, expectedParts = 2) => {
   }
   
   return parts.map(part => part.trim());
-};
-
-// Enhanced API call with model selection and two-step process
-const callClaudeAPIWithRetry = async (messages, maxTokens = CONFIG.TOKENS.DEFAULT_MAX, maxRetries = CONFIG.API.MAX_RETRIES, useOpenAI = false) => {
-  const formattedMessages = messages.map(msg => {
-    if (typeof msg.content === 'string') {
-      return { role: msg.role, content: sanitizeInput(msg.content) };
-    }
-    return msg;
-  });
-  
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), CONFIG.API.TIMEOUT);
-      
-      // Choose API endpoint based on content length
-      const apiEndpoint = useOpenAI ? '/api/openai-claude-fallback' : '/api/claude';
-      
-      const response = await fetch(`${API_BASE_URL}${apiEndpoint}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          messages: formattedMessages, 
-          max_tokens: maxTokens,
-          use_openai: useOpenAI
-        }),
-        signal: controller.signal
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        console.error('API Error Details:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorData,
-          model: useOpenAI ? 'OpenAI GPT-4' : 'Claude',
-          requestSize: JSON.stringify({ messages: formattedMessages, max_tokens: maxTokens }).length
-        });
-        
-        throw new ClaudeAPIError(
-          errorData.error || `API request failed: ${response.status} - ${response.statusText}`,
-          response.status,
-          errorData
-        );
-      }
-      
-      return await response.json();
-      
-    } catch (error) {
-      console.warn(`API call failed (attempt ${attempt}/${maxRetries}):`, error.message);
-      
-      if (error.name === 'AbortError') {
-        throw new ClaudeAPIError('Request timeout', 408, error);
-      }
-      
-      if (error.status === 401 || error.status === 403) {
-        throw error;
-      }
-      
-      if (attempt === maxRetries) {
-        throw error;
-      }
-      
-      await delay(CONFIG.DELAYS.RETRY_DELAY * attempt);
-    }
-  }
 };
 
 // Helper functions for bilingual and IEP support
@@ -1188,15 +889,8 @@ export const adaptMaterialWithClaude = async (params, setProcessingStep) => {
       items: contentAnalysis.totalItems,
       wordCount: contentAnalysis.wordCount,
       estimatedInputTokens: Math.round(params.contentToAdapt.length / 4),
-      estimatedPromptTokens: Math.round(mainPrompt?.length / 4 || 0)
+      estimatedPromptTokens: Math.round(params.contentToAdapt.length / 4)
     });
-
-    // Check if chunking is needed
-    const chunkingResult = await handleUniversalChunking(params, setProcessingStep, contentAnalysis);
-    if (chunkingResult) {
-      console.log('Universal chunking completed successfully');
-      return chunkingResult;
-    }
 
     // Standard processing for manageable content
     console.log('Using standard universal processing');
@@ -1317,54 +1011,17 @@ export const adaptMaterialWithClaude = async (params, setProcessingStep) => {
       }
     }
     
-    // PRINT-READY VALIDATION AND FIXES
-    setProcessingStep?.('Validating print-readiness...');
-    const printValidation = validatePrintReadiness(studentWorksheet);
-    
-    if (!printValidation.isValid) {
-      console.warn('Print-readiness issues detected:', printValidation.issues);
-      
-      // Apply automatic fixes
-      const fixedWorksheet = fixCommonFormattingIssues(studentWorksheet);
-      
-      // Re-validate after fixes
-      const revalidation = validatePrintReadiness(fixedWorksheet);
-      
-      if (revalidation.isValid || revalidation.issues.length < printValidation.issues.length) {
-        console.log('Automatic fixes improved print-readiness');
-        studentWorksheet = fixedWorksheet;
-      } else {
-        console.warn('Some print-readiness issues remain:', revalidation.issues);
-      }
-    }
-    
     // Validate output completeness
     const outputAnalysis = analyzeContentStructure(studentWorksheet);
     console.log('Output analysis:', {
       inputItems: contentAnalysis.totalItems,
       outputItems: outputAnalysis.totalItems,
-      preservation: Math.round((outputAnalysis.totalItems / Math.max(contentAnalysis.totalItems, 1)) * 100) + '%'
+      preservation: Math.round((outputAnalysis.totalItems / Math.max(contentAnalysis.totalItems, 1)) * 100) + '%',
+      modelUsed: useOpenAI ? 'OpenAI GPT-4o' : 'Claude Opus'
     });
     
     if (outputAnalysis.totalItems < contentAnalysis.totalItems * 0.7) {
       console.warn(`Potential content loss: Expected ~${contentAnalysis.totalItems} items, got ${outputAnalysis.totalItems}`);
-    }
-    
-    // Parse descriptors
-    let dynamicWidaDescriptors;
-    try {
-      dynamicWidaDescriptors = JSON.parse(mainParts[1]);
-    } catch (parseError) {
-      console.warn('Failed to parse descriptors, using fallback');
-      dynamicWidaDescriptors = {
-        title: `${subject} - ${proficiencyLevel} Level`,
-        descriptors: [
-          `Students can engage with ${subject.toLowerCase()} content at their language level`,
-          `Students can complete adapted activities with appropriate support`,
-          `Students can use academic vocabulary with scaffolding`,
-          `Students can demonstrate understanding through various formats`
-        ]
-      };
     }
     
     console.log("Step 1: Student worksheet and descriptors completed");
@@ -1389,3 +1046,41 @@ export const adaptMaterialWithClaude = async (params, setProcessingStep) => {
     console.log('Final print-readiness validation:', finalPrintValidation.message);
 
     setProcessingStep?.('Finalizing materials...');
+
+    // Return complete results
+    return {
+      studentWorksheet,
+      teacherGuide,
+      dynamicWidaDescriptors,
+      imagePrompts: null, // Skip image generation for faster processing
+      vocabularyValidation: vocabValidation,
+      printReadinessValidation: finalPrintValidation,
+      contentAnalysis: {
+        inputAnalysis: contentAnalysis,
+        outputAnalysis,
+        tokensUsed: maxTokens,
+        completenessCheck: {
+          expectedItems: contentAnalysis.totalItems,
+          detectedItems: outputAnalysis.totalItems,
+          preservationRate: Math.round((outputAnalysis.totalItems / Math.max(contentAnalysis.totalItems, 1)) * 100),
+          contentType: contentAnalysis.contentType
+        },
+        chunkingUsed: false,
+        processingMethod: 'universal_standard'
+      }
+    };
+
+  } catch (error) {
+    console.error("Universal adaptation process failed:", error);
+    
+    if (error instanceof ClaudeAPIError) {
+      throw error;
+    }
+    
+    throw new ClaudeAPIError(
+      `Failed to adapt material: ${error.message}`,
+      null,
+      error
+    );
+  }
+};
