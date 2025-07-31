@@ -1,4 +1,4 @@
-// FileName: src/services/claudeService.js (Universal ELL Material Adapter)
+// FileName: src/services/claudeService.js (Updated with Print-Ready Fixes)
 
 // Claude API service functions
 import { extractTextFromPDF as extractPDFText } from './pdfService.js';
@@ -71,6 +71,99 @@ const sanitizeInput = (text) => {
   return text
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
     .replace(/\s+/g, ' ')
+    .trim();
+};
+
+// PRINT-READY VALIDATION FUNCTIONS
+const validatePrintReadiness = (studentWorksheet) => {
+  const issues = [];
+  
+  // Check for placeholder text
+  const placeholders = [
+    '[Original passage preserved exactly as written]',
+    '[Content continues...]',
+    '...',
+    '[Add more questions here]',
+    '[Insert passage here]',
+    '[Passage text here]',
+    '[Complete the remaining items]'
+  ];
+  
+  placeholders.forEach(placeholder => {
+    if (studentWorksheet.includes(placeholder)) {
+      issues.push(`Contains placeholder: ${placeholder}`);
+    }
+  });
+  
+  // Check for proper sequential numbering
+  const numberedItems = studentWorksheet.match(/^\s*(\d+)\./gm) || [];
+  if (numberedItems.length > 1) {
+    const numbers = numberedItems.map(item => parseInt(item.match(/\d+/)[0]));
+    for (let i = 1; i < numbers.length; i++) {
+      if (numbers[i] !== numbers[i-1] + 1) {
+        issues.push(`Numbering error: Found ${numbers[i-1]} followed by ${numbers[i]}`);
+      }
+    }
+  }
+  
+  // Check for repeated numbers
+  const numberCounts = {};
+  numberedItems.forEach(item => {
+    const num = item.match(/\d+/)[0];
+    numberCounts[num] = (numberCounts[num] || 0) + 1;
+  });
+  
+  Object.entries(numberCounts).forEach(([num, count]) => {
+    if (count > 1) {
+      issues.push(`Number ${num} appears ${count} times`);
+    }
+  });
+  
+  // Check for problematic Unicode characters
+  const problematicChars = ['□', '✓', '○', '●', '◯', '◉'];
+  problematicChars.forEach(char => {
+    if (studentWorksheet.includes(char)) {
+      issues.push(`Contains problematic character: ${char}`);
+    }
+  });
+  
+  // Check for missing content indicators
+  const contentLines = studentWorksheet.split('\n').filter(line => line.trim());
+  const shortLines = contentLines.filter(line => line.trim().length < 10);
+  if (shortLines.length > contentLines.length * 0.3) {
+    issues.push('Too many short lines - possible missing content');
+  }
+  
+  return {
+    isValid: issues.length === 0,
+    issues: issues,
+    message: issues.length === 0 
+      ? 'Worksheet is print-ready' 
+      : `Found ${issues.length} print-readiness issues`
+  };
+};
+
+const fixCommonFormattingIssues = (content) => {
+  return content
+    // Fix checkbox formatting
+    .replace(/□/g, '[ ]')
+    .replace(/☐/g, '[ ]')
+    .replace(/✓/g, '[x]')
+    .replace(/☑/g, '[x]')
+    
+    // Fix bullet points
+    .replace(/•/g, '-')
+    .replace(/◦/g, '-')
+    
+    // Remove placeholder brackets
+    .replace(/\[Original passage preserved exactly as written\]/g, '')
+    .replace(/\[Content continues...\]/g, '')
+    .replace(/\[Insert passage here\]/g, '')
+    .replace(/\[Passage text here\]/g, '')
+    .replace(/\[Complete the remaining items\]/g, '')
+    
+    // Clean up extra whitespace
+    .replace(/\n{3,}/g, '\n\n')
     .trim();
 };
 
@@ -289,7 +382,71 @@ const getUniversalSubjectInstructions = (subject, contentAnalysis) => {
   return instructions;
 };
 
-// UNIVERSAL PROMPT CREATION
+// CONTENT-SPECIFIC CHECKLIST GENERATOR
+const generateContentSpecificChecklist = (contentAnalysis, originalContent) => {
+  const items = [];
+  
+  // Analyze what's actually in the content
+  const hasVocabSection = /vocabulary|key terms|important words/i.test(originalContent);
+  const hasReadingPassage = /read|passage|text|story|article/i.test(originalContent) && contentAnalysis.paragraphs > 2;
+  const hasMathProblems = contentAnalysis.hasMath && contentAnalysis.numberedItems > 0;
+  const hasQuestions = contentAnalysis.openEnded > 0 || contentAnalysis.multipleChoice > 0;
+  
+  // Background/setup tasks
+  if (hasVocabSection) {
+    const vocabCount = (originalContent.match(/\*\*(.*?)\*\*/g) || []).length;
+    if (vocabCount > 0) {
+      items.push(`Review the ${vocabCount} vocabulary words`);
+    } else {
+      items.push('Review the key vocabulary words');
+    }
+  }
+  
+  // Main content tasks
+  if (hasReadingPassage) {
+    const passageTitle = originalContent.match(/(?:passage|text|story|article)(?:\s+about|\s+on)?\s+([^.\n]+)/i);
+    if (passageTitle) {
+      items.push(`Read the passage about ${passageTitle[1].trim()}`);
+    } else {
+      items.push('Read the passage carefully');
+    }
+  }
+  
+  if (hasMathProblems) {
+    if (contentAnalysis.numberedItems > 0) {
+      items.push(`Solve problems 1-${contentAnalysis.numberedItems}`);
+    } else {
+      items.push('Complete all math problems');
+    }
+    items.push('Show your work for each problem');
+  }
+  
+  // Question completion
+  if (hasQuestions) {
+    const totalQuestions = contentAnalysis.openEnded + contentAnalysis.multipleChoice;
+    if (totalQuestions > 0) {
+      items.push(`Answer all ${totalQuestions} questions`);
+    } else {
+      items.push('Answer all questions');
+    }
+    
+    if (contentAnalysis.openEnded > 0) {
+      items.push('Use complete sentences in your answers');
+    }
+  }
+  
+  // Generic completion tasks
+  if (contentAnalysis.totalItems > 0 && !hasMathProblems && !hasQuestions) {
+    items.push(`Complete all ${contentAnalysis.totalItems} activities`);
+  }
+  
+  // Always end with checking work
+  items.push('Check all my work before finishing');
+  
+  return items;
+};
+
+// UPDATED UNIVERSAL PROMPT CREATION
 const createUniversalPrompt = (details) => {
   const { contentAnalysis, proficiencyLevel, subject, materialType } = details;
   const adaptations = getUniversalProficiencyAdaptations(proficiencyLevel);
@@ -307,6 +464,17 @@ const createUniversalPrompt = (details) => {
 **PART 1: STUDENT WORKSHEET**
 Generate a complete student worksheet formatted in simple GitHub Flavored Markdown.
 
+**CRITICAL PRINT-READY FORMATTING RULES:**
+- Use ONLY standard keyboard characters that print reliably
+- For checklists: Use "[ ]" (brackets with space) instead of special checkbox symbols
+- For numbered items: Use proper sequential numbering (1. 2. 3. etc.) - NEVER repeat numbers
+- For lettered items: Use proper sequential lettering (a. b. c. etc.) - NEVER repeat letters
+- For bullet points: Use simple dashes (-) or asterisks (*)
+- NO placeholder text like "[Original passage preserved exactly as written]" or "[Content continues...]"
+- NO special Unicode characters (✓, ○, □, •, etc.)
+- ALL content must be complete and ready to print without teacher editing
+- Include the COMPLETE original passage/content - no summarizing or abbreviating
+
 **UNIVERSAL PRESERVATION RULES:**
 - Write out EVERY SINGLE item, question, problem, and exercise completely
 - Preserve ALL numbers, measurements, coordinates, dates, and factual information exactly
@@ -314,8 +482,16 @@ Generate a complete student worksheet formatted in simple GitHub Flavored Markdo
 - Maintain ALL proper nouns, technical terms, and specialized vocabulary
 - NEVER summarize, abbreviate, or use phrases like "[Content continues...]" or "..."
 - Each item must be 100% complete and usable without teacher additions
+- If there's a reading passage, include the ENTIRE passage word-for-word
 
 ${subjectInstructions}
+
+**SEQUENTIAL NUMBERING REQUIREMENTS:**
+- Number all questions sequentially: 1. 2. 3. 4. etc.
+- Number all problems sequentially: 1. 2. 3. 4. etc.
+- Letter all sub-items sequentially: a. b. c. d. etc.
+- NEVER repeat numbers or letters within the same sequence
+- Double-check your numbering before finalizing
 
 **LANGUAGE ADAPTATION FOR ${proficiencyLevel.toUpperCase()} LEVEL:**
 - Sentence Structure: ${adaptations.sentences}
@@ -338,6 +514,26 @@ Create appropriate sections based on content type:
 - Main Content (adapted from original with all items preserved)
 - Any extension or reflection activities present in original
 
+**CONTENT-SPECIFIC CHECKLIST FORMATTING (if requested):**
+Create a specific checklist based on the actual content structure. Analyze the original material and create checklist items that match the specific activities, sections, and tasks present. Examples:
+
+For a reading comprehension worksheet:
+## My Checklist
+1. [ ] Read the background information about [specific topic]
+2. [ ] Review the [X] vocabulary words
+3. [ ] Read the passage about [specific content]
+4. [ ] Answer questions 1-[X] 
+5. [ ] Check that I used complete sentences
+
+For a math worksheet:
+## My Checklist
+1. [ ] Review the [specific math concept] vocabulary
+2. [ ] Complete problems 1-[X]
+3. [ ] Show my work for each problem
+4. [ ] Check all my calculations
+
+The checklist must reflect the ACTUAL structure and content of the material being adapted, not generic instructions.
+
 ${details.bilingualInstructions || ''}
 ${details.iepInstructions || ''}
 
@@ -351,7 +547,16 @@ Generate a valid JSON object with:
 ${details.contentToAdapt}
 \`\`\`
 
-Remember: Your primary goal is to make content linguistically accessible while preserving ALL educational content exactly.`;
+**FINAL QUALITY CHECK:**
+Before submitting your response:
+1. Verify ALL content from original is included completely (no placeholders or summaries)
+2. Check sequential numbering (1, 2, 3... not 1, 1, 1...)
+3. Ensure print-ready formatting (no special characters)
+4. Confirm complete sentences and proper grammar
+5. Validate that worksheet can be printed and used immediately
+6. Ensure checklist reflects actual content structure
+
+Remember: Your primary goal is to make content linguistically accessible while preserving ALL educational content exactly and ensuring perfect print readiness.`;
 };
 
 // UNIVERSAL CHUNKING SYSTEM
@@ -364,9 +569,10 @@ const createUniversalChunkPrompt = (details) => {
 **CHUNK PROCESSING RULES:**
 - This is PART of a larger worksheet - do NOT create headers or vocabulary sections
 - ONLY adapt the specific content given below
-- Write out EVERY item completely - no summarization
+- Write out EVERY item completely - no summarization or placeholders
 - Maintain ALL numbers, facts, coordinates, measurements, dates exactly
 - Apply ${proficiencyLevel} level language adaptations to instructions only
+- Use proper sequential numbering starting from where this chunk begins
 
 **CONTENT TYPE:** ${contentAnalysis.contentType}
 **ITEMS IN THIS CHUNK:** ${contentAnalysis.totalItems} total items expected
@@ -375,6 +581,12 @@ const createUniversalChunkPrompt = (details) => {
 - Sentences: ${adaptations.sentences}
 - Vocabulary: ${adaptations.vocabulary}
 - Support: ${adaptations.support}
+
+**PRINT-READY REQUIREMENTS:**
+- NO placeholder text or abbreviations
+- Complete all content fully
+- Use standard characters only
+- Proper sequential numbering
 
 **CONTENT TO ADAPT:**
 \`\`\`
@@ -486,13 +698,14 @@ const createUniversalWorksheet = (combinedContent, params, originalAnalysis) => 
     : '';
   worksheet += `# ${subject} Worksheet${bilingualTitle}\n\n`;
   
-  // Checklist if requested
+  // Content-specific checklist if requested
   if (addStudentChecklist) {
     worksheet += `## My Checklist\n`;
-    worksheet += `1. [ ] Read all instructions carefully\n`;
-    worksheet += `2. [ ] Review vocabulary words\n`;
-    worksheet += `3. [ ] Complete all ${originalAnalysis.totalItems} items\n`;
-    worksheet += `4. [ ] Check my work\n\n`;
+    const checklistItems = generateContentSpecificChecklist(originalAnalysis, params.contentToAdapt);
+    checklistItems.forEach((item, index) => {
+      worksheet += `${index + 1}. [ ] ${item}\n`;
+    });
+    worksheet += '\n';
   }
   
   // Background Knowledge (adaptive based on content type)
@@ -543,6 +756,15 @@ const handleUniversalChunking = async (params, setProcessingStep, contentAnalysi
   
   const fullWorksheet = createUniversalWorksheet(combinedContent, params, contentAnalysis);
   
+  // Apply print-ready fixes to the final worksheet
+  const printValidation = validatePrintReadiness(fullWorksheet);
+  let finalWorksheet = fullWorksheet;
+  
+  if (!printValidation.isValid) {
+    console.warn('Print-readiness issues detected in chunked content:', printValidation.issues);
+    finalWorksheet = fixCommonFormattingIssues(fullWorksheet);
+  }
+  
   // Create descriptors
   const descriptors = {
     title: `${params.subject} - ${params.proficiencyLevel} Level`,
@@ -578,11 +800,12 @@ const handleUniversalChunking = async (params, setProcessingStep, contentAnalysi
 - Review and discussion: 10 minutes`;
   
   return {
-    studentWorksheet: fullWorksheet,
+    studentWorksheet: finalWorksheet,
     teacherGuide,
     dynamicWidaDescriptors: descriptors,
     imagePrompts: null,
     vocabularyValidation: { isValid: true, message: 'Universal chunking completed' },
+    printReadinessValidation: validatePrintReadiness(finalWorksheet),
     contentAnalysis: {
       chunkingUsed: true,
       totalChunks: chunks.length,
@@ -680,7 +903,7 @@ const callClaudeAPIWithRetry = async (messages, maxTokens = CONFIG.TOKENS.DEFAUL
   }
 };
 
-// Helper functions for bilingual and IEP support (unchanged)
+// Helper functions for bilingual and IEP support
 const buildBilingualInstructions = ({
   includeBilingualSupport,
   nativeLanguage,
@@ -721,7 +944,7 @@ const getIepAccommodationInstructions = ({
   }
   
   if (addStudentChecklist) {
-    instructions += `- **Student Checklist:** Add "My Checklist" section at top with 3-5 steps\n`;
+    instructions += `- **Student Checklist:** Add content-specific "My Checklist" section at top with steps matching actual activities\n`;
   }
 
   if (useMultipleChoice) {
@@ -760,15 +983,15 @@ Focus on practical teaching guidance. Do NOT repeat worksheet content.`;
     return result.content[0].text;
   } catch (error) {
     console.warn('Failed to generate teacher guide, using fallback');
-   return createFallbackTeacherGuide(params, contentAnalysis);
- }
+    return createFallbackTeacherGuide(params, contentAnalysis);
+  }
 };
 
 const createFallbackTeacherGuide = (params, contentAnalysis) => {
- const { subject, proficiencyLevel } = params;
- const adaptations = getUniversalProficiencyAdaptations(proficiencyLevel);
- 
- return `# Teacher's Guide: ${subject} - ${proficiencyLevel} Level
+  const { subject, proficiencyLevel } = params;
+  const adaptations = getUniversalProficiencyAdaptations(proficiencyLevel);
+  
+  return `# Teacher's Guide: ${subject} - ${proficiencyLevel} Level
 
 ## Answer Key
 *Refer to your original answer key. All problem numbers, questions, and content structure remain identical to the source material.*
@@ -814,187 +1037,214 @@ Students will be able to:
 
 // Vocabulary validation function
 const validateVocabularyIntegration = (studentWorksheet) => {
- const vocabularySection = studentWorksheet.match(/## Key Vocabulary(.*?)##/s);
- if (!vocabularySection) return { isValid: true, message: 'No vocabulary section found' };
- 
- const boldWords = (studentWorksheet.match(/\*\*(.*?)\*\*/g) || [])
-   .map(word => word.replace(/\*\*/g, '').toLowerCase());
- 
- const uniqueBoldWords = [...new Set(boldWords)];
- 
- return {
-   isValid: boldWords.length > 0,
-   totalBoldedTerms: boldWords.length,
-   uniqueTerms: uniqueBoldWords.length,
-   message: boldWords.length > 0 
-     ? `${uniqueBoldWords.length} unique vocabulary terms bolded ${boldWords.length} times throughout worksheet`
-     : 'No vocabulary terms found bolded in worksheet'
- };
+  const vocabularySection = studentWorksheet.match(/## Key Vocabulary(.*?)##/s);
+  if (!vocabularySection) return { isValid: true, message: 'No vocabulary section found' };
+  
+  const boldWords = (studentWorksheet.match(/\*\*(.*?)\*\*/g) || [])
+    .map(word => word.replace(/\*\*/g, '').toLowerCase());
+  
+  const uniqueBoldWords = [...new Set(boldWords)];
+  
+  return {
+    isValid: boldWords.length > 0,
+    totalBoldedTerms: boldWords.length,
+    uniqueTerms: uniqueBoldWords.length,
+    message: boldWords.length > 0 
+      ? `${uniqueBoldWords.length} unique vocabulary terms bolded ${boldWords.length} times throughout worksheet`
+      : 'No vocabulary terms found bolded in worksheet'
+  };
 };
 
 // PDF extraction function
 export const extractTextFromPDF = async (file, setProcessingStep) => {
- try {
-   setProcessingStep?.('Extracting text from PDF...');
-   return await extractPDFText(file, setProcessingStep);
- } catch (error) {
-   console.error('PDF extraction error:', error);
-   throw new ClaudeAPIError('Failed to extract text from PDF', null, error);
- }
+  try {
+    setProcessingStep?.('Extracting text from PDF...');
+    return await extractPDFText(file, setProcessingStep);
+  } catch (error) {
+    console.error('PDF extraction error:', error);
+    throw new ClaudeAPIError('Failed to extract text from PDF', null, error);
+  }
 };
 
 /**
 * MAIN UNIVERSAL ADAPTATION FUNCTION
 * Works with ANY subject, ANY material type, ANY complexity level
+* NOW WITH PRINT-READY VALIDATION AND FIXES
 */
 export const adaptMaterialWithClaude = async (params, setProcessingStep) => {
- try {
-   // Validate input parameters
-   validateAdaptationParams(params);
-   
-   const { subject, proficiencyLevel, materialType, includeBilingualSupport, nativeLanguage, translateSummary, translateInstructions, listCognates, worksheetLength, addStudentChecklist, useMultipleChoice } = params;
+  try {
+    // Validate input parameters
+    validateAdaptationParams(params);
+    
+    const { subject, proficiencyLevel, materialType, includeBilingualSupport, nativeLanguage, translateSummary, translateInstructions, listCognates, worksheetLength, addStudentChecklist, useMultipleChoice } = params;
 
-   setProcessingStep?.('Analyzing content structure...');
+    setProcessingStep?.('Analyzing content structure...');
 
-   // UNIVERSAL CONTENT ANALYSIS - works for any material
-   const contentAnalysis = analyzeContentStructure(params.contentToAdapt);
-   console.log('Universal content analysis:', {
-     contentType: contentAnalysis.contentType,
-     complexity: contentAnalysis.complexity.level,
-     items: contentAnalysis.totalItems,
-     wordCount: contentAnalysis.wordCount
-   });
+    // UNIVERSAL CONTENT ANALYSIS - works for any material
+    const contentAnalysis = analyzeContentStructure(params.contentToAdapt);
+    console.log('Universal content analysis:', {
+      contentType: contentAnalysis.contentType,
+      complexity: contentAnalysis.complexity.level,
+      items: contentAnalysis.totalItems,
+      wordCount: contentAnalysis.wordCount
+    });
 
-   // Check if chunking is needed
-   const chunkingResult = await handleUniversalChunking(params, setProcessingStep, contentAnalysis);
-   if (chunkingResult) {
-     console.log('Universal chunking completed successfully');
-     return chunkingResult;
-   }
+    // Check if chunking is needed
+    const chunkingResult = await handleUniversalChunking(params, setProcessingStep, contentAnalysis);
+    if (chunkingResult) {
+      console.log('Universal chunking completed successfully');
+      return chunkingResult;
+    }
 
-   // Standard processing for manageable content
-   console.log('Using standard universal processing');
-   const maxTokens = contentAnalysis.complexity.needsExtendedTokens ? CONFIG.TOKENS.EXTENDED_MAX : CONFIG.TOKENS.DEFAULT_MAX;
-   console.log(`Using ${maxTokens} tokens for this adaptation`);
+    // Standard processing for manageable content
+    console.log('Using standard universal processing');
+    const maxTokens = contentAnalysis.complexity.needsExtendedTokens ? CONFIG.TOKENS.EXTENDED_MAX : CONFIG.TOKENS.DEFAULT_MAX;
+    console.log(`Using ${maxTokens} tokens for this adaptation`);
 
-   setProcessingStep?.('Preparing universal adaptation instructions...');
+    setProcessingStep?.('Preparing universal adaptation instructions...');
 
-   // Build instruction components
-   const bilingualInstructions = buildBilingualInstructions({
-     includeBilingualSupport, nativeLanguage, translateSummary, translateInstructions, listCognates
-   });
-   const iepInstructions = getIepAccommodationInstructions({
-     worksheetLength, addStudentChecklist, useMultipleChoice
-   });
-   
-   const promptDetails = { 
-     ...params, 
-     contentAnalysis, 
-     bilingualInstructions, 
-     iepInstructions 
-   };
-   
-   // STEP 1: Generate Student Worksheet and Descriptors
-   setProcessingStep?.('Generating adapted worksheet...');
-   console.log(`Processing ${contentAnalysis.contentType} with ${contentAnalysis.totalItems} items`);
-   
-   const mainPrompt = createUniversalPrompt(promptDetails);
-   
-   // Validate request size
-   if (!validateRequestSize(mainPrompt)) {
-     throw new ClaudeAPIError('Content too large for single request. Chunking is recommended.');
-   }
-   
-   const mainResult = await callClaudeAPIWithRetry([{ role: 'user', content: mainPrompt }], maxTokens);
-   
-   const mainParts = validateSplitResponse(
-     mainResult.content[0].text.split(CONFIG.DELIMITERS.SPLIT_MARKER),
-     2
-   );
-   
-   const studentWorksheet = mainParts[0];
-   
-   // Validate output completeness
-   const outputAnalysis = analyzeContentStructure(studentWorksheet);
-   console.log('Output analysis:', {
-     inputItems: contentAnalysis.totalItems,
-     outputItems: outputAnalysis.totalItems,
-     preservation: Math.round((outputAnalysis.totalItems / Math.max(contentAnalysis.totalItems, 1)) * 100) + '%'
-   });
-   
-   if (outputAnalysis.totalItems < contentAnalysis.totalItems * 0.7) {
-     console.warn(`Potential content loss: Expected ~${contentAnalysis.totalItems} items, got ${outputAnalysis.totalItems}`);
-   }
-   
-   // Parse descriptors
-   let dynamicWidaDescriptors;
-   try {
-     dynamicWidaDescriptors = JSON.parse(mainParts[1]);
-   } catch (parseError) {
-     console.warn('Failed to parse descriptors, using fallback');
-     dynamicWidaDescriptors = {
-       title: `${subject} - ${proficiencyLevel} Level`,
-       descriptors: [
-         `Students can engage with ${subject.toLowerCase()} content at their language level`,
-         `Students can complete adapted activities with appropriate support`,
-         `Students can use academic vocabulary with scaffolding`,
-         `Students can demonstrate understanding through various formats`
-       ]
-     };
-   }
-   
-   console.log("Step 1: Student worksheet and descriptors completed");
+    // Build instruction components
+    const bilingualInstructions = buildBilingualInstructions({
+      includeBilingualSupport, nativeLanguage, translateSummary, translateInstructions, listCognates
+    });
+    const iepInstructions = getIepAccommodationInstructions({
+      worksheetLength, addStudentChecklist, useMultipleChoice
+    });
+    
+    const promptDetails = { 
+      ...params, 
+      contentAnalysis, 
+      bilingualInstructions, 
+      iepInstructions 
+    };
+    
+    // STEP 1: Generate Student Worksheet and Descriptors
+    setProcessingStep?.('Generating adapted worksheet...');
+    console.log(`Processing ${contentAnalysis.contentType} with ${contentAnalysis.totalItems} items`);
+    
+    const mainPrompt = createUniversalPrompt(promptDetails);
+    
+    // Validate request size
+    if (!validateRequestSize(mainPrompt)) {
+      throw new ClaudeAPIError('Content too large for single request. Chunking is recommended.');
+    }
+    
+    const mainResult = await callClaudeAPIWithRetry([{ role: 'user', content: mainPrompt }], maxTokens);
+    
+    const mainParts = validateSplitResponse(
+      mainResult.content[0].text.split(CONFIG.DELIMITERS.SPLIT_MARKER),
+      2
+    );
+    
+    let studentWorksheet = mainParts[0];
+    
+    // PRINT-READY VALIDATION AND FIXES
+    setProcessingStep?.('Validating print-readiness...');
+    const printValidation = validatePrintReadiness(studentWorksheet);
+    
+    if (!printValidation.isValid) {
+      console.warn('Print-readiness issues detected:', printValidation.issues);
+      
+      // Apply automatic fixes
+      const fixedWorksheet = fixCommonFormattingIssues(studentWorksheet);
+      
+      // Re-validate after fixes
+      const revalidation = validatePrintReadiness(fixedWorksheet);
+      
+      if (revalidation.isValid || revalidation.issues.length < printValidation.issues.length) {
+        console.log('Automatic fixes improved print-readiness');
+        studentWorksheet = fixedWorksheet;
+      } else {
+        console.warn('Some print-readiness issues remain:', revalidation.issues);
+      }
+    }
+    
+    // Validate output completeness
+    const outputAnalysis = analyzeContentStructure(studentWorksheet);
+    console.log('Output analysis:', {
+      inputItems: contentAnalysis.totalItems,
+      outputItems: outputAnalysis.totalItems,
+      preservation: Math.round((outputAnalysis.totalItems / Math.max(contentAnalysis.totalItems, 1)) * 100) + '%'
+    });
+    
+    if (outputAnalysis.totalItems < contentAnalysis.totalItems * 0.7) {
+      console.warn(`Potential content loss: Expected ~${contentAnalysis.totalItems} items, got ${outputAnalysis.totalItems}`);
+    }
+    
+    // Parse descriptors
+    let dynamicWidaDescriptors;
+    try {
+      dynamicWidaDescriptors = JSON.parse(mainParts[1]);
+    } catch (parseError) {
+      console.warn('Failed to parse descriptors, using fallback');
+      dynamicWidaDescriptors = {
+        title: `${subject} - ${proficiencyLevel} Level`,
+        descriptors: [
+          `Students can engage with ${subject.toLowerCase()} content at their language level`,
+          `Students can complete adapted activities with appropriate support`,
+          `Students can use academic vocabulary with scaffolding`,
+          `Students can demonstrate understanding through various formats`
+        ]
+      };
+    }
+    
+    console.log("Step 1: Student worksheet and descriptors completed");
 
-   // Wait between API calls
-   await delay(CONFIG.DELAYS.BETWEEN_CALLS);
+    // Wait between API calls
+    await delay(CONFIG.DELAYS.BETWEEN_CALLS);
 
-   // STEP 2: Generate Teacher Guide
-   setProcessingStep?.('Generating teacher guide...');
-   console.log("Step 2: Creating teacher guide");
-   
-   const teacherGuide = await createUniversalTeacherGuide(studentWorksheet, params, contentAnalysis);
-   console.log("Step 2: Teacher guide completed");
+    // STEP 2: Generate Teacher Guide
+    setProcessingStep?.('Generating teacher guide...');
+    console.log("Step 2: Creating teacher guide");
+    
+    const teacherGuide = await createUniversalTeacherGuide(studentWorksheet, params, contentAnalysis);
+    console.log("Step 2: Teacher guide completed");
 
-   // STEP 3: Validate vocabulary integration
-   setProcessingStep?.('Validating adaptation quality...');
-   const vocabValidation = validateVocabularyIntegration(studentWorksheet);
-   console.log('Vocabulary validation:', vocabValidation.message);
+    // STEP 3: Validate vocabulary integration
+    setProcessingStep?.('Validating adaptation quality...');
+    const vocabValidation = validateVocabularyIntegration(studentWorksheet);
+    console.log('Vocabulary validation:', vocabValidation.message);
 
-   setProcessingStep?.('Finalizing materials...');
+    // Final print-readiness check
+    const finalPrintValidation = validatePrintReadiness(studentWorksheet);
+    console.log('Final print-readiness validation:', finalPrintValidation.message);
 
-   // Return complete results
-   return {
-     studentWorksheet,
-     teacherGuide,
-     dynamicWidaDescriptors,
-     imagePrompts: null, // Skip image generation for faster processing
-     vocabularyValidation: vocabValidation,
-     contentAnalysis: {
-       inputAnalysis: contentAnalysis,
-       outputAnalysis,
-       tokensUsed: maxTokens,
-       completenessCheck: {
-         expectedItems: contentAnalysis.totalItems,
-         detectedItems: outputAnalysis.totalItems,
-         preservationRate: Math.round((outputAnalysis.totalItems / Math.max(contentAnalysis.totalItems, 1)) * 100),
-         contentType: contentAnalysis.contentType
-       },
-       chunkingUsed: false,
-       processingMethod: 'universal_standard'
-     }
-   };
+    setProcessingStep?.('Finalizing materials...');
 
- } catch (error) {
-   console.error("Universal adaptation process failed:", error);
-   
-   if (error instanceof ClaudeAPIError) {
-     throw error;
-   }
-   
-   throw new ClaudeAPIError(
-     `Failed to adapt material: ${error.message}`,
-     null,
-     error
-   );
- }
+    // Return complete results
+    return {
+      studentWorksheet,
+      teacherGuide,
+      dynamicWidaDescriptors,
+      imagePrompts: null, // Skip image generation for faster processing
+      vocabularyValidation: vocabValidation,
+      printReadinessValidation: finalPrintValidation,
+      contentAnalysis: {
+        inputAnalysis: contentAnalysis,
+        outputAnalysis,
+        tokensUsed: maxTokens,
+        completenessCheck: {
+          expectedItems: contentAnalysis.totalItems,
+          detectedItems: outputAnalysis.totalItems,
+          preservationRate: Math.round((outputAnalysis.totalItems / Math.max(contentAnalysis.totalItems, 1)) * 100),
+          contentType: contentAnalysis.contentType
+        },
+        chunkingUsed: false,
+        processingMethod: 'universal_standard'
+      }
+    };
+
+  } catch (error) {
+    console.error("Universal adaptation process failed:", error);
+    
+    if (error instanceof ClaudeAPIError) {
+      throw error;
+    }
+    
+    throw new ClaudeAPIError(
+      `Failed to adapt material: ${error.message}`,
+      null,
+      error
+    );
+  }
 };
