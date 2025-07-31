@@ -892,10 +892,64 @@ export const adaptMaterialWithClaude = async (params, setProcessingStep) => {
       estimatedPromptTokens: Math.round(params.contentToAdapt.length / 4)
     });
 
-    // Standard processing for manageable content
-    console.log('Using standard universal processing');
-    const maxTokens = contentAnalysis.complexity.needsExtendedTokens ? CONFIG.TOKENS.EXTENDED_MAX : CONFIG.TOKENS.DEFAULT_MAX;
-    console.log(`Using ${maxTokens} tokens for this adaptation`);
+// TWO-STEP STRATEGY FOR LONG CONTENT
+const handleLongContentWithTwoSteps = async (params, setProcessingStep, contentAnalysis) => {
+  const { subject, proficiencyLevel } = params;
+  
+  // STEP 1: Generate the structure and questions only
+  setProcessingStep?.('Step 1: Generating worksheet structure and questions...');
+  
+  const structurePrompt = `You are an expert ELL curriculum adapter. Generate ONLY the structure, questions, and activities for an ELL worksheet. DO NOT include the reading passage itself.
+
+**TASK:** Create the worksheet framework with:
+- Title and background
+- Key vocabulary section  
+- Pre-reading questions
+- Comprehension questions (numbered sequentially)
+- Activities and extensions
+
+**PROFICIENCY LEVEL:** ${proficiencyLevel}
+**SUBJECT:** ${subject}
+
+**CRITICAL:** Where the reading passage should go, write exactly: "{{READING_PASSAGE_PLACEHOLDER}}"
+
+**ORIGINAL CONTENT TO ANALYZE:**
+\`\`\`
+${params.contentToAdapt}
+\`\`\`
+
+Generate the complete worksheet structure but replace the actual passage with {{READING_PASSAGE_PLACEHOLDER}}.`;
+
+  const structureResult = await callClaudeAPIWithRetry([{ role: 'user', content: structurePrompt }], CONFIG.TOKENS.DEFAULT_MAX);
+  const worksheetStructure = structureResult.content[0].text;
+  
+  // STEP 2: Insert the actual passage
+  setProcessingStep?.('Step 2: Inserting the complete reading passage...');
+  
+  // Extract the original passage from the content
+  const passageMatch = params.contentToAdapt.match(/(?:passage|text|story)[\s\S]*?(?=\n\s*(?:questions?|activities?|directions?|$))/i);
+  const originalPassage = passageMatch ? passageMatch[0] : params.contentToAdapt;
+  
+  // Replace placeholder with actual passage
+  const finalWorksheet = worksheetStructure.replace('{{READING_PASSAGE_PLACEHOLDER}}', originalPassage);
+  
+  // Generate descriptors
+  const descriptors = {
+    title: `${subject} - ${proficiencyLevel} Level`,
+    descriptors: [
+      `Students can read and understand adapted ${subject.toLowerCase()} content`,
+      `Students can answer comprehension questions with appropriate support`,
+      `Students can use academic vocabulary in context`,
+      `Students can demonstrate understanding through various response formats`
+    ]
+  };
+  
+  return {
+    studentWorksheet: finalWorksheet,
+    dynamicWidaDescriptors: descriptors,
+    method: 'two_step_long_content'
+  };
+};
 
     setProcessingStep?.('Preparing universal adaptation instructions...');
 
