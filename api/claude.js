@@ -1,4 +1,4 @@
-// api/claude.js - Vercel serverless function for Claude API calls
+// api/claude.js - Updated with higher token limits
 
 const ANTHROPIC_VERSION = '2023-06-01'; // Explicit version constant
 
@@ -20,7 +20,7 @@ export default async function handler(req, res) {
 
   try {
     console.log('API function called');
-    const { messages, max_tokens = 3000 } = req.body;
+    const { messages, max_tokens = 8000 } = req.body; // Increased default
 
     if (!messages || !Array.isArray(messages)) {
       console.log('Invalid messages format');
@@ -37,17 +37,27 @@ export default async function handler(req, res) {
     }
 
     console.log('Making request to Claude API with version:', ANTHROPIC_VERSION);
+    console.log('Requesting max_tokens:', max_tokens);
+
+    // Prepare headers - add special header for higher token limits
+    const headers = {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': ANTHROPIC_VERSION
+    };
+
+    // Add special header for higher token limits if requesting more than 4096
+    if (max_tokens > 4096) {
+      headers['anthropic-beta'] = 'max-tokens-3-5-sonnet-2024-07-15';
+      console.log('Added beta header for higher token limit');
+    }
 
     // Make request to Claude API
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': ANTHROPIC_VERSION
-      },
+      headers: headers,
       body: JSON.stringify({
-        model: 'claude-3-5-sonnet-20241022',
+        model: 'claude-3-opus-20240229', // Switch to Opus for higher output
         max_tokens,
         messages
       })
@@ -65,7 +75,7 @@ export default async function handler(req, res) {
     }
 
     const data = await response.json();
-    console.log('Claude API success');
+    console.log('Claude API success - Response length:', data.content?.[0]?.text?.length || 0);
     return res.status(200).json(data);
 
   } catch (error) {
