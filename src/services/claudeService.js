@@ -886,12 +886,36 @@ const getIepAccommodationInstructions = ({
   return instructions;
 };
 
-// Teacher guide creation
+// Teacher guide creation with WIDA alignment
 const createUniversalTeacherGuide = async (studentWorksheet, params, contentAnalysis) => {
   const { subject, proficiencyLevel } = params;
   const adaptations = getUniversalProficiencyAdaptations(proficiencyLevel);
   
+  // Extract or generate content objectives
+  const contentObjectives = extractContentObjectives(
+    params.contentToAdapt, 
+    subject, 
+    contentAnalysis
+  );
+  
+  // Create aligned language objectives
+  const languageObjectives = createWIDALanguageObjectives(
+    contentObjectives,
+    proficiencyLevel,
+    contentAnalysis,
+    subject
+  );
+  
+  // Determine applicable WIDA ELD Standards
+  const widaStandards = determineWIDAStandards(subject);
+  
+  // Determine primary language function
+  const primaryFunction = determinePrimaryLanguageFunction(contentAnalysis, subject);
+  
   return `# Teacher's Guide: ${subject} - ${proficiencyLevel} Level
+
+## WIDA ELD Standards Addressed
+${widaStandards.map(std => `- ${std}`).join('\n')}
 
 ## Answer Key
 *Refer to your original answer key. All problem numbers, questions, and content structure remain identical to the source material.*
@@ -905,15 +929,17 @@ ${contentAnalysis.contentType === 'reading_comprehension' ? '- <mark>Highlighter
 
 ## Content Objectives
 Students will be able to:
-- Demonstrate understanding of ${subject.toLowerCase()} concepts
-- Complete ${contentAnalysis.totalItems} activities successfully
-- Apply knowledge through various question formats
+${contentObjectives.map(obj => `- ${obj}`).join('\n')}
 
 ## Language Objectives (${proficiencyLevel} Level)
 Students will be able to:
-- Use academic vocabulary with appropriate support
-- Follow instructions written at ${proficiencyLevel} language level
-- Communicate understanding using: ${adaptations.assessment}
+${languageObjectives.map(obj => `- ${obj}`).join('\n')}
+
+## Language Focus
+- **Primary Language Function:** ${primaryFunction}
+- **Key Language Features:** ${adaptations.vocabulary}
+- **Sentence Structures:** ${adaptations.sentences}
+- **Discourse Level:** ${adaptations.structure}
 
 ## ELL Supports Included
 - **Language Level:** ${adaptations.sentences}
