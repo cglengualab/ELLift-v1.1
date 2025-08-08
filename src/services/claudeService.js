@@ -338,8 +338,6 @@ const createWIDALanguageObjectives = (contentObjectives, proficiencyLevel, conte
   
   return languageObjectives.slice(0, 4); // Return up to 4 language objectives
 };
-      break;
-  }
   
   // Add subject-specific language objectives
   if (subjectLower.includes('science')) {
