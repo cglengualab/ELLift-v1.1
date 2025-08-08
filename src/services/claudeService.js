@@ -307,6 +307,54 @@ const createWIDALanguageObjectives = (contentObjectives, proficiencyLevel, conte
   return languageObjectives.slice(0, 4); // Return up to 4 language objectives
 };
 
+// HELPER FUNCTIONS FOR LANGUAGE FEATURES
+const getGrammarFocus = (proficiencyLevel, contentAnalysis) => {
+  const levelMap = {
+    'entering': 'Simple present tense, basic noun-verb structures',
+    'level 1': 'Simple present tense, basic noun-verb structures',
+    'emerging': 'Present and simple past tense, regular plurals',
+    'level 2': 'Present and simple past tense, regular plurals',
+    'developing': 'Multiple tenses, compound sentences, transitions',
+    'level 3': 'Multiple tenses, compound sentences, transitions',
+    'expanding': 'Complex sentences, passive voice, conditionals',
+    'level 4': 'Complex sentences, passive voice, conditionals',
+    'bridging': 'Sophisticated structures, subjunctive mood, nuanced tenses',
+    'level 5': 'Sophisticated structures, subjunctive mood, nuanced tenses',
+    'reaching': 'Full range of grammatical structures',
+    'level 6': 'Full range of grammatical structures'
+  };
+  
+  return levelMap[proficiencyLevel.toLowerCase()] || levelMap['developing'];
+};
+
+const getDiscourseFeatures = (proficiencyLevel) => {
+  const levelMap = {
+    'entering': 'Words, phrases, and patterned sentences',
+    'level 1': 'Words, phrases, and patterned sentences',
+    'emerging': 'Sentences and sentence groups',
+    'level 2': 'Sentences and sentence groups',
+    'developing': 'Paragraphs with cohesive devices',
+    'level 3': 'Paragraphs with cohesive devices',
+    'expanding': 'Organized multi-paragraph texts',
+    'level 4': 'Organized multi-paragraph texts',
+    'bridging': 'Extended cohesive texts with precision',
+    'level 5': 'Extended cohesive texts with precision',
+    'reaching': 'Genre-appropriate extended discourse',
+    'level 6': 'Genre-appropriate extended discourse'
+  };
+  
+  return levelMap[proficiencyLevel.toLowerCase()] || levelMap['developing'];
+};
+
+const extractKeyVocabulary = (studentWorksheet) => {
+  // Extract bolded vocabulary terms
+  const boldTerms = (studentWorksheet.match(/\*\*(.*?)\*\*/g) || [])
+    .map(term => term.replace(/\*\*/g, ''))
+    .slice(0, 5); // First 5 terms
+  
+  return boldTerms.length > 0 ? boldTerms.join(', ') : 'See bolded terms in worksheet';
+};
+
 const API_BASE_URL = process.env.NODE_ENV === 'development' 
   ? 'http://localhost:3000' 
   : window.location.origin;
