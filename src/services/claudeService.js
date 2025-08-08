@@ -1141,16 +1141,30 @@ Generate a complete, print-ready worksheet with all content preserved exactly.`;
       }
     }
     
-    // Generate dynamic descriptors
-    const dynamicWidaDescriptors = {
-      title: `${subject} - ${proficiencyLevel} Level`,
-      descriptors: [
-        `Students can engage with ${subject.toLowerCase()} content at their language level`,
-        `Students can complete adapted activities with appropriate support`,
-        `Students can use academic vocabulary with scaffolding`,
-        `Students can demonstrate understanding through various formats`
-      ]
-    };
+    // Generate dynamic WIDA-aligned descriptors
+const contentObjectives = extractContentObjectives(
+  params.contentToAdapt,
+  subject,
+  contentAnalysis
+);
+
+const languageObjectives = createWIDALanguageObjectives(
+  contentObjectives,
+  proficiencyLevel,
+  contentAnalysis,
+  subject
+);
+
+const dynamicWidaDescriptors = {
+  title: `${subject} - ${proficiencyLevel} Level`,
+  contentObjectives: contentObjectives,
+  languageObjectives: languageObjectives,
+  widaStandards: determineWIDAStandards(subject),
+  descriptors: [
+    ...contentObjectives.map(obj => `Students can ${obj}`),
+    ...languageObjectives.slice(0, 2) // Include first 2 language objectives as descriptors
+  ]
+};
     
     // Validate output completeness
     const outputAnalysis = analyzeContentStructure(studentWorksheet);
