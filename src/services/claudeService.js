@@ -338,34 +338,6 @@ const createWIDALanguageObjectives = (contentObjectives, proficiencyLevel, conte
   
   return languageObjectives.slice(0, 4); // Return up to 4 language objectives
 };
-  
-  // Add subject-specific language objectives
-  if (subjectLower.includes('science')) {
-    if (level <= 3) {
-      languageObjectives.push('use observation language (I see, I notice, It looks like) to describe scientific phenomena');
-    } else {
-      languageObjectives.push('use hypothesis and evidence language to construct scientific explanations');
-    }
-  }
-  
-  if (subjectLower.includes('math')) {
-    if (level <= 3) {
-      languageObjectives.push('use mathematical language to describe operations and relationships');
-    } else {
-      languageObjectives.push('justify mathematical reasoning using precise vocabulary and logical connectors');
-    }
-  }
-  
-  if (subjectLower.includes('history') || subjectLower.includes('social')) {
-    if (level <= 3) {
-      languageObjectives.push('use time markers and sequence words to describe historical events');
-    } else {
-      languageObjectives.push('use cause-effect language to analyze historical relationships');
-    }
-  }
-  
-  return languageObjectives.slice(0, 4); // Return up to 4 language objectives
-};
 
 // HELPER FUNCTIONS FOR LANGUAGE FEATURES
 const getGrammarFocus = (proficiencyLevel, contentAnalysis) => {
