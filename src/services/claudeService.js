@@ -215,6 +215,98 @@ const determinePrimaryLanguageFunction = (contentAnalysis, subject) => {
   return 'Inform';
 };
 
+// WIDA-ALIGNED LANGUAGE OBJECTIVES GENERATOR
+const createWIDALanguageObjectives = (contentObjectives, proficiencyLevel, contentAnalysis, subject) => {
+  const subjectLower = subject.toLowerCase();
+  const languageObjectives = [];
+  
+  // Determine the primary language function
+  const primaryFunction = determinePrimaryLanguageFunction(contentAnalysis, subject);
+  
+  // Map proficiency levels to consistent format
+  const levelMap = {
+    'entering': 1, 'level 1': 1,
+    'emerging': 2, 'level 2': 2,
+    'developing': 3, 'level 3': 3,
+    'expanding': 4, 'level 4': 4,
+    'bridging': 5, 'level 5': 5,
+    'reaching': 6, 'level 6': 6
+  };
+  
+  const level = levelMap[proficiencyLevel.toLowerCase()] || 3;
+  
+  // Generate language objectives based on level and subject
+  switch(level) {
+    case 1: // Entering
+      languageObjectives.push(
+        `identify key ${subject} vocabulary using visual supports and word banks`,
+        `respond to ${subject} questions using gestures, words, or phrases with sentence frames`,
+        `follow simple oral directions with visual and gestural support`
+      );
+      break;
+      
+    case 2: // Emerging
+      languageObjectives.push(
+        `describe ${subject} concepts using phrases and simple sentences with graphic organizers`,
+        `ask and answer questions about ${subject} using general and some content-specific vocabulary`,
+        `produce lists and short responses about ${subject} topics using templates`
+      );
+      break;
+      
+    case 3: // Developing
+      languageObjectives.push(
+        `explain ${subject} ${primaryFunction === 'Explain' ? 'processes' : 'concepts'} using expanded sentences with sequence words`,
+        `participate in partner discussions about ${subject} using academic vocabulary with contextual support`,
+        `write paragraph-length responses with compound sentences and transition words`
+      );
+      break;
+      
+    case 4: // Expanding
+      languageObjectives.push(
+        `analyze ${subject} content using complex sentences with subordinate clauses`,
+        `construct ${primaryFunction === 'Argue' ? 'arguments' : 'explanations'} with claims and evidence using discourse markers`,
+        `synthesize information from multiple sources in organized multi-paragraph responses`
+      );
+      break;
+      
+    case 5: // Bridging
+    case 6: // Reaching
+      languageObjectives.push(
+        `evaluate and critique ${subject} concepts using sophisticated academic language`,
+        `engage in technical discussions using precise ${subject} terminology and nuanced expressions`,
+        `produce grade-level academic writing with cohesive devices and varied sentence structures`
+      );
+      break;
+  }
+  
+  // Add subject-specific language objectives
+  if (subjectLower.includes('science')) {
+    if (level <= 3) {
+      languageObjectives.push('use observation language (I see, I notice, It looks like) to describe scientific phenomena');
+    } else {
+      languageObjectives.push('use hypothesis and evidence language to construct scientific explanations');
+    }
+  }
+  
+  if (subjectLower.includes('math')) {
+    if (level <= 3) {
+      languageObjectives.push('use mathematical language to describe operations and relationships');
+    } else {
+      languageObjectives.push('justify mathematical reasoning using precise vocabulary and logical connectors');
+    }
+  }
+  
+  if (subjectLower.includes('history') || subjectLower.includes('social')) {
+    if (level <= 3) {
+      languageObjectives.push('use time markers and sequence words to describe historical events');
+    } else {
+      languageObjectives.push('use cause-effect language to analyze historical relationships');
+    }
+  }
+  
+  return languageObjectives.slice(0, 4); // Return up to 4 language objectives
+};
+
 const API_BASE_URL = process.env.NODE_ENV === 'development' 
   ? 'http://localhost:3000' 
   : window.location.origin;
