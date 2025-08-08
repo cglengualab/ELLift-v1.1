@@ -184,46 +184,56 @@ const determineWIDAStandards = (subject) => {
 
 const determinePrimaryLanguageFunction = (contentAnalysis, subject) => {
   const subjectLower = subject.toLowerCase();
+  const contentLower = contentAnalysis.originalContent || '';
   
-  // Science: primarily Explain
-  if (subjectLower.includes('science') || subjectLower.includes('biology') || 
-      subjectLower.includes('chemistry') || subjectLower.includes('physics')) {
-    return contentAnalysis.openEnded > 3 ? 'Explain' : 'Describe';
+  // WIDA Key Language Uses (KLUs)
+  
+  // NARRATE - for sequencing, recounting, storytelling
+  if (subjectLower.includes('history') || 
+      contentLower.includes('story') || 
+      contentLower.includes('sequence') ||
+      contentLower.includes('first') && contentLower.includes('then') ||
+      contentLower.includes('timeline')) {
+    return 'Narrate';
   }
   
-  // Social Studies: primarily Recount/Argue
-  if (subjectLower.includes('history')) return 'Recount';
-  if (subjectLower.includes('government') || subjectLower.includes('economics')) return 'Argue';
-  if (subjectLower.includes('geography')) return 'Describe';
-  if (subjectLower.includes('social studies')) return 'Analyze';
+  // EXPLAIN - for how/why, processes, cause-effect
+  if (subjectLower.includes('science') || 
+      subjectLower.includes('math') ||
+      contentLower.includes('why') ||
+      contentLower.includes('how') ||
+      contentLower.includes('because') ||
+      contentLower.includes('cause') ||
+      contentLower.includes('effect') ||
+      contentAnalysis.hasMath) {
+    return 'Explain';
+  }
   
-  // Math: Explain processes
-  if (subjectLower.includes('math') || contentAnalysis.hasMath) return 'Explain';
+  // ARGUE - for claims, evidence, persuasion
+  if (contentLower.includes('claim') ||
+      contentLower.includes('evidence') ||
+      contentLower.includes('argue') ||
+      contentLower.includes('persuade') ||
+      contentLower.includes('opinion') ||
+      contentLower.includes('should') ||
+      contentLower.includes('must') ||
+      contentAnalysis.openEnded > 5) {
+    return 'Argue';
+  }
   
-  // Language Arts: varies by task
-  if (contentAnalysis.contentType === 'reading_comprehension') return 'Interpret';
-  if (subjectLower.includes('writing')) return 'Compose';
-  if (subjectLower.includes('literature')) return 'Analyze';
-  
-  // Arts: Create/Evaluate
-  if (subjectLower.includes('art') || subjectLower.includes('music')) return 'Create';
-  
-  // Default based on content type
-  if (contentAnalysis.openEnded > 5) return 'Argue';
-  if (contentAnalysis.fillInBlanks > 5) return 'Identify';
-  
+  // INFORM - for describing, comparing, classifying
+  // This is the default/most common KLU
   return 'Inform';
 };
 
-// WIDA-ALIGNED LANGUAGE OBJECTIVES GENERATOR
 const createWIDALanguageObjectives = (contentObjectives, proficiencyLevel, contentAnalysis, subject) => {
   const subjectLower = subject.toLowerCase();
   const languageObjectives = [];
   
-  // Determine the primary language function
-  const primaryFunction = determinePrimaryLanguageFunction(contentAnalysis, subject);
+  // Determine the primary KLU (Key Language Use)
+  const primaryKLU = determinePrimaryLanguageFunction(contentAnalysis, subject);
   
-  // Map proficiency levels to consistent format
+  // Map proficiency levels
   const levelMap = {
     'entering': 1, 'level 1': 1,
     'emerging': 2, 'level 2': 2,
@@ -235,47 +245,99 @@ const createWIDALanguageObjectives = (contentObjectives, proficiencyLevel, conte
   
   const level = levelMap[proficiencyLevel.toLowerCase()] || 3;
   
-  // Generate language objectives based on level and subject
+  // Generate KLU-aligned objectives based on level
   switch(level) {
     case 1: // Entering
+      if (primaryKLU === 'Narrate') {
+        languageObjectives.push('sequence events using visual supports and time words (first, next)');
+      } else if (primaryKLU === 'Explain') {
+        languageObjectives.push('show how/why using gestures, drawings, and single words');
+      } else if (primaryKLU === 'Argue') {
+        languageObjectives.push('express preferences using yes/no and choice cards');
+      } else { // Inform
+        languageObjectives.push('label and point to identify information using word banks');
+      }
+      
+      // Add general language objectives for level 1
       languageObjectives.push(
-        `identify key ${subject} vocabulary using visual supports and word banks`,
-        `respond to ${subject} questions using gestures, words, or phrases with sentence frames`,
-        `follow simple oral directions with visual and gestural support`
+        `match ${subject} vocabulary to visuals and realia`,
+        `respond to ${subject} questions using gestures, words, or phrases`,
+        `follow one-step directions with visual support`
       );
       break;
       
     case 2: // Emerging
+      if (primaryKLU === 'Narrate') {
+        languageObjectives.push('recount events using short sentences and sequence words');
+      } else if (primaryKLU === 'Explain') {
+        languageObjectives.push('describe how/why using phrases and simple sentences with because');
+      } else if (primaryKLU === 'Argue') {
+        languageObjectives.push('state opinions using sentence frames (I think... because...)');
+      } else { // Inform
+        languageObjectives.push('describe information using adjectives and simple sentences');
+      }
+      
       languageObjectives.push(
-        `describe ${subject} concepts using phrases and simple sentences with graphic organizers`,
-        `ask and answer questions about ${subject} using general and some content-specific vocabulary`,
-        `produce lists and short responses about ${subject} topics using templates`
+        `ask and answer ${subject} questions using general vocabulary`,
+        `produce lists and short responses using graphic organizers`
       );
       break;
       
     case 3: // Developing
+      if (primaryKLU === 'Narrate') {
+        languageObjectives.push('tell stories with clear beginning, middle, and end using transition words');
+      } else if (primaryKLU === 'Explain') {
+        languageObjectives.push('explain processes using sequence words and cause-effect language');
+      } else if (primaryKLU === 'Argue') {
+        languageObjectives.push('support opinions with reasons using compound sentences');
+      } else { // Inform
+        languageObjectives.push('compare and contrast information using specific vocabulary');
+      }
+      
       languageObjectives.push(
-        `explain ${subject} ${primaryFunction === 'Explain' ? 'processes' : 'concepts'} using expanded sentences with sequence words`,
-        `participate in partner discussions about ${subject} using academic vocabulary with contextual support`,
-        `write paragraph-length responses with compound sentences and transition words`
+        `participate in ${subject} discussions using academic vocabulary`,
+        `write paragraph-length responses with topic sentences and details`
       );
       break;
       
     case 4: // Expanding
+      if (primaryKLU === 'Narrate') {
+        languageObjectives.push('produce detailed narratives with dialogue and descriptive language');
+      } else if (primaryKLU === 'Explain') {
+        languageObjectives.push('interpret and explain complex processes using technical vocabulary');
+      } else if (primaryKLU === 'Argue') {
+        languageObjectives.push('construct arguments with claims, evidence, and counterarguments');
+      } else { // Inform
+        languageObjectives.push('synthesize information from multiple sources using cohesive devices');
+      }
+      
       languageObjectives.push(
-        `analyze ${subject} content using complex sentences with subordinate clauses`,
-        `construct ${primaryFunction === 'Argue' ? 'arguments' : 'explanations'} with claims and evidence using discourse markers`,
-        `synthesize information from multiple sources in organized multi-paragraph responses`
+        `analyze ${subject} content using complex sentences`,
+        `produce multi-paragraph responses with clear organization`
       );
       break;
       
     case 5: // Bridging
     case 6: // Reaching
+      if (primaryKLU === 'Narrate') {
+        languageObjectives.push('craft sophisticated narratives with nuanced language and literary devices');
+      } else if (primaryKLU === 'Explain') {
+        languageObjectives.push('evaluate and explain multiple perspectives using precise academic language');
+      } else if (primaryKLU === 'Argue') {
+        languageObjectives.push('debate complex issues using persuasive techniques and rhetorical devices');
+      } else { // Inform
+        languageObjectives.push('present comprehensive information using genre-appropriate discourse');
+      }
+      
       languageObjectives.push(
-        `evaluate and critique ${subject} concepts using sophisticated academic language`,
-        `engage in technical discussions using precise ${subject} terminology and nuanced expressions`,
-        `produce grade-level academic writing with cohesive devices and varied sentence structures`
+        `engage in technical ${subject} discussions with minimal support`,
+        `produce extended academic writing meeting grade-level expectations`
       );
+      break;
+  }
+  
+  return languageObjectives.slice(0, 4); // Return up to 4 language objectives
+};
       break;
   }
   
