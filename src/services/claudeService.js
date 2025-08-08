@@ -32,6 +32,189 @@ const SUBJECT_GROUPS = {
   OTHER: ['Health', 'Physical Education', 'Technology', 'Computer Science', 'Life Skills', 'Career Education']
 };
 
+// WIDA-ALIGNED OBJECTIVE EXTRACTION FUNCTIONS
+const extractContentObjectives = (originalContent, subject, contentAnalysis) => {
+  const objectives = [];
+  
+  // Look for existing objectives in the original content
+  const objectivePatterns = [
+    /students will be able to (.*?)(?:\.|;|$)/gi,
+    /objective[s]?:\s*(.*?)(?:\n|$)/gi,
+    /learning goal[s]?:\s*(.*?)(?:\n|$)/gi,
+    /(?:learners|students) will (.*?)(?:\.|;|$)/gi
+  ];
+  
+  // Extract any existing objectives
+  objectivePatterns.forEach(pattern => {
+    const matches = originalContent.matchAll(pattern);
+    for (const match of matches) {
+      if (match[1] && match[1].length > 10) {
+        objectives.push(match[1].trim());
+      }
+    }
+  });
+  
+  // If no objectives found, generate based on subject AND content type
+  if (objectives.length === 0) {
+    const subjectLower = subject.toLowerCase();
+    
+    // Science objectives
+    if (subjectLower.includes('science') || subjectLower.includes('biology') || 
+        subjectLower.includes('chemistry') || subjectLower.includes('physics')) {
+      objectives.push('investigate scientific phenomena through observation and analysis');
+      objectives.push('explain scientific concepts using evidence and reasoning');
+      if (contentAnalysis.measurements > 0) {
+        objectives.push('collect and interpret data using appropriate tools and units');
+      }
+    }
+    
+    // Social Studies/History objectives
+    else if (subjectLower.includes('history') || subjectLower.includes('social studies') || 
+             subjectLower.includes('geography') || subjectLower.includes('government')) {
+      objectives.push('analyze historical events and their causes and effects');
+      objectives.push('evaluate primary and secondary sources for relevance and reliability');
+      if (contentAnalysis.dates > 0) {
+        objectives.push('sequence events chronologically and explain their relationships');
+      }
+    }
+    
+    // Mathematics objectives
+    else if (subjectLower.includes('math') || subjectLower.includes('algebra') || 
+             subjectLower.includes('geometry') || contentAnalysis.hasMath) {
+      objectives.push('solve mathematical problems using grade-appropriate strategies');
+      objectives.push('explain mathematical reasoning using appropriate vocabulary');
+      if (contentAnalysis.hasCoordinates) {
+        objectives.push('represent mathematical relationships graphically');
+      }
+    }
+    
+    // Language Arts objectives
+    else if (subjectLower.includes('english') || subjectLower.includes('language arts') || 
+             subjectLower.includes('literature') || subjectLower.includes('writing')) {
+      objectives.push('analyze text structure and author\'s purpose');
+      objectives.push('cite textual evidence to support analysis');
+      if (contentAnalysis.contentType === 'reading_comprehension') {
+        objectives.push('determine central ideas and supporting details');
+      }
+    }
+    
+    // World Languages objectives
+    else if (subjectLower.includes('spanish') || subjectLower.includes('french') || 
+             subjectLower.includes('chinese') || subjectLower.includes('language')) {
+      objectives.push('communicate ideas in the target language');
+      objectives.push('compare linguistic structures between languages');
+      objectives.push('interpret cultural practices and perspectives');
+    }
+    
+    // Arts objectives
+    else if (subjectLower.includes('art') || subjectLower.includes('music') || 
+             subjectLower.includes('drama') || subjectLower.includes('dance')) {
+      objectives.push('create artistic works using appropriate techniques and tools');
+      objectives.push('analyze and interpret artistic expressions');
+      objectives.push('evaluate artistic choices and their effects');
+    }
+    
+    // Technology/Computer Science objectives
+    else if (subjectLower.includes('technology') || subjectLower.includes('computer')) {
+      objectives.push('apply computational thinking to solve problems');
+      objectives.push('create digital artifacts using appropriate tools');
+      objectives.push('evaluate technology\'s impact on society');
+    }
+    
+    // Health/PE objectives
+    else if (subjectLower.includes('health') || subjectLower.includes('physical education')) {
+      objectives.push('demonstrate understanding of health concepts and practices');
+      objectives.push('analyze factors that influence health decisions');
+      objectives.push('apply strategies for maintaining personal wellness');
+    }
+    
+    // Generic fallback
+    else {
+      objectives.push(`demonstrate understanding of ${subject.toLowerCase()} concepts`);
+      objectives.push(`apply ${subject.toLowerCase()} knowledge to new situations`);
+      objectives.push(`communicate ${subject.toLowerCase()} ideas effectively`);
+    }
+  }
+  
+  return objectives.slice(0, 3); // Limit to 3 main content objectives
+};
+
+const determineWIDAStandards = (subject) => {
+  const subjectLower = subject.toLowerCase();
+  const standards = ['ELD-SI: Language for Social and Instructional Purposes'];
+  
+  // Check for each standard area
+  if (subjectLower.includes('math') || subjectLower.includes('algebra') || 
+      subjectLower.includes('geometry') || subjectLower.includes('calculus')) {
+    standards.push('ELD-MA: Language for Mathematics');
+  }
+  
+  if (subjectLower.includes('science') || subjectLower.includes('biology') || 
+      subjectLower.includes('chemistry') || subjectLower.includes('physics')) {
+    standards.push('ELD-SC: Language for Science');
+  }
+  
+  if (subjectLower.includes('english') || subjectLower.includes('language arts') || 
+      subjectLower.includes('literature') || subjectLower.includes('writing')) {
+    standards.push('ELD-LA: Language for Language Arts');
+  }
+  
+  if (subjectLower.includes('history') || subjectLower.includes('social studies') || 
+      subjectLower.includes('geography') || subjectLower.includes('government') || 
+      subjectLower.includes('economics')) {
+    standards.push('ELD-SS: Language for Social Studies');
+  }
+  
+  // If no specific standard matched, determine based on subject groups
+  if (standards.length === 1) {
+    for (const [group, subjects] of Object.entries(SUBJECT_GROUPS)) {
+      if (subjects.some(s => subjectLower.includes(s.toLowerCase()))) {
+        if (group === 'MATH_SCIENCE') {
+          standards.push('ELD-MA: Language for Mathematics', 'ELD-SC: Language for Science');
+        } else if (group === 'ELA_SOCIAL') {
+          standards.push('ELD-LA: Language for Language Arts', 'ELD-SS: Language for Social Studies');
+        }
+        break;
+      }
+    }
+  }
+  
+  return [...new Set(standards)]; // Remove duplicates
+};
+
+const determinePrimaryLanguageFunction = (contentAnalysis, subject) => {
+  const subjectLower = subject.toLowerCase();
+  
+  // Science: primarily Explain
+  if (subjectLower.includes('science') || subjectLower.includes('biology') || 
+      subjectLower.includes('chemistry') || subjectLower.includes('physics')) {
+    return contentAnalysis.openEnded > 3 ? 'Explain' : 'Describe';
+  }
+  
+  // Social Studies: primarily Recount/Argue
+  if (subjectLower.includes('history')) return 'Recount';
+  if (subjectLower.includes('government') || subjectLower.includes('economics')) return 'Argue';
+  if (subjectLower.includes('geography')) return 'Describe';
+  if (subjectLower.includes('social studies')) return 'Analyze';
+  
+  // Math: Explain processes
+  if (subjectLower.includes('math') || contentAnalysis.hasMath) return 'Explain';
+  
+  // Language Arts: varies by task
+  if (contentAnalysis.contentType === 'reading_comprehension') return 'Interpret';
+  if (subjectLower.includes('writing')) return 'Compose';
+  if (subjectLower.includes('literature')) return 'Analyze';
+  
+  // Arts: Create/Evaluate
+  if (subjectLower.includes('art') || subjectLower.includes('music')) return 'Create';
+  
+  // Default based on content type
+  if (contentAnalysis.openEnded > 5) return 'Argue';
+  if (contentAnalysis.fillInBlanks > 5) return 'Identify';
+  
+  return 'Inform';
+};
+
 const API_BASE_URL = process.env.NODE_ENV === 'development' 
   ? 'http://localhost:3000' 
   : window.location.origin;
