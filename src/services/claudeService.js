@@ -816,17 +816,30 @@ Bold key vocabulary terms throughout. Use print-ready formatting with [ ] for ch
   // Replace placeholder with actual passage
   const finalWorksheet = worksheetStructure.replace('{{READING_PASSAGE_PLACEHOLDER}}', `## Reading Passage\n\n${originalPassage}`);
   
-  // Generate descriptors
-  const descriptors = {
-    title: `${subject} - ${proficiencyLevel} Level Reading Comprehension`,
-    descriptors: [
-      `Students can read and understand adapted ${subject.toLowerCase()} content`,
-      `Students can answer comprehension questions with appropriate support`,
-      `Students can use academic vocabulary in context`,
-      `Students can demonstrate understanding through various response formats`,
-      `Students can work independently with provided scaffolds`
-    ]
-  };
+  // Generate WIDA-aligned descriptors for long content
+const contentObjectives = extractContentObjectives(
+  params.contentToAdapt,
+  subject,
+  contentAnalysis
+);
+
+const languageObjectives = createWIDALanguageObjectives(
+  contentObjectives,
+  proficiencyLevel,
+  contentAnalysis,
+  subject
+);
+
+const descriptors = {
+  title: `${subject} - ${proficiencyLevel} Level Reading Comprehension`,
+  contentObjectives: contentObjectives,
+  languageObjectives: languageObjectives,
+  widaStandards: determineWIDAStandards(subject),
+  descriptors: [
+    ...contentObjectives.map(obj => `Students can ${obj}`),
+    ...languageObjectives.slice(0, 2)
+  ]
+};
   
   return {
     studentWorksheet: finalWorksheet,
