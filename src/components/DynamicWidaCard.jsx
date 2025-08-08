@@ -4,8 +4,14 @@ import React from 'react';
 import { Target } from 'lucide-react'; // A fitting icon for specific targets
 
 const DynamicWidaCard = ({ data }) => {
-  // data will look like: { title: "...", descriptors: ["...", "..."] }
-  if (!data || !data.descriptors || data.descriptors.length === 0) {
+  // Handle both old and new data structures
+  if (!data) {
+    return null;
+  }
+
+  // Check if we have any content to display
+  const hasContent = data.descriptors || data.widaStandards || data.contentObjectives || data.languageObjectives;
+  if (!hasContent) {
     return null;
   }
 
@@ -16,11 +22,53 @@ const DynamicWidaCard = ({ data }) => {
         {data.title || "Lesson-Specific 'Can Do' Descriptors"}
       </h2>
       
-      <div className="mt-2 text-sm">
-        <ul className="list-disc list-inside space-y-1 text-gray-700">
-          {data.descriptors.map((item, index) => <li key={index}>{item}</li>)}
-        </ul>
-      </div>
+      {/* New: WIDA Standards (if present) */}
+      {data.widaStandards && data.widaStandards.length > 0 && (
+        <div className="mt-4">
+          <h3 className="font-semibold text-orange-700 mb-2">WIDA ELD Standards Addressed</h3>
+          <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
+            {data.widaStandards.map((std, index) => (
+              <li key={index}>{std}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      
+      {/* New: Content Objectives (if present) */}
+      {data.contentObjectives && data.contentObjectives.length > 0 && (
+        <div className="mt-4">
+          <h3 className="font-semibold text-orange-700 mb-2">Content Objectives</h3>
+          <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
+            {data.contentObjectives.map((obj, index) => (
+              <li key={index}>Students can {obj}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      
+      {/* New: Language Objectives (if present) */}
+      {data.languageObjectives && data.languageObjectives.length > 0 && (
+        <div className="mt-4">
+          <h3 className="font-semibold text-orange-700 mb-2">Language Objectives</h3>
+          <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
+            {data.languageObjectives.map((obj, index) => (
+              <li key={index}>Students can {obj}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      
+      {/* Keep existing descriptors - this ensures backward compatibility */}
+      {data.descriptors && data.descriptors.length > 0 && (
+        <div className="mt-4">
+          <h3 className="font-semibold text-orange-700 mb-2">Performance Descriptors</h3>
+          <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
+            {data.descriptors.map((item, index) => (
+              <li key={index}>{item}</li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 };
