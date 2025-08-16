@@ -1,3 +1,4 @@
+import { useContentCache } from '../hooks/useContentCache';
 import AdminDashboard from './AdminDashboard';
 import { usePerformanceMonitor } from '../hooks/usePerformanceMonitor';
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
@@ -156,7 +157,10 @@ const ELLMaterialAdapter = () => {
   const [showImageFeatures, setShowImageFeatures] = useState(false); // Set to false to hide, true to show
 
 // Performance monitoring
-  const { startTimer, endTimer } = usePerformanceMonitor();
+const { startTimer, endTimer } = usePerformanceMonitor();
+
+// Content caching
+const { generateCacheKey, getCachedResult, setCachedResult, clearCache } = useContentCache();
   
   // Refs for copying content
   const worksheetRef = useRef(null);
@@ -281,6 +285,70 @@ const ELLMaterialAdapter = () => {
   setProcessingStep('Preparing material adaptation...');
 
   try {
+    const adaptMaterial = useCallback(async () => {
+  // START TIMER
+  startTimer('material_adaptation');
+  
+  // Clear previous messages
+  setError('');
+  setSuccessMessage('');
+  
+  // Validate form
+  if (!validationStatus.isValid) {
+    setError(`Please fill in required fields: ${validationStatus.missingFields.join(', ')}`);
+    endTimer('material_adaptation', { success: false, reason: 'validation_failed' });
+    return;
+  }
+
+  // Generate cache key
+  const cacheParams = {
+    subject,
+    proficiencyLevel,
+    materialType,
+    includeBilingualSupport,
+    nativeLanguage,
+    worksheetLength,
+    addStudentChecklist,
+    useMultipleChoice
+  };
+  const cacheKey = generateCacheKey(originalMaterial, cacheParams);
+  
+  // Check cache first
+  const cachedResult = getCachedResult(cacheKey);
+  if (cachedResult) {
+    // Use cached result
+    setStudentWorksheet(cachedResult.studentWorksheet);
+    setTeacherGuide(cachedResult.teacherGuide);
+    setDynamicDescriptors(cachedResult.dynamicWidaDescriptors);
+    setImagePrompts(cachedResult.imagePrompts);
+
+    const generalDescriptors = getWidaDescriptors(proficiencyLevel, subject, gradeLevel);
+    setWidaDescriptors(generalDescriptors);
+
+    setSuccessMessage('Material loaded from cache! (Instant result)');
+    
+    endTimer('material_adaptation', {
+      success: true,
+      cached: true,
+      contentLength: originalMaterial.length,
+      proficiencyLevel,
+      subject,
+      materialType
+    });
+
+    // Scroll to results
+    setTimeout(() => {
+      worksheetRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 500);
+    
+    return;
+  }
+
+  // No cache hit, proceed with API call
+  setIsLoading(true);
+  setProcessingStep('Preparing material adaptation...');
+
+  try {
     const adaptedData = await adaptMaterialWithClaude({
       contentToAdapt: originalMaterial,
       materialType,
@@ -298,6 +366,9 @@ const ELLMaterialAdapter = () => {
       useMultipleChoice
     }, setProcessingStep);
 
+    // Cache the result
+    setCachedResult(cacheKey, adaptedData);
+
     setStudentWorksheet(adaptedData.studentWorksheet);
     setTeacherGuide(adaptedData.teacherGuide);
     setDynamicDescriptors(adaptedData.dynamicWidaDescriptors);
@@ -309,16 +380,16 @@ const ELLMaterialAdapter = () => {
     setSuccessMessage('Material successfully adapted for ELL students!');
     setProcessingStep('');
 
-    // END TIMER ON SUCCESS - ADD THIS LINE
     endTimer('material_adaptation', {
       success: true,
+      cached: false,
       contentLength: originalMaterial.length,
       proficiencyLevel,
       subject,
       materialType
     });
 
-    // Scroll to results after a brief delay
+    // Scroll to results
     setTimeout(() => {
       worksheetRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 500);
@@ -328,7 +399,6 @@ const ELLMaterialAdapter = () => {
     setError(error.message || 'Sorry, there was an error adapting your material. Please try again.');
     setProcessingStep('');
     
-    // END TIMER ON ERROR - ADD THIS LINE
     endTimer('material_adaptation', {
       success: false,
       error: error.message,
@@ -357,7 +427,10 @@ const ELLMaterialAdapter = () => {
   addStudentChecklist, 
   useMultipleChoice, 
   startTimer, 
-  endTimer
+  endTimer,
+  generateCacheKey,
+  getCachedResult,
+  setCachedResult
 ]);
 
   // Enhanced clear all with confirmation for non-empty forms
