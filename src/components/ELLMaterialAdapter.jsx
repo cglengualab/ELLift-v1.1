@@ -250,7 +250,7 @@ const ELLMaterialAdapter = () => {
   }, []);
 
   // Enhanced material adaptation with caching
-  /*const adaptMaterial = useCallback(async () => {
+  const adaptMaterial = useCallback(async () => {
     // START TIMER
     startTimer('material_adaptation');
     
@@ -396,7 +396,7 @@ const ELLMaterialAdapter = () => {
     generateCacheKey,
     getCachedResult,
     setCachedResult
-  ] );*/
+  ] );
 
   // Enhanced clear all with confirmation for non-empty forms
   const clearAll = useCallback(() => {
@@ -817,7 +817,7 @@ const ELLMaterialAdapter = () => {
           )}
         </div>
 
-        {/* Tips Section */}
+         {/* Tips Section */}
         <div className="xl:col-span-3">
           <div className="card bg-yellow-50 border-yellow-200">
             <h3 className="font-semibold text-yellow-800 mb-3 flex items-center gap-2">
