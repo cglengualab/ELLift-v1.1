@@ -4,27 +4,27 @@ import { checkRateLimit, getRealIP } from './rate-limit.js';
 const ANTHROPIC_VERSION = '2023-06-01';
 
 export default async function handler(req, res) {
-  // Enable CORS
+  // Enable CORS FIRST
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-// Rate limiting check
-const clientIP = getRealIP(req);
-const rateLimitResult = checkRateLimit(clientIP, 5, 60000); // 5 requests per minute
-
-if (!rateLimitResult.allowed) {
-  return res.status(429).json({ 
-    error: 'Too many requests. Please try again later.',
-    resetTime: rateLimitResult.resetTime
-  });
-}
-  
-  // Handle preflight request
+  // Handle preflight request BEFORE rate limiting
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
+  // Rate limiting check AFTER OPTIONS
+  const clientIP = getRealIP(req);
+  const rateLimitResult = checkRateLimit(clientIP, 5, 60000); // 5 requests per minute
+
+  if (!rateLimitResult.allowed) {
+    return res.status(429).json({ 
+      error: 'Too many requests. Please try again later.',
+      resetTime: rateLimitResult.resetTime
+    });
+  }
+  
   // Only allow POST requests
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
