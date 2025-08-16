@@ -250,7 +250,7 @@ const ELLMaterialAdapter = () => {
   }, []);
 
   // Enhanced material adaptation with caching
-  const adaptMaterial = useCallback(async () => {
+  /*const adaptMaterial = useCallback(async () => {
     // START TIMER
     startTimer('material_adaptation');
     
@@ -396,7 +396,7 @@ const ELLMaterialAdapter = () => {
     generateCacheKey,
     getCachedResult,
     setCachedResult
-  ] );
+  ] );*/
 
   // Enhanced clear all with confirmation for non-empty forms
   const clearAll = useCallback(() => {
