@@ -1,6 +1,3 @@
-import { useContentCache } from '../hooks/useContentCache';
-import AdminDashboard from './AdminDashboard';
-import { usePerformanceMonitor } from '../hooks/usePerformanceMonitor';
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { FileText, Users, BookOpen, ClipboardList, Download, Upload, File, AlertCircle, Book, Target, CheckCircle, XCircle, Palette } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -13,6 +10,9 @@ import ErrorAlert from './ErrorAlert';
 import WidaCard from './WidaCard';
 import DynamicWidaCard from './DynamicWidaCard';
 import ImageGenerator from './ImageGenerator';
+import AdminDashboard from './AdminDashboard';
+import { usePerformanceMonitor } from '../hooks/usePerformanceMonitor';
+import { useContentCache } from '../hooks/useContentCache';
 
 // Enhanced status indicator component
 const StatusIndicator = ({ processingStep, error, success }) => {
@@ -156,11 +156,11 @@ const ELLMaterialAdapter = () => {
   // TOGGLE FOR IMAGE FEATURES - Change this to true/false to show/hide
   const [showImageFeatures, setShowImageFeatures] = useState(false); // Set to false to hide, true to show
 
-// Performance monitoring
-const { startTimer, endTimer } = usePerformanceMonitor();
+  // Performance monitoring
+  const { startTimer, endTimer } = usePerformanceMonitor();
 
-// Content caching
-const { generateCacheKey, getCachedResult, setCachedResult, clearCache } = useContentCache();
+  // Content caching
+  const { generateCacheKey, getCachedResult, setCachedResult, clearCache } = useContentCache();
   
   // Refs for copying content
   const worksheetRef = useRef(null);
@@ -249,8 +249,11 @@ const { generateCacheKey, getCachedResult, setCachedResult, clearCache } = useCo
     }
   }, []);
 
-  // Enhanced material adaptation with better error handling
+  // Enhanced material adaptation with caching
   const adaptMaterial = useCallback(async () => {
+    // START TIMER
+    startTimer('material_adaptation');
+    
     // Clear previous messages
     setError('');
     setSuccessMessage('');
@@ -258,180 +261,142 @@ const { generateCacheKey, getCachedResult, setCachedResult, clearCache } = useCo
     // Validate form
     if (!validationStatus.isValid) {
       setError(`Please fill in required fields: ${validationStatus.missingFields.join(', ')}`);
+      endTimer('material_adaptation', { success: false, reason: 'validation_failed' });
       return;
     }
 
+    // Generate cache key
+    const cacheParams = {
+      subject,
+      proficiencyLevel,
+      materialType,
+      includeBilingualSupport,
+      nativeLanguage,
+      worksheetLength,
+      addStudentChecklist,
+      useMultipleChoice
+    };
+    const cacheKey = generateCacheKey(originalMaterial, cacheParams);
+    
+    // Check cache first
+    const cachedResult = getCachedResult(cacheKey);
+    if (cachedResult) {
+      // Use cached result
+      setStudentWorksheet(cachedResult.studentWorksheet);
+      setTeacherGuide(cachedResult.teacherGuide);
+      setDynamicDescriptors(cachedResult.dynamicWidaDescriptors);
+      setImagePrompts(cachedResult.imagePrompts);
+
+      const generalDescriptors = getWidaDescriptors(proficiencyLevel, subject, gradeLevel);
+      setWidaDescriptors(generalDescriptors);
+
+      setSuccessMessage('Material loaded from cache! (Instant result)');
+      
+      endTimer('material_adaptation', {
+        success: true,
+        cached: true,
+        contentLength: originalMaterial.length,
+        proficiencyLevel,
+        subject,
+        materialType
+      });
+
+      // Scroll to results
+      setTimeout(() => {
+        worksheetRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 500);
+      
+      return;
+    }
+
+    // No cache hit, proceed with API call
     setIsLoading(true);
     setProcessingStep('Preparing material adaptation...');
 
     try {
-     const adaptMaterial = useCallback(async () => {
-  // START TIMER - ADD THIS LINE
-  startTimer('material_adaptation');
-  
-  // Clear previous messages
-  setError('');
-  setSuccessMessage('');
-  
-  // Validate form
-  if (!validationStatus.isValid) {
-    setError(`Please fill in required fields: ${validationStatus.missingFields.join(', ')}`);
-    // END TIMER ON EARLY RETURN - ADD THIS LINE
-    endTimer('material_adaptation', { success: false, reason: 'validation_failed' });
-    return;
-  }
+      const adaptedData = await adaptMaterialWithClaude({
+        contentToAdapt: originalMaterial,
+        materialType,
+        subject,
+        gradeLevel,
+        proficiencyLevel,
+        learningObjectives,
+        includeBilingualSupport,
+        nativeLanguage,
+        translateSummary,
+        translateInstructions,
+        listCognates,
+        worksheetLength,
+        addStudentChecklist,
+        useMultipleChoice
+      }, setProcessingStep);
 
-  setIsLoading(true);
-  setProcessingStep('Preparing material adaptation...');
+      // Cache the result
+      setCachedResult(cacheKey, adaptedData);
 
-  try {
-    const adaptMaterial = useCallback(async () => {
-  // START TIMER
-  startTimer('material_adaptation');
-  
-  // Clear previous messages
-  setError('');
-  setSuccessMessage('');
-  
-  // Validate form
-  if (!validationStatus.isValid) {
-    setError(`Please fill in required fields: ${validationStatus.missingFields.join(', ')}`);
-    endTimer('material_adaptation', { success: false, reason: 'validation_failed' });
-    return;
-  }
+      setStudentWorksheet(adaptedData.studentWorksheet);
+      setTeacherGuide(adaptedData.teacherGuide);
+      setDynamicDescriptors(adaptedData.dynamicWidaDescriptors);
+      setImagePrompts(adaptedData.imagePrompts);
 
-  // Generate cache key
-  const cacheParams = {
-    subject,
-    proficiencyLevel,
-    materialType,
-    includeBilingualSupport,
+      const generalDescriptors = getWidaDescriptors(proficiencyLevel, subject, gradeLevel);
+      setWidaDescriptors(generalDescriptors);
+
+      setSuccessMessage('Material successfully adapted for ELL students!');
+      setProcessingStep('');
+
+      endTimer('material_adaptation', {
+        success: true,
+        cached: false,
+        contentLength: originalMaterial.length,
+        proficiencyLevel,
+        subject,
+        materialType
+      });
+
+      // Scroll to results
+      setTimeout(() => {
+        worksheetRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 500);
+
+    } catch (error) {
+      console.error('Error adapting material:', error);
+      setError(error.message || 'Sorry, there was an error adapting your material. Please try again.');
+      setProcessingStep('');
+      
+      endTimer('material_adaptation', {
+        success: false,
+        error: error.message,
+        contentLength: originalMaterial.length,
+        proficiencyLevel,
+        subject
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [
+    validationStatus.isValid, 
+    validationStatus.missingFields, 
+    originalMaterial, 
+    materialType, 
+    subject, 
+    gradeLevel, 
+    proficiencyLevel, 
+    learningObjectives, 
+    includeBilingualSupport, 
     nativeLanguage,
+    translateSummary, 
+    translateInstructions, 
+    listCognates, 
     worksheetLength,
-    addStudentChecklist,
-    useMultipleChoice
-  };
-  const cacheKey = generateCacheKey(originalMaterial, cacheParams);
-  
-  // Check cache first
-  const cachedResult = getCachedResult(cacheKey);
-  if (cachedResult) {
-    // Use cached result
-    setStudentWorksheet(cachedResult.studentWorksheet);
-    setTeacherGuide(cachedResult.teacherGuide);
-    setDynamicDescriptors(cachedResult.dynamicWidaDescriptors);
-    setImagePrompts(cachedResult.imagePrompts);
-
-    const generalDescriptors = getWidaDescriptors(proficiencyLevel, subject, gradeLevel);
-    setWidaDescriptors(generalDescriptors);
-
-    setSuccessMessage('Material loaded from cache! (Instant result)');
-    
-    endTimer('material_adaptation', {
-      success: true,
-      cached: true,
-      contentLength: originalMaterial.length,
-      proficiencyLevel,
-      subject,
-      materialType
-    });
-
-    // Scroll to results
-    setTimeout(() => {
-      worksheetRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 500);
-    
-    return;
-  }
-
-  // No cache hit, proceed with API call
-  setIsLoading(true);
-  setProcessingStep('Preparing material adaptation...');
-
-  try {
-    const adaptedData = await adaptMaterialWithClaude({
-      contentToAdapt: originalMaterial,
-      materialType,
-      subject,
-      gradeLevel,
-      proficiencyLevel,
-      learningObjectives,
-      includeBilingualSupport,
-      nativeLanguage,
-      translateSummary,
-      translateInstructions,
-      listCognates,
-      worksheetLength,
-      addStudentChecklist,
-      useMultipleChoice
-    }, setProcessingStep);
-
-    // Cache the result
-    setCachedResult(cacheKey, adaptedData);
-
-    setStudentWorksheet(adaptedData.studentWorksheet);
-    setTeacherGuide(adaptedData.teacherGuide);
-    setDynamicDescriptors(adaptedData.dynamicWidaDescriptors);
-    setImagePrompts(adaptedData.imagePrompts);
-
-    const generalDescriptors = getWidaDescriptors(proficiencyLevel, subject, gradeLevel);
-    setWidaDescriptors(generalDescriptors);
-
-    setSuccessMessage('Material successfully adapted for ELL students!');
-    setProcessingStep('');
-
-    endTimer('material_adaptation', {
-      success: true,
-      cached: false,
-      contentLength: originalMaterial.length,
-      proficiencyLevel,
-      subject,
-      materialType
-    });
-
-    // Scroll to results
-    setTimeout(() => {
-      worksheetRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 500);
-
-  } catch (error) {
-    console.error('Error adapting material:', error);
-    setError(error.message || 'Sorry, there was an error adapting your material. Please try again.');
-    setProcessingStep('');
-    
-    endTimer('material_adaptation', {
-      success: false,
-      error: error.message,
-      contentLength: originalMaterial.length,
-      proficiencyLevel,
-      subject
-    });
-  } finally {
-    setIsLoading(false);
-  }
-}, [
-  validationStatus.isValid, 
-  validationStatus.missingFields, 
-  originalMaterial, 
-  materialType, 
-  subject, 
-  gradeLevel, 
-  proficiencyLevel, 
-  learningObjectives, 
-  includeBilingualSupport, 
-  nativeLanguage,
-  translateSummary, 
-  translateInstructions, 
-  listCognates, 
-  worksheetLength,
-  addStudentChecklist, 
-  useMultipleChoice, 
-  startTimer, 
-  endTimer,
-  generateCacheKey,
-  getCachedResult,
-  setCachedResult
-]);
+    addStudentChecklist, 
+    useMultipleChoice, 
+    startTimer, 
+    endTimer,
+    generateCacheKey,
+    getCachedResult,
+    setCachedResult
+  ]);
 
   // Enhanced clear all with confirmation for non-empty forms
   const clearAll = useCallback(() => {
@@ -790,147 +755,145 @@ const { generateCacheKey, getCachedResult, setCachedResult, clearCache } = useCo
               <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
                 <p className="text-amber-800 text-sm font-medium flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                  Missing required fields: {validationStatus.
-                    missingFields.join(', ')}
-               </p>
-             </div>
-           )}
-         </div>
+                  Missing required fields: {validationStatus.missingFields.join(', ')}
+                </p>
+              </div>
+            )}
+          </div>
          
-         <ActionButtons 
-           adaptMaterial={adaptMaterial}
-           clearAll={clearAll}
-           isLoading={isLoading}
-           isFormValid={validationStatus.isValid}
-           hasResults={hasResults}
-         />
+          <ActionButtons 
+            adaptMaterial={adaptMaterial}
+            clearAll={clearAll}
+            isLoading={isLoading}
+            isFormValid={validationStatus.isValid}
+            hasResults={hasResults}
+          />
 
-         {studentWorksheet && (
-           <>
-             <div className="card bg-green-50 border-green-200">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="section-header text-green-800 flex items-center gap-2">
-                  <BookOpen className="w-6 h-6" />
-                  Adapted Student Material
-                </h2>
-                <CopyButton
-                  onClick={copyStudentWorksheet}
-                  label="Worksheet"
-                  isLoading={isLoading}
-                  className="bg-green-600 hover:bg-green-700"
-                />
+          {studentWorksheet && (
+            <>
+              <div className="card bg-green-50 border-green-200">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="section-header text-green-800 flex items-center gap-2">
+                    <BookOpen className="w-6 h-6" />
+                    Adapted Student Material
+                  </h2>
+                  <CopyButton
+                    onClick={copyStudentWorksheet}
+                    label="Worksheet"
+                    isLoading={isLoading}
+                    className="bg-green-600 hover:bg-green-700"
+                  />
+                </div>
+                <div ref={worksheetRef} className="bg-white p-6 rounded-md border border-green-200 h-96 overflow-y-auto custom-scrollbar prose max-w-full">
+                  <ReactMarkdown rehypePlugins={[rehypeRaw]}>{studentWorksheet}</ReactMarkdown>
+                </div>
               </div>
-              <div ref={worksheetRef} className="bg-white p-6 rounded-md border border-green-200 h-96 overflow-y-auto custom-scrollbar prose max-w-full">
-                <ReactMarkdown rehypePlugins={[rehypeRaw]}>{studentWorksheet}</ReactMarkdown>
+
+              <div className="card bg-slate-50 border-slate-200">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="section-header text-slate-800 flex items-center gap-2">
+                    <Book className="w-6 h-6"/>
+                    Teacher's Guide
+                  </h2>
+                  <CopyButton
+                    onClick={copyTeacherGuide}
+                    label="Guide"
+                    isLoading={isLoading}
+                    className="bg-slate-600 hover:bg-slate-700"
+                  />
+                </div>
+                <div ref={teacherGuideRef} className="bg-white p-6 rounded-md border border-slate-200 max-h-96 overflow-y-auto custom-scrollbar prose max-w-full">
+                   <ReactMarkdown rehypePlugins={[rehypeRaw]}>{teacherGuide}</ReactMarkdown>
+                </div>
+              </div>
+
+              {dynamicDescriptors && (
+                <DynamicWidaCard data={dynamicDescriptors} />
+              )}
+              {widaDescriptors && (
+                <WidaCard descriptors={widaDescriptors} />
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Tips Section */}
+        <div className="xl:col-span-3">
+          <div className="card bg-yellow-50 border-yellow-200">
+            <h3 className="font-semibold text-yellow-800 mb-3 flex items-center gap-2">
+              💡 Tips for Best Results
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
+              <div className="text-sm text-yellow-700 space-y-2">
+                <div className="flex items-start gap-2">
+                  <span className="font-bold text-yellow-800">📄 PDF uploads:</span>
+                  <span>Works best with text-based PDFs (not scanned images)</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="font-bold text-yellow-800">🎯 Learning objectives:</span>
+                  <span>Be specific about what students should learn for better adaptation</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="font-bold text-yellow-800">📊 WIDA levels:</span>
+                  <span>Choose the level that best matches your students' current abilities</span>
+                </div>
+              </div>
+              <div className="text-sm text-yellow-700 space-y-2">
+                <div className="flex items-start gap-2">
+                  <span className="font-bold text-yellow-800">🌍 Bilingual support:</span>
+                  <span>Optional translations help bridge language gaps</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="font-bold text-yellow-800">✏️ Edit text:</span>
+                  <span>You can modify extracted PDF text before adapting</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="font-bold text-yellow-800">🔍 Review output:</span>
+                  <span>Always check adapted content for accuracy and appropriateness</span>
+                </div>
               </div>
             </div>
+          </div>
+        </div>
 
-            <div className="card bg-slate-50 border-slate-200">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="section-header text-slate-800 flex items-center gap-2">
-                  <Book className="w-6 h-6"/>
-                  Teacher's Guide
-                </h2>
-                <CopyButton
-                  onClick={copyTeacherGuide}
-                  label="Guide"
-                  isLoading={isLoading}
-                  className="bg-slate-600 hover:bg-slate-700"
-                />
-              </div>
-              <div ref={teacherGuideRef} className="bg-white p-6 rounded-md border border-slate-200 max-h-96 overflow-y-auto custom-scrollbar prose max-w-full">
-                 <ReactMarkdown rehypePlugins={[rehypeRaw]}>{teacherGuide}</ReactMarkdown>
-              </div>
+        {/* Developer Toggle for Image Features */}
+        <div className="xl:col-span-3">
+          <div className="card bg-gray-50 border-gray-200 mb-4">
+            <div className="flex items-center justify-between p-4">
+              <span className="text-sm font-medium">🧪 Developer Mode: Image Features</span>
+              <button
+                onClick={() => setShowImageFeatures(!showImageFeatures)}
+                className={`px-3 py-1 rounded text-sm transition-colors ${
+                  showImageFeatures 
+                    ? 'bg-green-100 text-green-800 border border-green-300' 
+                    : 'bg-gray-100 text-gray-600 border border-gray-300'
+                }`}
+              >
+                {showImageFeatures ? 'Hide' : 'Show'} Image Features
+              </button>
             </div>
+          </div>
+        </div>
 
-            {dynamicDescriptors && (
-              <DynamicWidaCard data={dynamicDescriptors} />
-            )}
-            {widaDescriptors && (
-              <WidaCard descriptors={widaDescriptors} />
-            )}
-          </>
+        {/* Image Generator Section for results */}
+        {hasResults && showImageFeatures && (
+          <div className="xl:col-span-3">
+            <ImageGenerator 
+              subject={subject} 
+              proficiencyLevel={proficiencyLevel} 
+            />
+          </div>
         )}
-      </div>
 
-   {/* Tips Section */}
-      <div className="xl:col-span-3">
-        <div className="card bg-yellow-50 border-yellow-200">
-          <h3 className="font-semibold text-yellow-800 mb-3 flex items-center gap-2">
-            💡 Tips for Best Results
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
-            <div className="text-sm text-yellow-700 space-y-2">
-              <div className="flex items-start gap-2">
-                <span className="font-bold text-yellow-800">📄 PDF uploads:</span>
-                <span>Works best with text-based PDFs (not scanned images)</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <span className="font-bold text-yellow-800">🎯 Learning objectives:</span>
-                <span>Be specific about what students should learn for better adaptation</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <span className="font-bold text-yellow-800">📊 WIDA levels:</span>
-                <span>Choose the level that best matches your students' current abilities</span>
-              </div>
-            </div>
-            <div className="text-sm text-yellow-700 space-y-2">
-              <div className="flex items-start gap-2">
-                <span className="font-bold text-yellow-800">🌍 Bilingual support:</span>
-                <span>Optional translations help bridge language gaps</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <span className="font-bold text-yellow-800">✏️ Edit text:</span>
-                <span>You can modify extracted PDF text before adapting</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <span className="font-bold text-yellow-800">🔍 Review output:</span>
-                <span>Always check adapted content for accuracy and appropriateness</span>
-              </div>
-            </div>
+        {/* Image Generator Section for no results */}
+        {!hasResults && showImageFeatures && (
+          <div className="xl:col-span-3">
+            <ImageGenerator 
+              subject={subject} 
+              proficiencyLevel={proficiencyLevel} 
+            />
           </div>
-        </div>
-      </div>
-
-      {/* Developer Toggle for Image Features */}
-      <div className="xl:col-span-3">
-        <div className="card bg-gray-50 border-gray-200 mb-4">
-          <div className="flex items-center justify-between p-4">
-            <span className="text-sm font-medium">🧪 Developer Mode: Image Features</span>
-            <button
-              onClick={() => setShowImageFeatures(!showImageFeatures)}
-              className={`px-3 py-1 rounded text-sm transition-colors ${
-                showImageFeatures 
-                  ? 'bg-green-100 text-green-800 border border-green-300' 
-                  : 'bg-gray-100 text-gray-600 border border-gray-300'
-              }`}
-            >
-              {showImageFeatures ? 'Hide' : 'Show'} Image Features
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Image Generator Section for results */}
-      {hasResults && showImageFeatures && (
-        <div className="xl:col-span-3">
-          <ImageGenerator 
-            subject={subject} 
-            proficiencyLevel={proficiencyLevel} 
-          />
-        </div>
-      )}
-
-      {/* Image Generator Section for no results */}
-      {!hasResults && showImageFeatures && (
-        <div className="xl:col-span-3">
-          <ImageGenerator 
-            subject={subject} 
-            proficiencyLevel={proficiencyLevel} 
-          />
-        </div>
-      )}
-
+        )}
       </div>
     </div>
 
