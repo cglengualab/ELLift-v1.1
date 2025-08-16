@@ -32,23 +32,31 @@ class ErrorBoundary extends React.Component {
   }
 
   reportError = async (error, errorInfo) => {
-    try {
-      // Simple error logging - you could enhance this
-      const errorData = {
-        message: error.message,
-        stack: error.stack,
-        componentStack: errorInfo.componentStack,
-        url: window.location.href,
-        userAgent: navigator.userAgent,
-        timestamp: new Date().toISOString()
-      };
-      
-      // For now, just log to console. You could send to a service like Sentry
-      console.error('Production Error:', errorData);
-    } catch (e) {
-      console.error('Failed to report error:', e);
-    }
-  };
+  try {
+    // Simple error logging - you could enhance this
+    const errorData = {
+      message: error.message,
+      stack: error.stack,
+      componentStack: errorInfo.componentStack,
+      url: window.location.href,
+      userAgent: navigator.userAgent,
+      timestamp: new Date().toISOString()
+    };
+    
+    // Send to our logging API
+    await fetch('/api/log-error', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(errorData)
+    });
+    
+    console.error('Production Error logged to server:', errorData);
+  } catch (e) {
+    console.error('Failed to report error:', e);
+  }
+};
 
   handleReload = () => {
     window.location.reload();
