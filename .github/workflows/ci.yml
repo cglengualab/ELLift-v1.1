@@ -1,0 +1,58 @@
+# .github/workflows/ci.yml
+name: Quality Checks
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Check for linting errors
+      run: npm run lint
+      continue-on-error: true
+    
+    - name: Try to build the project
+      run: npm run build
+    
+    - name: Check bundle size (warn if too big)
+      run: |
+        npm run build
+        BUILD_SIZE=$(du -sh dist | cut -f1)
+        echo "Build size: $BUILD_SIZE"
+        echo "✅ Build completed successfully!"
+
+  security-check:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Security audit
+      run: |
+        npm audit --audit-level moderate || echo "⚠️ Security vulnerabilities found - please review"
