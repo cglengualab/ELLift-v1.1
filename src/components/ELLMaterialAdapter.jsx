@@ -339,10 +339,24 @@ const ELLMaterialAdapter = () => {
     setIsLoading(false);
   }
 }, [
-  validationStatus, originalMaterial, materialType, subject, gradeLevel, 
-  proficiencyLevel, learningObjectives, includeBilingualSupport, nativeLanguage,
-  translateSummary, translateInstructions, listCognates, worksheetLength,
-  addStudentChecklist, useMultipleChoice, startTimer, endTimer  // ADD startTimer, endTimer HERE
+  validationStatus.isValid, 
+  validationStatus.missingFields, 
+  originalMaterial, 
+  materialType, 
+  subject, 
+  gradeLevel, 
+  proficiencyLevel, 
+  learningObjectives, 
+  includeBilingualSupport, 
+  nativeLanguage,
+  translateSummary, 
+  translateInstructions, 
+  listCognates, 
+  worksheetLength,
+  addStudentChecklist, 
+  useMultipleChoice, 
+  startTimer, 
+  endTimer
 ]);
 
   // Enhanced clear all with confirmation for non-empty forms
