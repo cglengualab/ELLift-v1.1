@@ -1,3 +1,4 @@
+import { usePerformanceMonitor } from '../hooks/usePerformanceMonitor';
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { FileText, Users, BookOpen, ClipboardList, Download, Upload, File, AlertCircle, Book, Target, CheckCircle, XCircle, Palette } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -152,6 +153,9 @@ const ELLMaterialAdapter = () => {
   
   // TOGGLE FOR IMAGE FEATURES - Change this to true/false to show/hide
   const [showImageFeatures, setShowImageFeatures] = useState(false); // Set to false to hide, true to show
+
+// Performance monitoring
+  const { startTimer, endTimer } = usePerformanceMonitor();
   
   // Refs for copying content
   const worksheetRef = useRef(null);
@@ -256,52 +260,90 @@ const ELLMaterialAdapter = () => {
     setProcessingStep('Preparing material adaptation...');
 
     try {
-      const adaptedData = await adaptMaterialWithClaude({
-        contentToAdapt: originalMaterial,
-        materialType,
-        subject,
-        gradeLevel,
-        proficiencyLevel,
-        learningObjectives,
-        includeBilingualSupport,
-        nativeLanguage,
-        translateSummary,
-        translateInstructions,
-        listCognates,
-        worksheetLength,
-        addStudentChecklist,
-        useMultipleChoice
-      }, setProcessingStep);
+     const adaptMaterial = useCallback(async () => {
+  // START TIMER - ADD THIS LINE
+  startTimer('material_adaptation');
+  
+  // Clear previous messages
+  setError('');
+  setSuccessMessage('');
+  
+  // Validate form
+  if (!validationStatus.isValid) {
+    setError(`Please fill in required fields: ${validationStatus.missingFields.join(', ')}`);
+    // END TIMER ON EARLY RETURN - ADD THIS LINE
+    endTimer('material_adaptation', { success: false, reason: 'validation_failed' });
+    return;
+  }
 
-      setStudentWorksheet(adaptedData.studentWorksheet);
-      setTeacherGuide(adaptedData.teacherGuide);
-      setDynamicDescriptors(adaptedData.dynamicWidaDescriptors);
-      setImagePrompts(adaptedData.imagePrompts);
+  setIsLoading(true);
+  setProcessingStep('Preparing material adaptation...');
 
-      const generalDescriptors = getWidaDescriptors(proficiencyLevel, subject, gradeLevel);
-      setWidaDescriptors(generalDescriptors);
+  try {
+    const adaptedData = await adaptMaterialWithClaude({
+      contentToAdapt: originalMaterial,
+      materialType,
+      subject,
+      gradeLevel,
+      proficiencyLevel,
+      learningObjectives,
+      includeBilingualSupport,
+      nativeLanguage,
+      translateSummary,
+      translateInstructions,
+      listCognates,
+      worksheetLength,
+      addStudentChecklist,
+      useMultipleChoice
+    }, setProcessingStep);
 
-      setSuccessMessage('Material successfully adapted for ELL students!');
-      setProcessingStep('');
+    setStudentWorksheet(adaptedData.studentWorksheet);
+    setTeacherGuide(adaptedData.teacherGuide);
+    setDynamicDescriptors(adaptedData.dynamicWidaDescriptors);
+    setImagePrompts(adaptedData.imagePrompts);
 
-      // Scroll to results after a brief delay
-      setTimeout(() => {
-        worksheetRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 500);
+    const generalDescriptors = getWidaDescriptors(proficiencyLevel, subject, gradeLevel);
+    setWidaDescriptors(generalDescriptors);
 
-    } catch (error) {
-      console.error('Error adapting material:', error);
-      setError(error.message || 'Sorry, there was an error adapting your material. Please try again.');
-      setProcessingStep('');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [
-    validationStatus, originalMaterial, materialType, subject, gradeLevel, 
-    proficiencyLevel, learningObjectives, includeBilingualSupport, nativeLanguage,
-    translateSummary, translateInstructions, listCognates, worksheetLength,
-    addStudentChecklist, useMultipleChoice
-  ]);
+    setSuccessMessage('Material successfully adapted for ELL students!');
+    setProcessingStep('');
+
+    // END TIMER ON SUCCESS - ADD THIS LINE
+    endTimer('material_adaptation', {
+      success: true,
+      contentLength: originalMaterial.length,
+      proficiencyLevel,
+      subject,
+      materialType
+    });
+
+    // Scroll to results after a brief delay
+    setTimeout(() => {
+      worksheetRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 500);
+
+  } catch (error) {
+    console.error('Error adapting material:', error);
+    setError(error.message || 'Sorry, there was an error adapting your material. Please try again.');
+    setProcessingStep('');
+    
+    // END TIMER ON ERROR - ADD THIS LINE
+    endTimer('material_adaptation', {
+      success: false,
+      error: error.message,
+      contentLength: originalMaterial.length,
+      proficiencyLevel,
+      subject
+    });
+  } finally {
+    setIsLoading(false);
+  }
+}, [
+  validationStatus, originalMaterial, materialType, subject, gradeLevel, 
+  proficiencyLevel, learningObjectives, includeBilingualSupport, nativeLanguage,
+  translateSummary, translateInstructions, listCognates, worksheetLength,
+  addStudentChecklist, useMultipleChoice, startTimer, endTimer  // ADD startTimer, endTimer HERE
+]);
 
   // Enhanced clear all with confirmation for non-empty forms
   const clearAll = useCallback(() => {
