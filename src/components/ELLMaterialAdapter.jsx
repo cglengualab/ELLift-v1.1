@@ -992,6 +992,7 @@ const { generateCacheKey, getCachedResult, setCachedResult, clearCache } = useCo
     {/* Admin Dashboard - Hidden by default */}
     <AdminDashboard />
   </div>
+</div>
 );
 };
 
