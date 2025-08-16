@@ -853,7 +853,7 @@ const { generateCacheKey, getCachedResult, setCachedResult, clearCache } = useCo
         )}
       </div>
 
-      {/* Tips Section */}
+   {/* Tips Section */}
       <div className="xl:col-span-3">
         <div className="card bg-yellow-50 border-yellow-200">
           <h3 className="font-semibold text-yellow-800 mb-3 flex items-center gap-2">
@@ -911,7 +911,17 @@ const { generateCacheKey, getCachedResult, setCachedResult, clearCache } = useCo
         </div>
       </div>
 
-     {/* Image Generator Section for no results */}
+      {/* Image Generator Section for results */}
+      {hasResults && showImageFeatures && (
+        <div className="xl:col-span-3">
+          <ImageGenerator 
+            subject={subject} 
+            proficiencyLevel={proficiencyLevel} 
+          />
+        </div>
+      )}
+
+      {/* Image Generator Section for no results */}
       {!hasResults && showImageFeatures && (
         <div className="xl:col-span-3">
           <ImageGenerator 
@@ -920,7 +930,8 @@ const { generateCacheKey, getCachedResult, setCachedResult, clearCache } = useCo
           />
         </div>
       )}
-    </div>
+
+      </div>
     </div>
 
     {/* Admin Dashboard - Hidden by default */}
