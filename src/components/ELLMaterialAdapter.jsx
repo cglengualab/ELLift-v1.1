@@ -911,17 +911,7 @@ const { generateCacheKey, getCachedResult, setCachedResult, clearCache } = useCo
         </div>
       </div>
 
-      {/* Image Generator Section for results */}
-      {hasResults && showImageFeatures && (
-        <div className="xl:col-span-3">
-          <ImageGenerator 
-            subject={subject} 
-            proficiencyLevel={proficiencyLevel} 
-          />
-        </div>
-      )}
-
-      {/* Image Generator Section for no results */}
+     {/* Image Generator Section for no results */}
       {!hasResults && showImageFeatures && (
         <div className="xl:col-span-3">
           <ImageGenerator 
@@ -936,7 +926,7 @@ const { generateCacheKey, getCachedResult, setCachedResult, clearCache } = useCo
     {/* Admin Dashboard - Hidden by default */}
     <AdminDashboard />
   </div>
-);
+  );
 };
 
 export default ELLMaterialAdapter;
