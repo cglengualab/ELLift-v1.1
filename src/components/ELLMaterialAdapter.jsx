@@ -396,7 +396,7 @@ const ELLMaterialAdapter = () => {
     generateCacheKey,
     getCachedResult,
     setCachedResult
-  ]);
+  ] );
 
   // Enhanced clear all with confirmation for non-empty forms
   const clearAll = useCallback(() => {
