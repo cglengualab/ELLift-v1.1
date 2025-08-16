@@ -1,3 +1,4 @@
+import AdminDashboard from './AdminDashboard';
 import { usePerformanceMonitor } from '../hooks/usePerformanceMonitor';
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { FileText, Users, BookOpen, ClipboardList, Download, Upload, File, AlertCircle, Book, Target, CheckCircle, XCircle, Palette } from 'lucide-react';
@@ -912,9 +913,13 @@ const ELLMaterialAdapter = () => {
            />
          </div>
        )}
-     </div>
-   </div>
- );
+    </div>
+    </div>
+
+    {/* Admin Dashboard - Hidden by default */}
+    <AdminDashboard />
+  </div>
+);
 };
 
 export default ELLMaterialAdapter;
