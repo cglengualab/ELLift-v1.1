@@ -976,12 +976,13 @@ const buildWorksheetPrompt = (params, contentAnalysis, adaptationRules) => {
   const mathSubject = detectMathSubject(subject, contentToAdapt);
   const isMathContent = mathSubject !== 'general_math' || contentAnalysis.hasMath;
   
- const widaInfo = WIDA_LEVELS[proficiencyLevel.toLowerCase()];
-if (!widaInfo) {
-  throw new Error(`Invalid WIDA level: ${proficiencyLevel}`);
-}
+  // REPLACE THE EXISTING PROMPT BUILDING WITH THIS ENHANCED VERSION:
+  const widaInfo = WIDA_LEVELS[proficiencyLevel.toLowerCase()];
+  if (!widaInfo) {
+    throw new Error(`Invalid WIDA level: ${proficiencyLevel}`);
+  }
 
-let prompt = `You are an expert ELL curriculum specialist. 
+  let prompt = `You are an expert ELL curriculum specialist. 
 
 🚨🚨🚨 CRITICAL REQUIREMENT 🚨🚨🚨
 THIS WORKSHEET MUST BE FOR WIDA LEVEL ${widaInfo.level} (${widaInfo.label}) STUDENTS ONLY.
