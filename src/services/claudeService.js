@@ -976,15 +976,106 @@ const buildWorksheetPrompt = (params, contentAnalysis, adaptationRules) => {
   const mathSubject = detectMathSubject(subject, contentToAdapt);
   const isMathContent = mathSubject !== 'general_math' || contentAnalysis.hasMath;
   
-  let prompt = `You are an expert ELL curriculum specialist. Create a complete, print-ready student worksheet for ${WIDA_LEVELS[proficiencyLevel.toLowerCase()].label} students.
-  
+ const widaInfo = WIDA_LEVELS[proficiencyLevel.toLowerCase()];
+if (!widaInfo) {
+  throw new Error(`Invalid WIDA level: ${proficiencyLevel}`);
+}
+
+let prompt = `You are an expert ELL curriculum specialist. 
+
+🚨🚨🚨 CRITICAL REQUIREMENT 🚨🚨🚨
+THIS WORKSHEET MUST BE FOR WIDA LEVEL ${widaInfo.level} (${widaInfo.label}) STUDENTS ONLY.
+DO NOT CREATE LEVEL 1 OR LEVEL 2 CONTENT.
+THIS IS FOR ADVANCED ELL STUDENTS AT LEVEL ${widaInfo.level}.
+
+WIDA LEVEL ${widaInfo.level} MANDATORY CHARACTERISTICS:`;
+
+// Add explicit level requirements
+switch(widaInfo.level) {
+  case 1:
+    prompt += `
+🎯 LEVEL 1 REQUIREMENTS:
+- Use ONLY 3-5 word sentences
+- Provide extensive bilingual vocabulary with Spanish translations
+- Include word banks and picture choices for every activity
+- Use simple present tense only
+- Create true/false, matching, and picture identification activities
+- Student responses: single words, phrases, or gestures only`;
+    break;
+    
+  case 2:
+    prompt += `
+🎯 LEVEL 2 REQUIREMENTS:
+- Use 6-10 word sentences with simple connectors like "and," "but," "because"
+- Provide sentence frames and guided examples
+- Include strategic bilingual support (not extensive)
+- Use present and simple past tense
+- Create short answer responses with scaffolding
+- Student responses: short sentences with support`;
+    break;
+    
+  case 3:
+    prompt += `
+🎯 LEVEL 3 REQUIREMENTS:
+- Use expanded sentences with multiple clauses
+- Include academic vocabulary with context clues and definitions
+- Create paragraph-length responses with topic sentences
+- Use multiple tenses and complex sentences with transitions
+- Create structured analysis tasks
+- Student responses: paragraphs with basic organization`;
+    break;
+    
+  case 4:
+    prompt += `
+🎯 LEVEL 4 REQUIREMENTS - THIS IS THE CURRENT LEVEL:
+- Use complex sentences with sophisticated academic vocabulary
+- Include technical terms with minimal context support
+- Require multi-paragraph responses with clear organization
+- Use advanced grammar structures including passive voice and conditionals
+- Create extended analysis tasks requiring evidence and reasoning
+- Student responses: sophisticated academic discourse with minimal scaffolding
+- NO basic vocabulary definitions - students should know academic terms
+- NO sentence frames - students generate their own academic language
+- NO bilingual support except for the most technical terms`;
+    break;
+    
+  case 5:
+    prompt += `
+🎯 LEVEL 5 REQUIREMENTS:
+- Use near grade-level academic language with strategic support only
+- Include specialized terminology with occasional clarification
+- Require extended cohesive texts with precision and sophistication
+- Provide minimal scaffolding and encourage peer collaboration
+- Create independent analysis and research-based response tasks
+- Student responses: near-native academic discourse`;
+    break;
+    
+  case 6:
+    prompt += `
+🎯 LEVEL 6 REQUIREMENTS:
+- Use full grade-level complexity without ANY modification
+- Include ALL specialized vocabulary without simplification
+- Use complete range of academic language structures
+- Provide NO linguistic modifications or scaffolding
+- Create grade-level expectations with full academic rigor
+- Student responses: native-level academic performance`;
+    break;
+}
+
+prompt += `
+
+🚨 CRITICAL: DO NOT USE CHARACTERISTICS FROM OTHER WIDA LEVELS.
+🚨 VERIFY: This worksheet MUST demonstrate LEVEL ${widaInfo.level} language complexity.
+🚨 CHECK: Student tasks MUST require LEVEL ${widaInfo.level} academic discourse.
+
 **ADAPTATION REQUIREMENTS:**
 - **Subject:** ${subject} (${materialType})
-- **Proficiency Level:** ${adaptationRules.sentenceLength}
-- **Vocabulary:** ${adaptationRules.vocabulary}
-- **Grammar:** ${adaptationRules.grammarStructures}
+- **MANDATORY LEVEL:** WIDA Level ${widaInfo.level} - ${widaInfo.label}
+- **Language Complexity:** ${adaptationRules.sentenceLength}
+- **Vocabulary Expectations:** ${adaptationRules.vocabulary}
+- **Grammar Requirements:** ${adaptationRules.grammarStructures}
 - **Support Level:** ${adaptationRules.supports}
-- **Assessment:** ${adaptationRules.assessmentTypes}
+- **Assessment Type:** ${adaptationRules.assessmentTypes}`;
 
 **CONTENT ANALYSIS:**
 - Type: ${contentAnalysis.contentType}
@@ -1054,6 +1145,22 @@ Students will be able to: ${learningObjectives}`;
      prompt += `\n- Convert open-ended questions to multiple choice where appropriate`;
    }
  }
+
+prompt += `
+
+🔍 FINAL VERIFICATION REQUIREMENTS:
+Before generating the worksheet, confirm:
+1. Language complexity matches LEVEL ${widaInfo.level} expectations
+2. Student tasks require LEVEL ${widaInfo.level} academic discourse
+3. Vocabulary and grammar align with LEVEL ${widaInfo.level} standards
+4. Assessment methods appropriate for LEVEL ${widaInfo.level} students
+5. NO elements from LEVEL 1, 2, or 3 included
+
+EXAMPLES OF WHAT LEVEL ${widaInfo.level} STUDENTS CAN DO:
+${widaInfo.level >= 4 ? 
+  '- Analyze complex scientific phenomena using evidence-based reasoning\n- Construct multi-paragraph explanations with sophisticated vocabulary\n- Engage in academic argumentation with minimal scaffolding\n- Synthesize information from multiple sources independently' :
+  '- Use basic academic vocabulary with support\n- Complete guided analysis tasks\n- Respond using sentence frames and scaffolding'
+}`;
 
  prompt += `\n\n**ORIGINAL CONTENT TO ADAPT:**
 \`\`\`
