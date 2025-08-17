@@ -1078,6 +1078,8 @@ prompt += `
 - **Support Level:** ${adaptationRules.supports}
 - **Assessment Type:** ${adaptationRules.assessmentTypes}`;
 
+prompt += `
+
 **CONTENT ANALYSIS:**
 - Type: ${contentAnalysis.contentType}
 - Complexity: ${contentAnalysis.complexity.level}
