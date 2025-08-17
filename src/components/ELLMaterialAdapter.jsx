@@ -895,11 +895,10 @@ const ELLMaterialAdapter = () => {
           </div>
         )}
       </div>
-    </div>
 
-    {/* Admin Dashboard - Hidden by default */}
-    <AdminDashboard />
-  </div>
+      {/* Admin Dashboard - Hidden by default */}
+      <AdminDashboard />
+    </div>
   );
 };
 
