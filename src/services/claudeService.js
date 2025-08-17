@@ -933,27 +933,51 @@ const callClaudeAPI = async (messages, maxTokens = CONFIG.TOKENS.DEFAULT_MAX) =>
 // =====================================================
 
 const buildWorksheetPrompt = (params, contentAnalysis, adaptationRules) => {
- const {
-   subject,
-   proficiencyLevel,
-   materialType,
-   contentToAdapt,
-   learningObjectives,
-   includeBilingualSupport,
-   nativeLanguage,
-   translateSummary,
-   translateInstructions,
-   worksheetLength,
-   addStudentChecklist,
-   useMultipleChoice
- } = params;
- 
- // Detect if this is math content
- const mathSubject = detectMathSubject(subject, contentToAdapt);
- const isMathContent = mathSubject !== 'general_math' || contentAnalysis.hasMath;
- 
- let prompt = `You are an expert ELL curriculum specialist. Create a complete, print-ready student worksheet for ${WIDA_LEVELS[proficiencyLevel.toLowerCase()].label} students.
+  // ADD THIS ENTIRE BLOCK - START
+  console.log('🔍 DEBUG - Parameters received:');
+  console.log('Full params object:', params);
+  console.log('proficiencyLevel from params:', params.proficiencyLevel);
+  console.log('adaptationRules received:', adaptationRules);
+  // ADD THIS ENTIRE BLOCK - END
 
+  const {
+    subject,
+    proficiencyLevel,
+    materialType,
+    contentToAdapt,
+    learningObjectives,
+    includeBilingualSupport,
+    nativeLanguage,
+    translateSummary,
+    translateInstructions,
+    worksheetLength,
+    addStudentChecklist,
+    useMultipleChoice
+  } = params;
+  
+  // ADD THIS ENTIRE BLOCK - START
+  console.log('🔍 DEBUG - After destructuring:');
+  console.log('proficiencyLevel:', proficiencyLevel);
+  console.log('proficiencyLevel type:', typeof proficiencyLevel);
+  console.log('proficiencyLevel lowercase:', proficiencyLevel?.toLowerCase());
+  
+  const widaLookup = WIDA_LEVELS[proficiencyLevel?.toLowerCase()];
+  console.log('WIDA_LEVELS lookup result:', widaLookup);
+  
+  if (!widaLookup) {
+    console.error('❌ WIDA level not found!');
+    console.log('Available WIDA levels:', Object.keys(WIDA_LEVELS));
+  } else {
+    console.log('✅ WIDA level found:', widaLookup);
+  }
+  // ADD THIS ENTIRE BLOCK - END
+  
+  // Detect if this is math content
+  const mathSubject = detectMathSubject(subject, contentToAdapt);
+  const isMathContent = mathSubject !== 'general_math' || contentAnalysis.hasMath;
+  
+  let prompt = `You are an expert ELL curriculum specialist. Create a complete, print-ready student worksheet for ${WIDA_LEVELS[proficiencyLevel.toLowerCase()].label} students.
+  
 **ADAPTATION REQUIREMENTS:**
 - **Subject:** ${subject} (${materialType})
 - **Proficiency Level:** ${adaptationRules.sentenceLength}
