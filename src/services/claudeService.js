@@ -1355,8 +1355,41 @@ ${keyVocabulary}
 - **Review & Discussion:** 10-15 minutes
 - **Total Estimated Time:** ${calculateTotalTime(contentAnalysis)} minutes`;
 
- // Add math-specific teaching notes
- if (isMathContent) {
+// Subject-specific adaptations
+const subjectCategory = getSubjectCategory(mathSubject);
+
+if (subjectCategory === 'ELA') {
+  teacherGuide += `\n\n## Literary Content Notes
+- All literary content and authentic language preserved from original
+- Text complexity maintained while adapting language structures
+- Literary analysis scaffolded for ${proficiencyLevel} level students
+- Assessment focuses on textual evidence and interpretation
+- **Important:** Original text integrity maintained for authentic analysis
+
+## Literary Vocabulary Support
+- Literary terms defined with examples and context
+- Complex vocabulary supported with synonyms and explanations
+- Metaphorical language explained while preserving poetic meaning
+- Text-based evidence instruction provided`;
+}
+
+if (subjectCategory === 'SOCIAL_STUDIES') {
+  teacherGuide += `\n\n## Social Studies Content Notes
+- All historical content and factual information preserved from original
+- Historical analysis scaffolded while maintaining academic rigor
+- Primary source interpretation adapted to ${proficiencyLevel} level
+- Assessment focuses on evidence-based historical reasoning
+- **Important:** Historical accuracy maintained throughout adaptation
+
+## Historical Vocabulary Support
+- Historical terms defined with context and examples
+- Geographic and cultural references explained appropriately
+- Timeline and chronological thinking supported with visual aids
+- Primary source analysis instruction provided`;
+}
+
+// Add math-specific formatting requirements
+if (isMathContent) {
    teacherGuide += `\n\n## Mathematical Content Notes
 - All mathematical content and factual information preserved from original
 - Mathematical procedures maintained while adapting language complexity
