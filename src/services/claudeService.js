@@ -1333,9 +1333,9 @@ const generateWorksheet = async (params, contentAnalysis, adaptationRules) => {
  let enhancedWorksheet = result.content[0].text;
  
 // Temporarily disable mathematical typography to fix markdown corruption
-// if (isMathContent) {
-//   enhancedWorksheet = enhanceMathematicalTypography(enhancedWorksheet);
-// }
+if (isMathContent) {
+   enhancedWorksheet = enhanceMathematicalTypography(enhancedWorksheet);
+ }
  
  // Apply formatting enhancements
 if (isMathContent) {
