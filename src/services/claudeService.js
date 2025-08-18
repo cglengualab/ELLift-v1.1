@@ -1332,10 +1332,10 @@ const generateWorksheet = async (params, contentAnalysis, adaptationRules) => {
  // Apply ALL enhancements here
  let enhancedWorksheet = result.content[0].text;
  
- // Apply mathematical typography
-if (isMathContent) {
-  enhancedWorksheet = enhanceMathematicalTypography(enhancedWorksheet);
-}
+// Temporarily disable mathematical typography to fix markdown corruption
+// if (isMathContent) {
+//   enhancedWorksheet = enhanceMathematicalTypography(enhancedWorksheet);
+// }
  
  // Apply formatting enhancements
 if (isMathContent) {
