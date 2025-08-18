@@ -388,7 +388,23 @@ const getSubjectSpecificMaterials = (mathSubject) => {
     default:
       return 'Visual aids as appropriate';
   }
-};  
+};
+
+const getExtensionsBySubject = (mathSubject, contentAnalysis) => {
+  const category = getSubjectCategory(mathSubject);
+  switch (category) {
+    case 'ELA':
+      return 'Text-to-self connections discussion, creative writing extensions, literary analysis peer review';
+    case 'SOCIAL_STUDIES':
+      return 'Historical timeline creation, current events connections, debate and discussion activities';
+    case 'SCIENCE':
+      return 'Real-world application of scientific concepts, additional experiments, science journal entries';
+    case 'MATH':
+      return 'Real-world application of mathematical concepts, problem-solving challenges, math journal entries';
+    default:
+      return 'Real-world application examples, cross-curricular connections';
+  }
+};
 
 const getSubjectSpecificTemplates = (mathSubject) => {
   const templates = {
@@ -1493,7 +1509,7 @@ if (isMathContent) {
 ## Extension Activities
 - Peer discussion of key concepts using sentence frames
 - Vocabulary journal entries with drawings or examples
-- ${contentAnalysis.contentType === 'reading_comprehension' ? 'Text-to-self connections discussion' : isMathContent ? 'Real-world application of mathematical concepts' : 'Real-world application examples'}
+- ${getExtensionsBySubject(mathSubject, contentAnalysis)}
 
 ## Differentiation Suggestions
 - **Above Level:** Encourage use of more complex sentence structures
