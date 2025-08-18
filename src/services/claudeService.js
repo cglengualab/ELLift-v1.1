@@ -1426,8 +1426,6 @@ ${languageObjectives.map(obj => `- ${obj}`).join('\n')}
 - ${getMaterialsBySubject(mathSubject)}
 - Vocabulary reference materials
 - ${getSubjectSpecificMaterials(mathSubject)}
-- Vocabulary reference materials
-- ${contentAnalysis.contentType === 'reading_comprehension' ? 'Audio recording of passage (optional)' : 'Visual aids as appropriate'}${isMathContent ? '\n- Coordinate grid paper or graphing materials' : ''}
 
 ## Key Vocabulary Terms
 ${keyVocabulary}
