@@ -1387,7 +1387,16 @@ const generateTeacherGuide = async (studentWorksheet, params, contentAnalysis) =
  
  // Detect math subject for enhanced teacher notes
  const mathSubject = detectMathSubject(subject, params.contentToAdapt);
- const isMathContent = mathSubject !== 'general_math' || contentAnalysis.hasMath;
+// Define what subjects should get math enhancements
+const mathSubjects = ['geometry', 'algebra', 'statistics', 'basic_math', 'mathematics'];
+const scienceSubjects = ['biology', 'chemistry', 'physics', 'general_science'];
+
+// Only apply math features to actual math subjects OR science with math content
+const isMathContent = mathSubjects.includes(mathSubject) || 
+                     (scienceSubjects.includes(mathSubject) && contentAnalysis.hasMath);
+
+// Debug output
+console.log('DEBUG: mathSubject =', mathSubject, 'isMathContent =', isMathContent);
  
  let teacherGuide = `# Teacher's Guide: ${subject} - ${WIDA_LEVELS[proficiencyLevel.toLowerCase()].label}
 
