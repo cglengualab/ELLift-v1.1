@@ -358,6 +358,38 @@ const getSubjectCategory = (mathSubject) => {
   }
 };
 
+const getMaterialsBySubject = (mathSubject) => {
+  const category = getSubjectCategory(mathSubject);
+  switch (category) {
+    case 'MATH':
+      return 'Calculator (if permitted), graph paper, ruler';
+    case 'SCIENCE':
+      return 'Calculator (if permitted), safety goggles, lab equipment';
+    case 'ELA':
+      return 'Highlighters for text marking, sticky notes';
+    case 'SOCIAL_STUDIES':
+      return 'Maps, timeline templates, highlighters';
+    default:
+      return 'Highlighters and reference materials';
+  }
+};
+
+const getSubjectSpecificMaterials = (mathSubject) => {
+  const category = getSubjectCategory(mathSubject);
+  switch (category) {
+    case 'MATH':
+      return 'Coordinate grid paper or graphing materials';
+    case 'SCIENCE':
+      return 'Lab materials as specified in procedures';
+    case 'ELA':
+      return 'Audio recording of passage (optional)';
+    case 'SOCIAL_STUDIES':
+      return 'Primary source documents or images';
+    default:
+      return 'Visual aids as appropriate';
+  }
+};  
+
 const getSubjectSpecificTemplates = (mathSubject) => {
   const templates = {
     geometry: {
