@@ -233,6 +233,59 @@ const detectMathSubject = (subject, content) => {
   const subjectLower = subject.toLowerCase();
   const contentLower = content.toLowerCase();
   
+  // PHASE 1: Explicitly identify NON-MATH subjects first
+  if (subjectLower.includes('english') || 
+      subjectLower.includes('language arts') || 
+      subjectLower.includes('literature') || 
+      subjectLower.includes('reading') || 
+      subjectLower.includes('writing')) {
+    return 'english_language_arts';
+  }
+  
+  if (subjectLower.includes('history')) {
+    return 'history';
+  }
+  
+  if (subjectLower.includes('social studies') || 
+      subjectLower.includes('government') || 
+      subjectLower.includes('economics') || 
+      subjectLower.includes('civics')) {
+    return 'social_studies';
+  }
+  
+  // PHASE 2: Identify SCIENCE subjects (mixed math/science)
+  if (subjectLower.includes('biology') ||
+      contentLower.includes('cell') || 
+      contentLower.includes('organism') ||
+      contentLower.includes('dna') ||
+      contentLower.includes('photosynthesis')) {
+    return 'biology';
+  }
+  
+  if (subjectLower.includes('chemistry') ||
+      contentLower.includes('h2o') || 
+      contentLower.includes('co2') ||
+      contentLower.includes('chemical') ||
+      contentLower.includes('reaction')) {
+    return 'chemistry';
+  }
+  
+  if (subjectLower.includes('physics') ||
+      contentLower.includes('force') || 
+      contentLower.includes('velocity') ||
+      contentLower.includes('acceleration') ||
+      contentLower.includes('wave')) {
+    return 'physics';
+  }
+  
+  if (subjectLower.includes('science') ||
+      contentLower.includes('experiment') ||
+      contentLower.includes('hypothesis') ||
+      contentLower.includes('observation')) {
+    return 'general_science';
+  }
+  
+  // PHASE 3: Identify MATH subjects last
   if (subjectLower.includes('geometry') || 
       contentLower.includes('triangle') || 
       contentLower.includes('angle') ||
@@ -272,7 +325,13 @@ const detectMathSubject = (subject, content) => {
     return 'basic_math';
   }
   
-  return 'general_math';
+  if (subjectLower.includes('mathematics') || 
+      subjectLower.includes('math')) {
+    return 'mathematics';
+  }
+  
+  // SAFE DEFAULT: Non-math content
+  return 'general_content';
 };
 
 const getSubjectSpecificTemplates = (mathSubject) => {
