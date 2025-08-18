@@ -1325,13 +1325,16 @@ const generateWorksheet = async (params, contentAnalysis, adaptationRules) => {
  let enhancedWorksheet = result.content[0].text;
  
  // Apply mathematical typography
- enhancedWorksheet = enhanceMathematicalTypography(enhancedWorksheet);
+if (isMathContent) {
+  enhancedWorksheet = enhanceMathematicalTypography(enhancedWorksheet);
+}
  
  // Apply formatting enhancements
- enhancedWorksheet = enhanceWorksheetFormatting(enhancedWorksheet);
- 
- // Fix any table issues
- enhancedWorksheet = fixTableFormatting(enhancedWorksheet);
+if (isMathContent) {
+  enhancedWorksheet = enhanceMathematicalTypography(enhancedWorksheet);
+  enhancedWorksheet = enhanceWorksheetFormatting(enhancedWorksheet);
+  enhancedWorksheet = fixTableFormatting(enhancedWorksheet);
+}
  
  return enhancedWorksheet;
 };
