@@ -1033,7 +1033,13 @@ const buildWorksheetPrompt = (params, contentAnalysis, adaptationRules) => {
   
   // Detect if this is math content
   const mathSubject = detectMathSubject(subject, contentToAdapt);
-  const isMathContent = mathSubject !== 'general_math' || contentAnalysis.hasMath;
+ // Define what subjects should get math enhancements
+const mathSubjects = ['geometry', 'algebra', 'statistics', 'basic_math', 'mathematics'];
+const scienceSubjects = ['biology', 'chemistry', 'physics', 'general_science'];
+
+// Only apply math features to actual math subjects OR science with math content
+const isMathContent = mathSubjects.includes(mathSubject) || 
+                     (scienceSubjects.includes(mathSubject) && contentAnalysis.hasMath);
   
   // REPLACE THE EXISTING PROMPT BUILDING WITH THIS ENHANCED VERSION:
   const widaInfo = WIDA_LEVELS[proficiencyLevel.toLowerCase()];
