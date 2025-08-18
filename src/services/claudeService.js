@@ -1318,7 +1318,15 @@ const generateWorksheet = async (params, contentAnalysis, adaptationRules) => {
  const tokenLimit = contentAnalysis.complexity.needsExtendedTokens 
    ? CONFIG.TOKENS.EXTENDED_MAX 
    : CONFIG.TOKENS.DEFAULT_MAX;
- 
+
+// ADD THIS SECTION:
+  // Detect if this is math content for typography enhancements
+  const mathSubject = detectMathSubject(params.subject, params.contentToAdapt);
+  const mathSubjects = ['geometry', 'algebra', 'statistics', 'basic_math', 'mathematics'];
+  const scienceSubjects = ['biology', 'chemistry', 'physics', 'general_science'];
+  const isMathContent = mathSubjects.includes(mathSubject) || 
+                       (scienceSubjects.includes(mathSubject) && contentAnalysis.hasMath);
+  
  const result = await callClaudeAPI([{ role: 'user', content: prompt }], tokenLimit);
  
  // Apply ALL enhancements here
