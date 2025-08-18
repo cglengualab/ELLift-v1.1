@@ -334,6 +334,30 @@ const detectMathSubject = (subject, content) => {
   return 'general_content';
 };
 
+// ADD THIS NEW FUNCTION RIGHT HERE:
+const getSubjectCategory = (mathSubject) => {
+  switch (mathSubject) {
+    case 'english_language_arts':
+      return 'ELA';
+    case 'history':
+    case 'social_studies':
+      return 'SOCIAL_STUDIES';
+    case 'biology':
+    case 'chemistry':
+    case 'physics':
+    case 'general_science':
+      return 'SCIENCE';
+    case 'geometry':
+    case 'algebra':
+    case 'statistics':
+    case 'basic_math':
+    case 'mathematics':
+      return 'MATH';
+    default:
+      return 'GENERAL';
+  }
+};
+
 const getSubjectSpecificTemplates = (mathSubject) => {
   const templates = {
     geometry: {
